@@ -3267,8 +3267,12 @@ export const diningAPI = {
 
     listBanners: () =>
       apiClient.get("/food/admin/dining/banners", { contextModule: "admin" }),
+    createBanner: (formData) =>
+      apiClient.post("/food/admin/dining/banners", formData, multipart("admin")),
     updateBanner: (id, formData) =>
       apiClient.patch(`/food/admin/dining/banners/${id}`, formData, multipart("admin")),
+    deleteBanner: (id) =>
+      apiClient.delete(`/food/admin/dining/banners/${id}`, { contextModule: "admin" }),
 
     listRequests: (params = {}) =>
       apiClient.get("/food/admin/dining/requests", { params, contextModule: "admin" }),
@@ -3354,8 +3358,7 @@ export const diningAPI = {
 
   public: {
     listCategories: () => apiClient.get("/food/dining/categories"),
-    listBanners: (placement) =>
-      apiClient.get("/food/dining/banners", { params: placement ? { placement } : {} }),
+    listBanners: () => apiClient.get("/food/dining/banners"),
     listRestaurants: (params = {}) => apiClient.get("/food/dining/restaurants", { params }),
     getRestaurant: (restaurantId) => apiClient.get(`/food/dining/restaurants/${restaurantId}`),
     getAvailability: (restaurantId, params = {}) =>

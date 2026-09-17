@@ -21,7 +21,7 @@ export const listPublicDiningCategoriesController = async (req, res, next) => {
 
 export const listPublicDiningBannersController = async (req, res, next) => {
     try {
-        const items = await listDiningBanners({ placement: req.query?.placement });
+        const items = await listDiningBanners();
         return sendResponse(res, 200, 'Dining banners fetched successfully', { items });
     } catch (error) {
         next(error);

@@ -51,11 +51,18 @@ router.delete(
     diningController.deleteDiningCategoryController
 );
 
-// ----- Dining banners (fixed default set; edit only) -----
+// ----- Dining banners (admin-owned; visibility via isActive only) -----
 router.get(
     '/banners',
     checkPermission('food::dining_management::banners', 'view'),
     diningController.listDiningBannersController
+);
+router.post(
+    '/banners',
+    checkPermission('food::dining_management::banners', 'create'),
+    singleImage,
+    invalidateDiningCaches,
+    diningController.createDiningBannerController
 );
 router.patch(
     '/banners/:id',
@@ -63,6 +70,12 @@ router.patch(
     singleImage,
     invalidateDiningCaches,
     diningController.updateDiningBannerController
+);
+router.delete(
+    '/banners/:id',
+    checkPermission('food::dining_management::banners', 'delete'),
+    invalidateDiningCaches,
+    diningController.deleteDiningBannerController
 );
 
 // ----- Restaurant dining requests -----

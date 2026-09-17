@@ -32,7 +32,8 @@ export default function Dining() {
   const [searchParams, setSearchParams] = useSearchParams()
   const { location: userLocation } = useUserLocation()
 
-  const [banner, setBanner] = useState(null)
+  const [banners, setBanners] = useState([])
+  const [bannerIndex, setBannerIndex] = useState(0)
   const [categories, setCategories] = useState([])
   const [items, setItems] = useState([])
   const [pagination, setPagination] = useState({ page: 1, totalPages: 1, total: 0 })
@@ -51,17 +52,26 @@ export default function Dining() {
   }, [userLocation?.latitude, userLocation?.longitude])
 
   useEffect(() => {
-    // Banner + categories are cached server-side, so one fetch on mount is enough.
-    Promise.all([diningAPI.public.listBanners("home_top"), diningAPI.public.listCategories()])
+    // Banners + categories are cached server-side, so one fetch on mount is enough.
+    Promise.all([diningAPI.public.listBanners(), diningAPI.public.listCategories()])
       .then(([bannerRes, categoryRes]) => {
-        setBanner(bannerRes?.data?.data?.items?.[0] || null)
+        setBanners(bannerRes?.data?.data?.items || [])
         setCategories(categoryRes?.data?.data?.items || [])
       })
       .catch(() => {
-        setBanner(null)
+        setBanners([])
         setCategories([])
       })
   }, [])
+
+  // Auto-rotate only when admin has more than one active banner.
+  useEffect(() => {
+    if (banners.length <= 1) return undefined
+    const timer = setInterval(() => {
+      setBannerIndex((prev) => (prev + 1) % banners.length)
+    }, 5000)
+    return () => clearInterval(timer)
+  }, [banners.length])
 
   const fetchRestaurants = useCallback(
     async (page = 1) => {
@@ -102,6 +112,17 @@ export default function Dining() {
     return () => clearTimeout(timer)
   }, [fetchRestaurants, search])
 
+  /** Banner links can be an in-app path or an external URL. */
+  const openBannerLink = (link) => {
+    const target = String(link || "").trim()
+    if (!target) return
+    if (/^https?:\/\//i.test(target)) {
+      window.open(target, "_blank", "noopener,noreferrer")
+      return
+    }
+    navigate(target)
+  }
+
   const setCategory = (id) => {
     const next = new URLSearchParams(searchParams)
     if (id) next.set("category", id)
@@ -139,18 +160,54 @@ export default function Dining() {
       </div>
 
       <div className="space-y-5 p-4">
-        {banner?.image && (
+        {banners.length > 0 && (
           <div className="relative overflow-hidden rounded-2xl">
-            <img
-              src={banner.image}
-              alt={banner.title}
-              className="aspect-[12/5] w-full object-cover"
-              loading="eager"
-            />
-            <div className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/70 to-transparent p-4 text-white">
-              <h2 className="text-lg font-semibold">{banner.title}</h2>
-              {banner.subtitle && <p className="text-sm text-white/90">{banner.subtitle}</p>}
+            <div
+              className="flex transition-transform duration-500 ease-out"
+              style={{ transform: `translateX(-${bannerIndex * 100}%)` }}
+            >
+              {banners.map((item, index) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => openBannerLink(item.link)}
+                  disabled={!item.link}
+                  className="relative w-full shrink-0 text-left disabled:cursor-default"
+                >
+                  <img
+                    src={item.image}
+                    alt={item.title}
+                    className="aspect-[12/5] w-full object-cover"
+                    loading={index === 0 ? "eager" : "lazy"}
+                  />
+                  <span className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/70 to-transparent p-4 text-white">
+                    <span className="block text-lg font-semibold">{item.title}</span>
+                    {item.subtitle && <span className="block text-sm text-white/90">{item.subtitle}</span>}
+                    {item.ctaText && (
+                      <span className="mt-2 inline-flex w-fit rounded-full bg-white/95 px-3 py-1 text-xs font-semibold text-gray-900">
+                        {item.ctaText}
+                      </span>
+                    )}
+                  </span>
+                </button>
+              ))}
             </div>
+
+            {banners.length > 1 && (
+              <div className="absolute bottom-2 left-1/2 flex -translate-x-1/2 gap-1.5">
+                {banners.map((item, index) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    aria-label={`Go to banner ${index + 1}`}
+                    onClick={() => setBannerIndex(index)}
+                    className={`h-1.5 rounded-full transition-all ${
+                      index === bannerIndex ? "w-5 bg-white" : "w-1.5 bg-white/60"
+                    }`}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         )}
 

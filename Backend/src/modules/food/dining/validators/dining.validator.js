@@ -1,7 +1,6 @@
 import { z } from 'zod';
 import { ValidationError } from '../../../../core/auth/errors.js';
 import { DINING_TABLE_SECTIONS } from '../models/diningTable.model.js';
-import { DINING_BANNER_PLACEMENTS } from '../models/diningBanner.model.js';
 import { DINING_BOOKING_STATUSES } from '../models/diningBooking.model.js';
 
 const parse = (schema, payload, fallbackMessage) => {
@@ -70,18 +69,22 @@ export const validateDiningCategoryUpdate = (body) =>
 
 /* -------------------------------- Banners ------------------------------- */
 
-const bannerUpdateSchema = z.object({
-    title: z.string().trim().min(2, 'Banner title is required').max(120).optional(),
-    subtitle: z.string().trim().max(200).optional(),
-    ctaText: z.string().trim().max(60).optional(),
-    link: z.string().trim().max(500).optional(),
-    placement: z.enum(DINING_BANNER_PLACEMENTS).optional(),
+const bannerCreateSchema = z.object({
+    title: z.string().trim().min(2, 'Banner title is required').max(120),
+    subtitle: z.string().trim().max(200).optional().default(''),
+    ctaText: z.string().trim().max(60).optional().default(''),
+    // Either an in-app path (/food/user/dining) or an absolute URL.
+    link: z.string().trim().max(500).regex(/^(https?:\/\/|\/)/, 'Link must start with http(s):// or /').optional().or(z.literal('')),
+    // Left out on create so the banner is appended to the end of the list.
     sortOrder: z.coerce.number().int().min(0).max(9999).optional(),
-    isActive: boolish.optional()
+    isActive: boolish.optional().default(true)
 });
 
+export const validateDiningBannerCreate = (body) =>
+    parse(bannerCreateSchema, body, 'Invalid dining banner data');
+
 export const validateDiningBannerUpdate = (body) =>
-    parse(bannerUpdateSchema, body, 'Invalid dining banner data');
+    parse(bannerCreateSchema.partial(), body, 'Invalid dining banner data');
 
 /* ----------------------------- Dining profile ---------------------------- */
 

@@ -5,7 +5,9 @@ import {
     updateDiningCategory,
     deleteDiningCategory,
     listDiningBanners,
-    updateDiningBanner
+    createDiningBanner,
+    updateDiningBanner,
+    deleteDiningBanner
 } from '../services/diningCatalog.service.js';
 import {
     listDiningProfilesForAdmin,
@@ -21,6 +23,7 @@ import { getWeeklySlots, listDiningTables } from '../services/diningAvailability
 import {
     validateDiningCategoryCreate,
     validateDiningCategoryUpdate,
+    validateDiningBannerCreate,
     validateDiningBannerUpdate,
     validateDiningProfileListQuery,
     validateDiningProfileReview,
@@ -73,6 +76,25 @@ export const listDiningBannersController = async (req, res, next) => {
     try {
         const items = await listDiningBanners({ includeInactive: true });
         return sendResponse(res, 200, 'Dining banners fetched successfully', { items });
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const createDiningBannerController = async (req, res, next) => {
+    try {
+        const payload = validateDiningBannerCreate(req.body);
+        const created = await createDiningBanner(payload, req.file);
+        return sendResponse(res, 201, 'Dining banner created successfully', created);
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const deleteDiningBannerController = async (req, res, next) => {
+    try {
+        const result = await deleteDiningBanner(req.params.id);
+        return sendResponse(res, 200, 'Dining banner deleted successfully', result);
     } catch (error) {
         next(error);
     }
