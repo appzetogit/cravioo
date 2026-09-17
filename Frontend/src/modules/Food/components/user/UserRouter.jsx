@@ -28,6 +28,11 @@ const OrderTracking = lazy(() => import("@food/pages/user/orders/OrderTracking")
 const OrderInvoice = lazy(() => import("@food/pages/user/orders/OrderInvoice"))
 const UserOrderDetails = lazy(() => import("@food/pages/user/orders/UserOrderDetails"))
 
+// Dining
+const Dining = lazy(() => import("@food/pages/user/dining/Dining"))
+const DiningDetails = lazy(() => import("@food/pages/user/dining/DiningDetails"))
+const DiningBookings = lazy(() => import("@food/pages/user/dining/DiningBookings"))
+
 // Offers
 const Offers = lazy(() => import("@food/pages/user/Offers"))
 
@@ -134,6 +139,18 @@ export default function UserRouter() {
               </ProtectedRoute>
             }
           />
+
+          {/* Dining */}
+          <Route path="dining" element={<Dining />} />
+          <Route
+            path="dining/bookings"
+            element={
+              <ProtectedRoute requiredRole="user" loginPath="/user/auth/login">
+                <DiningBookings />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="dining/:restaurantId" element={<DiningDetails />} />
 
           {/* Offers */}
           <Route path="offers" element={<Offers />} />

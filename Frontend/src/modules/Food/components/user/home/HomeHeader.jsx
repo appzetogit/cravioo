@@ -24,7 +24,7 @@ import { Badge } from "@food/components/ui/badge";
 import useNotificationInbox from "@food/hooks/useNotificationInbox";
 
 const foodTheme = (vegMode) => ({
-  accent: vegMode ? "#2e7d32" : "#FF0000",
+  accent: vegMode ? "#2e7d32" : "#32C45A",
 });
 
 const isMeaningfulLocationValue = (value) => {
@@ -210,7 +210,7 @@ export default function HomeHeader({
             to="/food/user"
             className="flex shrink-0 items-center border-0 bg-transparent p-0 outline-none"
           >
-            <img src="/final_logo200-removebg-preview.png" alt="Fudron" className="h-7 sm:h-8 w-auto object-contain dark:brightness-0 dark:invert" />
+            <img src="/final_logo200-removebg-preview.png" alt="Cravioo" className="h-7 sm:h-8 w-auto object-contain dark:brightness-0 dark:invert" />
           </Link>
 
           {!embedded && (
@@ -239,7 +239,7 @@ export default function HomeHeader({
               >
                 <ShoppingCart className="h-4 w-4 sm:h-5 sm:w-5" strokeWidth={2} />
                 {cartItemCount > 0 && (
-                  <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 sm:h-5 sm:w-5 items-center justify-center rounded-full bg-[#FF0000] text-[10px] sm:text-[11px] font-bold text-white border-2 border-white shadow-sm">
+                  <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 sm:h-5 sm:w-5 items-center justify-center rounded-full bg-[#32C45A] text-[10px] sm:text-[11px] font-bold text-white border-2 border-white shadow-sm">
                     {cartItemCount > 9 ? "9+" : cartItemCount}
                   </span>
                 )}
@@ -276,7 +276,7 @@ export default function HomeHeader({
                   >
                     <Bell className="h-4 w-4 sm:h-5 sm:w-5" strokeWidth={2} />
                     {unreadCount > 0 && (
-                      <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 sm:h-5 sm:w-5 items-center justify-center rounded-full bg-[#FF0000] text-[10px] sm:text-[11px] font-bold text-white border-2 border-white shadow-sm">
+                      <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 sm:h-5 sm:w-5 items-center justify-center rounded-full bg-[#32C45A] text-[10px] sm:text-[11px] font-bold text-white border-2 border-white shadow-sm">
                         {unreadCount > 9 ? "9+" : unreadCount}
                       </span>
                     )}

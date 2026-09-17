@@ -210,7 +210,7 @@ export default function AdminForgotPassword() {
             <div className="flex w-full items-center gap-4 sm:gap-5">
               <img 
                 src={logoUrl || "/logo.jpg"}
-                alt="Fudron"
+                alt="Cravioo"
                 className="h-16 w-auto shrink-0 rounded-lg object-contain" 
               />
               <div className="flex flex-col gap-1">

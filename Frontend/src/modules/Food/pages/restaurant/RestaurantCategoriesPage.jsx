@@ -109,7 +109,7 @@ export default function RestaurantCategoriesPage() {
                 className="relative w-20 h-20 md:w-24 md:h-24 rounded-full overflow-hidden shadow-md group-hover:shadow-lg transition-shadow bg-gray-200"
               >
                 {failedImages.has(category.id) ? (
-                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#ff8100] to-[#ff9500] text-white font-bold text-lg md:text-xl">
+                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#32C45A] to-[#4FCB72] text-white font-bold text-lg md:text-xl">
                     {category.name.charAt(0)}
                   </div>
                 ) : (
@@ -124,7 +124,7 @@ export default function RestaurantCategoriesPage() {
                   />
                 )}
                 {/* Gradient Overlay */}
-                <div className="absolute inset-0 bg-gradient-to-br from-[#ff8100]/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+                <div className="absolute inset-0 bg-gradient-to-br from-[#32C45A]/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
               </motion.div>
 
               {/* Category Name */}
@@ -132,7 +132,7 @@ export default function RestaurantCategoriesPage() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: index * 0.05 + 0.2, duration: 0.3 }}
-                className="text-xs md:text-sm font-medium text-gray-700 group-hover:text-[#ff8100] transition-colors text-center"
+                className="text-xs md:text-sm font-medium text-gray-700 group-hover:text-[#32C45A] transition-colors text-center"
               >
                 {category.name}
               </motion.span>

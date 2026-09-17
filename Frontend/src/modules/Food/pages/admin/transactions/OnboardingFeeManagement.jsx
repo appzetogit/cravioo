@@ -82,7 +82,7 @@ export default function OnboardingFeeManagement() {
         {/* Header */}
         <div className="bg-white rounded-xl shadow-xs border border-slate-200 p-6 mb-6">
           <div className="flex items-center gap-3">
-            <div className="p-3 bg-[#FFEDED] rounded-lg text-[#FF0000]">
+            <div className="p-3 bg-[#EAF9EE] rounded-lg text-[#32C45A]">
               <Settings className="w-6 h-6" />
             </div>
             <div>
@@ -94,7 +94,7 @@ export default function OnboardingFeeManagement() {
 
         {loading ? (
           <div className="flex items-center justify-center py-12">
-            <div className="w-8 h-8 border-4 border-[#FF0000] border-t-transparent rounded-full animate-spin" />
+            <div className="w-8 h-8 border-4 border-[#32C45A] border-t-transparent rounded-full animate-spin" />
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-6">
@@ -108,7 +108,7 @@ export default function OnboardingFeeManagement() {
                 <button
                   onClick={() => handleToggleActive("RESTAURANT")}
                   className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
-                    config.RESTAURANT.isActive ? "bg-[#FF0000]" : "bg-slate-300"
+                    config.RESTAURANT.isActive ? "bg-[#32C45A]" : "bg-slate-300"
                   }`}
                 >
                   <span
@@ -127,7 +127,7 @@ export default function OnboardingFeeManagement() {
                       type="number"
                       value={config.RESTAURANT.price}
                       onChange={(e) => handlePriceChange("RESTAURANT", e.target.value)}
-                      className="pl-8 pr-4 py-2 w-full text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-[#FF0000]/30 focus:border-[#FF0000]"
+                      className="pl-8 pr-4 py-2 w-full text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-[#32C45A]/30 focus:border-[#32C45A]"
                     />
                   </div>
                 </div>
@@ -145,7 +145,7 @@ export default function OnboardingFeeManagement() {
                   </div>
                   <button
                     onClick={() => handleSave("RESTAURANT")}
-                    className="px-4 py-2 bg-[#FF0000] hover:bg-[#d85418] text-white text-sm font-semibold rounded-lg shadow-sm transition-all flex items-center gap-2"
+                    className="px-4 py-2 bg-[#32C45A] hover:bg-[#28A047] text-white text-sm font-semibold rounded-lg shadow-sm transition-all flex items-center gap-2"
                   >
                     <Save className="w-4 h-4" /> Save
                   </button>
@@ -163,7 +163,7 @@ export default function OnboardingFeeManagement() {
                 <button
                   onClick={() => handleToggleActive("DELIVERY_PARTNER")}
                   className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
-                    config.DELIVERY_PARTNER.isActive ? "bg-[#FF0000]" : "bg-slate-300"
+                    config.DELIVERY_PARTNER.isActive ? "bg-[#32C45A]" : "bg-slate-300"
                   }`}
                 >
                   <span
@@ -182,7 +182,7 @@ export default function OnboardingFeeManagement() {
                       type="number"
                       value={config.DELIVERY_PARTNER.price}
                       onChange={(e) => handlePriceChange("DELIVERY_PARTNER", e.target.value)}
-                      className="pl-8 pr-4 py-2 w-full text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-[#FF0000]/30 focus:border-[#FF0000]"
+                      className="pl-8 pr-4 py-2 w-full text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-[#32C45A]/30 focus:border-[#32C45A]"
                     />
                   </div>
                 </div>
@@ -200,7 +200,7 @@ export default function OnboardingFeeManagement() {
                   </div>
                   <button
                     onClick={() => handleSave("DELIVERY_PARTNER")}
-                    className="px-4 py-2 bg-[#FF0000] hover:bg-[#d85418] text-white text-sm font-semibold rounded-lg shadow-sm transition-all flex items-center gap-2"
+                    className="px-4 py-2 bg-[#32C45A] hover:bg-[#28A047] text-white text-sm font-semibold rounded-lg shadow-sm transition-all flex items-center gap-2"
                   >
                     <Save className="w-4 h-4" /> Save
                   </button>

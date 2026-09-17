@@ -147,12 +147,12 @@ export default function SettingsPage() {
                             <div className={`flex-shrink-0 p-1.5 rounded-lg ${
                               item.isDestructive
                                 ? "bg-red-100"
-                                : "bg-[#ff8100]/10"
+                                : "bg-[#32C45A]/10"
                             }`}>
                               <item.icon className={`w-4 h-4 ${
                                 item.isDestructive
                                   ? "text-red-600"
-                                  : "text-[#ff8100]"
+                                  : "text-[#32C45A]"
                               }`} />
                             </div>
                             <span className="text-sm font-medium flex-1 text-left">
@@ -170,7 +170,7 @@ export default function SettingsPage() {
                                 }
                               }}
                               className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                                item.toggleValue ? "bg-[#ff8100]" : "bg-gray-300"
+                                item.toggleValue ? "bg-[#32C45A]" : "bg-gray-300"
                               }`}
                             >
                               <span
@@ -199,12 +199,12 @@ export default function SettingsPage() {
                             <div className={`flex-shrink-0 p-1.5 rounded-lg ${
                               item.isDestructive
                                 ? "bg-red-100"
-                                : "bg-[#ff8100]/10"
+                                : "bg-[#32C45A]/10"
                             }`}>
                               <item.icon className={`w-4 h-4 ${
                                 item.isDestructive
                                   ? "text-red-600"
-                                  : "text-[#ff8100]"
+                                  : "text-[#32C45A]"
                               }`} />
                             </div>
                             <span className="text-sm font-medium flex-1 text-left">

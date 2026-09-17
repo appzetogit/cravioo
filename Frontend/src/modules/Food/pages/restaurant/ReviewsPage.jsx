@@ -78,7 +78,7 @@ export default function ReviewsPage() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search by order id or food name..."
-            className="w-full pl-4 pr-10 py-2.5 rounded-lg border-gray-200 focus:ring-2 focus:ring-[#ff8100]"
+            className="w-full pl-4 pr-10 py-2.5 rounded-lg border-gray-200 focus:ring-2 focus:ring-[#32C45A]"
           />
           <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
         </div>
@@ -143,7 +143,7 @@ export default function ReviewsPage() {
                     className={`flex-shrink-0 px-4 py-2 text-sm font-medium rounded-lg ${
                       review.hasReply
                         ? "bg-blue-100 hover:bg-blue-200 text-blue-700"
-                        : "bg-[#ff8100] hover:bg-[#e67300] text-white"
+                        : "bg-[#32C45A] hover:bg-[#28A047] text-white"
                     }`}
                   >
                     {review.hasReply ? "View Reply" : "Give Reply"}

@@ -194,7 +194,7 @@ export default function AdminLogin() {
             <div className="flex w-full items-center gap-4 sm:gap-5">
               <img
                 src={logoUrl || "/logo.jpg"}
-                alt="Fudron"
+                alt="Cravioo"
                 className="h-16 w-auto shrink-0 rounded-lg object-contain"
               />
               <div className="flex flex-col gap-1">
@@ -350,7 +350,7 @@ export default function AdminLogin() {
 
               <Button
                 type="submit"
-                className="h-12 w-full bg-[#FF0000] text-white transition-colors hover:bg-[#CC0000] focus-visible:ring-2 focus-visible:ring-[#FF0000] focus-visible:ring-offset-2"
+                className="h-12 w-full bg-[#32C45A] text-white transition-colors hover:bg-[#28A047] focus-visible:ring-2 focus-visible:ring-[#32C45A] focus-visible:ring-offset-2"
                 disabled={isLoading}
               >
                 {isLoading ? "Logging in..." : "Login"}

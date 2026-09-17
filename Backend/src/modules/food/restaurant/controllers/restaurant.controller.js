@@ -101,7 +101,7 @@ export const listUnder250RestaurantsController = async (req, res, next) => {
     try {
         const { listUnder250Restaurants } = await import('../services/under250.service.js');
         const data = await listUnder250Restaurants(req.query);
-        return sendResponse(res, 200, 'Under ₹250 restaurants fetched successfully', data);
+        return sendResponse(res, 200, 'Under ₹150 restaurants fetched successfully', data);
     } catch (error) {
         next(error);
     }

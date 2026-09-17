@@ -42,7 +42,12 @@ import {
     deleteRoleRequestController
 } from '../controllers/userRoleRequest.controller.js';
 
+import diningUserRoutes from '../../dining/routes/userDining.routes.js';
+
 const router = express.Router();
+
+// Dining table bookings (Bearer USER)
+router.use('/dining', diningUserRoutes);
 
 router.get('/profile', getCurrentUserProfileController);
 router.patch('/profile', updateCurrentUserProfileController);

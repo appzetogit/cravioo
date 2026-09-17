@@ -15,6 +15,7 @@ import {
   BadgeCheck,
   Store,
   CheckSquare,
+  UtensilsCrossed,
   LogOut,
   LogIn,
 } from "lucide-react"
@@ -52,6 +53,7 @@ export default function MenuOverlay({ showMenu, setShowMenu }) {
       { id: 2, name: "Dashboard", icon: Home, route: "/restaurant" },
       { id: 3, name: "Order History", icon: ShoppingBag, route: "/restaurant/orders/all" },
       { id: 4, name: "Inventory", icon: Package, route: "/restaurant/inventory" },
+      { id: 16, name: "Dining Management", icon: UtensilsCrossed, route: "/restaurant/dining" },
       { id: 5, name: "Explore", icon: Compass, route: "/restaurant/explore" },
       { id: 6, name: "Outlet Info", icon: Info, route: "/restaurant/outlet-info" },
       { id: 7, name: "Outlet Timings", icon: Clock, route: "/restaurant/outlet-timings" },
@@ -164,7 +166,7 @@ export default function MenuOverlay({ showMenu, setShowMenu }) {
                       className={`flex flex-col items-center justify-center gap-2 p-3 md:p-4 rounded-xl transition-all shadow-md hover:shadow-lg ${
                         option.isLogout
                           ? "bg-red-500 hover:bg-red-600 text-white"
-                          : "bg-gradient-to-br from-[#ff8100] to-[#ff9500] hover:from-[#e67300] hover:to-[#e68500] text-white"
+                          : "bg-gradient-to-br from-[#32C45A] to-[#4FCB72] hover:from-[#28A047] hover:to-[#28A047] text-white"
                       }`}
                     >
                       <motion.div

@@ -30,7 +30,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts"
-import { Activity, ShoppingBag, CreditCard, Truck, Receipt, IndianRupee, Store, UserCheck, Package, UserCircle, Clock, CheckCircle, Plus, XCircle } from "lucide-react"
+import { Activity, ShoppingBag, CreditCard, Truck, Receipt, IndianRupee, Store, UserCheck, Package, UserCircle, Clock, CheckCircle, Plus, XCircle, Trophy } from "lucide-react"
 import { adminAPI } from "@food/api"
 import { toast } from "sonner"
 import { useAuth } from "@core/context/AuthContext"
@@ -236,6 +236,7 @@ export default function AdminHome() {
   // totalAdminEarnings already = ptBreakdown.net (source of truth: FoodTransaction snapshot)
 
   const activityFeed = dashboardData?.liveSignals || []
+  const topCustomers = dashboardData?.topCustomers || []
   const platformFeePlusCommissionLabel = `Platform fee: ${formatCurrency(ptPlatformFee)}`
   const commissionBreakdownLabel = `Rest. commission: ${formatCurrency(ptRestaurantCommission)}`
   const quickBreakdownLabel = `Quick share: ${formatCurrency(ptQuickShare)}`
@@ -719,6 +720,94 @@ export default function AdminHome() {
           </div>
         </SectionCard>
       </div>
+
+      {/* Top 10 customers */}
+      <SectionCard
+        className="!rounded-xl sm:!rounded-2xl !border-slate-200/80 !shadow-xs"
+        title="Top 10 customers"
+        subtitle="Ranked by number of orders placed"
+        action={
+          <span className="shrink-0 rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
+            {periodLabel}
+          </span>
+        }
+        flush
+      >
+        {showInitialSkeleton ? (
+          <div className="p-3 sm:p-4">
+            <KpiGridSkeleton count={4} />
+          </div>
+        ) : topCustomers.length === 0 ? (
+          <div className="p-3 sm:p-4">
+            <EmptyState
+              icon={<Trophy className="h-8 w-8" />}
+              title="No customer data yet"
+              description="Once orders start coming in, your top customers will show up here."
+            />
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[560px] border-collapse text-left">
+              <thead>
+                <tr className="border-b border-slate-200/80 text-[10px] uppercase tracking-wide text-slate-500">
+                  <th className="px-3 py-2 sm:px-4 font-semibold">Rank</th>
+                  <th className="px-3 py-2 sm:px-4 font-semibold">Customer</th>
+                  <th className="px-3 py-2 sm:px-4 font-semibold">Contact</th>
+                  <th className="px-3 py-2 sm:px-4 font-semibold text-right">Orders</th>
+                  <th className="px-3 py-2 sm:px-4 font-semibold text-right">Total spent</th>
+                  <th className="px-3 py-2 sm:px-4 font-semibold text-right">Last order</th>
+                </tr>
+              </thead>
+              <tbody>
+                {topCustomers.map((customer, index) => (
+                  <tr
+                    key={customer.userId || index}
+                    className="border-b border-slate-100 text-xs transition-colors hover:bg-slate-50 last:border-b-0"
+                  >
+                    <td className="px-3 py-2.5 sm:px-4">
+                      <span
+                        className={cn(
+                          "inline-flex h-6 w-6 items-center justify-center rounded-lg text-[10px] font-bold",
+                          index === 0
+                            ? "bg-amber-100 text-amber-700"
+                            : index === 1
+                              ? "bg-slate-200 text-slate-700"
+                              : index === 2
+                                ? "bg-orange-100 text-orange-700"
+                                : "bg-slate-100 text-slate-500"
+                        )}
+                      >
+                        {index + 1}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2.5 sm:px-4 font-medium text-[#1c1c1e]">
+                      {customer.name || "Unknown Customer"}
+                    </td>
+                    <td className="px-3 py-2.5 sm:px-4 text-slate-500">
+                      {customer.phone || customer.email || "—"}
+                    </td>
+                    <td className="px-3 py-2.5 sm:px-4 text-right font-semibold text-[#1c1c1e]">
+                      {Number(customer.orderCount || 0).toLocaleString("en-IN")}
+                    </td>
+                    <td className="px-3 py-2.5 sm:px-4 text-right font-semibold text-[#1c1c1e]">
+                      {formatCurrency(customer.totalSpent)}
+                    </td>
+                    <td className="px-3 py-2.5 sm:px-4 text-right text-slate-500">
+                      {customer.lastOrderAt
+                        ? new Date(customer.lastOrderAt).toLocaleDateString("en-IN", {
+                            day: "2-digit",
+                            month: "short",
+                            year: "numeric",
+                          })
+                        : "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </SectionCard>
         </div>
       </div>
     </div>

@@ -310,7 +310,7 @@ export default function RestaurantDetailsPage() {
 
                       <div className="flex items-center justify-between mt-0.5">
                         <div className="flex items-center gap-2">
-                          <p className="text-[#ff8100] font-bold text-sm">
+                          <p className="text-[#32C45A] font-bold text-sm">
                             ? {item.price.toFixed(2)}
                           </p>
                           <p className="text-gray-500 text-xs">

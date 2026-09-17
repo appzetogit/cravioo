@@ -175,7 +175,7 @@ export default function EditRestaurantPage() {
                     onClick={() => setActiveLanguage(lang.id)}
                     className={`flex-shrink-0 px-3 py-2 text-sm font-medium transition-colors border-b-2 ${
                       activeLanguage === lang.id
-                        ? "text-[#ff8100] border-[#ff8100]"
+                        ? "text-[#32C45A] border-[#32C45A]"
                         : "text-gray-600 border-transparent hover:text-gray-900"
                     }`}
                   >
@@ -193,7 +193,7 @@ export default function EditRestaurantPage() {
                   type="text"
                   value={formData.restaurantName[activeLanguage]}
                   onChange={(e) => handleInputChange("restaurantName", e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#ff8100] focus:border-transparent outline-none"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#32C45A] focus:border-transparent outline-none"
                   placeholder="Enter restaurant name"
                 />
               </div>
@@ -219,7 +219,7 @@ export default function EditRestaurantPage() {
                     type="tel"
                     value={formData.phoneNumber}
                     onChange={(e) => handleInputChange("phoneNumber", e.target.value)}
-                    className="flex-1 px-4 py-2 border border-gray-300 rounded-r-lg focus:ring-2 focus:ring-[#ff8100] focus:border-transparent outline-none"
+                    className="flex-1 px-4 py-2 border border-gray-300 rounded-r-lg focus:ring-2 focus:ring-[#32C45A] focus:border-transparent outline-none"
                     placeholder="01747410000"
                   />
                 </div>
@@ -234,7 +234,7 @@ export default function EditRestaurantPage() {
                   type="text"
                   value={formData.address}
                   onChange={(e) => handleInputChange("address", e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#ff8100] focus:border-transparent outline-none"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#32C45A] focus:border-transparent outline-none"
                   placeholder="Enter address"
                 />
               </div>
@@ -351,7 +351,7 @@ export default function EditRestaurantPage() {
                   type="text"
                   value={formData.metaTitle}
                   onChange={(e) => handleInputChange("metaTitle", e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#ff8100] focus:border-transparent outline-none"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#32C45A] focus:border-transparent outline-none"
                   placeholder="Enter meta title"
                 />
               </div>
@@ -365,7 +365,7 @@ export default function EditRestaurantPage() {
                   value={formData.metaDescription}
                   onChange={(e) => handleInputChange("metaDescription", e.target.value)}
                   rows={4}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#ff8100] focus:border-transparent outline-none resize-none"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#32C45A] focus:border-transparent outline-none resize-none"
                   placeholder="Enter meta description"
                 />
               </div>
@@ -418,7 +418,7 @@ export default function EditRestaurantPage() {
           <div className="sticky bottom-0 bg-white border-t border-gray-200 p-4 -mx-4 md:mx-0 md:border-0 md:p-0 md:mt-6">
             <Button
               type="submit"
-              className="w-full bg-[#ff8100] hover:bg-[#e67300] text-white font-semibold py-3 rounded-lg text-base md:text-lg"
+              className="w-full bg-[#32C45A] hover:bg-[#28A047] text-white font-semibold py-3 rounded-lg text-base md:text-lg"
             >
               Update
             </Button>

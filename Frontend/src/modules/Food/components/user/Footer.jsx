@@ -47,7 +47,7 @@ const Footer = ({ themeColor: themeColorProp }) => {
     const { settings } = useSettings();
 
     const logoUrl = settings?.logoUrl || Logo;
-    const defaultPrimaryColor = settings?.primaryColor || '#FF0000';
+    const defaultPrimaryColor = settings?.primaryColor || '#32C45A';
     const primaryColor = themeColorProp || defaultPrimaryColor;
 
     const [dynamicCategories, setDynamicCategories] = useState([]);
@@ -93,7 +93,7 @@ const Footer = ({ themeColor: themeColorProp }) => {
         <footer
             className="dynamic-footer-bg relative bg-[#1a0f05] pt-12 pb-8 mt-10 text-slate-300 md:pt-16 md:pb-10 md:mt-12 overflow-hidden transition-colors duration-500"
             style={{
-                '--footer-gradient': `linear-gradient(to bottom right, ${shiftHex(primaryColor, -20) || '#FF0000'}, ${primaryColor || '#FF0000'}, ${shiftHex(primaryColor, -40) || '#FF0000'})`
+                '--footer-gradient': `linear-gradient(to bottom right, ${shiftHex(primaryColor, -20) || '#32C45A'}, ${primaryColor || '#32C45A'}, ${shiftHex(primaryColor, -40) || '#32C45A'})`
             }}
         >
             <style>{`
@@ -239,7 +239,7 @@ const Footer = ({ themeColor: themeColorProp }) => {
 
                 <div className="border-t border-white/10 mt-10 pt-6 text-center text-sm md:flex md:justify-between md:text-left md:mt-16 md:pt-8">
                     <p className="md:text-[15px] text-white/70">
-                        &copy; {currentYear} Fudron. All rights reserved.
+                        &copy; {currentYear} Cravioo. All rights reserved.
                     </p>
                     <div className="flex gap-6 justify-center md:justify-end mt-4 md:mt-0 md:gap-8">
                         <Link to="/food/user/profile/privacy" className="hover:text-white md:text-[15px] text-white/70 transition-all font-medium">Privacy Policy</Link>

@@ -481,10 +481,10 @@ export default function SignupStep1() {
           
           {/* Step 1 */}
           <div className="relative z-10 flex flex-col items-center gap-2">
-             <div className="w-12 h-12 rounded-full bg-[#00B761] text-white flex items-center justify-center shadow-md ring-4 ring-green-50">
+             <div className="w-12 h-12 rounded-full bg-[#32C45A] text-white flex items-center justify-center shadow-md ring-4 ring-green-50">
                <User className="w-5 h-5" />
              </div>
-             <span className="text-[11px] font-bold text-[#00B761] text-center">Profile</span>
+             <span className="text-[11px] font-bold text-[#32C45A] text-center">Profile</span>
           </div>
           
           {/* Step 2 */}
@@ -513,7 +513,7 @@ export default function SignupStep1() {
           
           {/* Form Card Header */}
           <div className="flex items-center gap-4 mb-8">
-            <div className="w-12 h-12 bg-[#00B761] rounded-xl flex items-center justify-center shadow-sm shrink-0">
+            <div className="w-12 h-12 bg-[#32C45A] rounded-xl flex items-center justify-center shadow-sm shrink-0">
               <User className="text-white w-6 h-6" strokeWidth={2} />
             </div>
             <div>
@@ -538,8 +538,8 @@ export default function SignupStep1() {
                   value={formData.name}
                   onChange={handleChange}
                   inputMode="text"
-                  className={`w-full pl-11 pr-4 py-3.5 bg-gray-50 border rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#00B761]/20 transition-colors font-medium text-gray-900 ${
-                    errors.name ? "border-red-500" : "border-gray-200 focus:border-[#00B761]"
+                  className={`w-full pl-11 pr-4 py-3.5 bg-gray-50 border rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#32C45A]/20 transition-colors font-medium text-gray-900 ${
+                    errors.name ? "border-red-500" : "border-gray-200 focus:border-[#32C45A]"
                   }`}
                   placeholder="Enter your full name"
                 />
@@ -565,8 +565,8 @@ export default function SignupStep1() {
                   autoCorrect="off"
                   autoComplete="email"
                   inputMode="email"
-                  className={`w-full pl-11 pr-4 py-3.5 bg-gray-50 border rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#00B761]/20 transition-colors font-medium text-gray-900 ${
-                    errors.email ? "border-red-500" : "border-gray-200 focus:border-[#00B761]"
+                  className={`w-full pl-11 pr-4 py-3.5 bg-gray-50 border rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#32C45A]/20 transition-colors font-medium text-gray-900 ${
+                    errors.email ? "border-red-500" : "border-gray-200 focus:border-[#32C45A]"
                   }`}
                   placeholder="Enter your email"
                 />
@@ -595,8 +595,8 @@ export default function SignupStep1() {
                   value={formData.address}
                   onChange={handleChange}
                   rows={2}
-                  className={`w-full pl-11 pr-4 py-3.5 bg-gray-50 border rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#00B761]/20 transition-colors font-medium text-gray-900 resize-none ${
-                    errors.address ? "border-red-500" : "border-gray-200 focus:border-[#00B761]"
+                  className={`w-full pl-11 pr-4 py-3.5 bg-gray-50 border rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#32C45A]/20 transition-colors font-medium text-gray-900 resize-none ${
+                    errors.address ? "border-red-500" : "border-gray-200 focus:border-[#32C45A]"
                   }`}
                   placeholder="Enter your address"
                 />
@@ -619,8 +619,8 @@ export default function SignupStep1() {
                     name="city"
                     value={formData.city}
                     onChange={handleChange}
-                    className={`w-full pl-9 pr-3 py-3 bg-gray-50 border rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#00B761]/20 transition-colors font-medium text-gray-900 text-sm ${
-                      errors.city ? "border-red-500" : "border-gray-200 focus:border-[#00B761]"
+                    className={`w-full pl-9 pr-3 py-3 bg-gray-50 border rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#32C45A]/20 transition-colors font-medium text-gray-900 text-sm ${
+                      errors.city ? "border-red-500" : "border-gray-200 focus:border-[#32C45A]"
                     }`}
                     placeholder="City"
                   />
@@ -640,8 +640,8 @@ export default function SignupStep1() {
                     name="state"
                     value={formData.state}
                     onChange={handleChange}
-                    className={`w-full pl-9 pr-3 py-3 bg-gray-50 border rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#00B761]/20 transition-colors font-medium text-gray-900 text-sm ${
-                      errors.state ? "border-red-500" : "border-gray-200 focus:border-[#00B761]"
+                    className={`w-full pl-9 pr-3 py-3 bg-gray-50 border rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#32C45A]/20 transition-colors font-medium text-gray-900 text-sm ${
+                      errors.state ? "border-red-500" : "border-gray-200 focus:border-[#32C45A]"
                     }`}
                     placeholder="State"
                   />
@@ -654,7 +654,7 @@ export default function SignupStep1() {
             <div className="pt-6 border-t border-gray-100">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-8 h-8 rounded-lg bg-green-50 flex items-center justify-center shrink-0">
-                  <Truck className="w-4 h-4 text-[#00B761]" />
+                  <Truck className="w-4 h-4 text-[#32C45A]" />
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-gray-900">My Vehicles</h3>
@@ -701,7 +701,7 @@ export default function SignupStep1() {
                               </div>
                               <div>
                                 <span className="text-gray-400 block mb-0.5">Status</span>
-                                <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-green-50 text-[#00B761]">
+                                <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-green-50 text-[#32C45A]">
                                   {v.status}
                                 </span>
                               </div>
@@ -728,7 +728,7 @@ export default function SignupStep1() {
                 <button
                   type="button"
                   onClick={() => setShowAddVehicle(true)}
-                  className="mt-4 w-full py-3.5 rounded-xl border-2 border-dashed border-[#00B761] text-[#00B761] font-bold hover:bg-green-50 transition-colors flex items-center justify-center gap-2 text-[13px]"
+                  className="mt-4 w-full py-3.5 rounded-xl border-2 border-dashed border-[#32C45A] text-[#32C45A] font-bold hover:bg-green-50 transition-colors flex items-center justify-center gap-2 text-[13px]"
                 >
                   <span>+ Add Another Vehicle</span>
                 </button>
@@ -750,7 +750,7 @@ export default function SignupStep1() {
                         <select
                           value={newVehicle.vehicleId}
                           onChange={(e) => setNewVehicle(p => ({ ...p, vehicleId: e.target.value }))}
-                          className="appearance-none w-full px-4 py-3.5 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#00B761]/20 focus:border-[#00B761] text-sm font-medium pr-10 cursor-pointer"
+                          className="appearance-none w-full px-4 py-3.5 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#32C45A]/20 focus:border-[#32C45A] text-sm font-medium pr-10 cursor-pointer"
                         >
                           <option value="" disabled>Choose from list...</option>
                           {porterVehicles.filter(pv => !formData.vehicles.some(v => v.vehicleId === pv.id)).map(pv => (
@@ -774,7 +774,7 @@ export default function SignupStep1() {
                         type="text"
                         value={newVehicle.registrationNumber}
                         onChange={(e) => setNewVehicle(p => ({ ...p, registrationNumber: e.target.value.toUpperCase().slice(0, 10) }))}
-                        className="w-full px-4 py-3.5 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#00B761]/20 focus:border-[#00B761] text-sm font-medium"
+                        className="w-full px-4 py-3.5 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#32C45A]/20 focus:border-[#32C45A] text-sm font-medium"
                         placeholder="e.g., MH12AB1234"
                       />
                     </div>
@@ -787,7 +787,7 @@ export default function SignupStep1() {
                         type="text"
                         value={newVehicle.model}
                         onChange={(e) => setNewVehicle(p => ({ ...p, model: e.target.value }))}
-                        className="w-full px-4 py-3.5 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#00B761]/20 focus:border-[#00B761] text-sm font-medium"
+                        className="w-full px-4 py-3.5 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#32C45A]/20 focus:border-[#32C45A] text-sm font-medium"
                         placeholder="e.g., 2022 Edition"
                       />
                     </div>
@@ -815,8 +815,8 @@ export default function SignupStep1() {
                 value={formData.drivingLicenseNumber}
                 onChange={handleChange}
                 maxLength={16}
-                className={`w-full px-4 py-3.5 bg-gray-50 border rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#00B761]/20 transition-colors font-medium text-gray-900 uppercase ${
-                  errors.drivingLicenseNumber ? "border-red-500" : "border-gray-200 focus:border-[#00B761]"
+                className={`w-full px-4 py-3.5 bg-gray-50 border rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#32C45A]/20 transition-colors font-medium text-gray-900 uppercase ${
+                  errors.drivingLicenseNumber ? "border-red-500" : "border-gray-200 focus:border-[#32C45A]"
                 }`}
                 placeholder="e.g., MH1220110012345"
               />
@@ -834,8 +834,8 @@ export default function SignupStep1() {
                 value={formData.panNumber}
                 onChange={handleChange}
                 maxLength={10}
-                className={`w-full px-4 py-3.5 bg-gray-50 border rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#00B761]/20 transition-colors font-medium text-gray-900 uppercase ${
-                  errors.panNumber ? "border-red-500" : "border-gray-200 focus:border-[#00B761]"
+                className={`w-full px-4 py-3.5 bg-gray-50 border rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#32C45A]/20 transition-colors font-medium text-gray-900 uppercase ${
+                  errors.panNumber ? "border-red-500" : "border-gray-200 focus:border-[#32C45A]"
                 }`}
                 placeholder="ABCDE1234F"
               />
@@ -854,8 +854,8 @@ export default function SignupStep1() {
                 onChange={handleChange}
                 maxLength={14}
                 inputMode="numeric"
-                className={`w-full px-4 py-3.5 bg-gray-50 border rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#00B761]/20 transition-colors font-medium text-gray-900 ${
-                  errors.aadharNumber ? "border-red-500" : "border-gray-200 focus:border-[#00B761]"
+                className={`w-full px-4 py-3.5 bg-gray-50 border rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#32C45A]/20 transition-colors font-medium text-gray-900 ${
+                  errors.aadharNumber ? "border-red-500" : "border-gray-200 focus:border-[#32C45A]"
                 }`}
                 placeholder="1234 5678 9012"
               />
@@ -870,7 +870,7 @@ export default function SignupStep1() {
                 className={`w-full py-4 rounded-xl font-bold text-white text-[15px] transition-all shadow-lg active:scale-[0.98] ${
                   isSubmitting
                     ? "bg-gray-400 cursor-not-allowed shadow-none"
-                    : "bg-[#00B761] hover:bg-[#00A055] shadow-green-200/50"
+                    : "bg-[#32C45A] hover:bg-[#28A047] shadow-green-200/50"
                 }`}
               >
                 {isSubmitting ? "Saving..." : "Continue"}

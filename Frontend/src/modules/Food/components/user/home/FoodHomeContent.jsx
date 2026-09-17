@@ -160,7 +160,7 @@ const FoodRestaurantCard = memo(function FoodRestaurantCard({
               </CardContent>
             </div>
 
-            <div className="pointer-events-none absolute inset-0 z-0 rounded-md border border-transparent transition-all duration-300 group-hover:border-[#EB590E]/30 group-hover:shadow-[inset_0_0_0_1px_rgba(235,89,14,0.2)]" />
+            <div className="pointer-events-none absolute inset-0 z-0 rounded-md border border-transparent transition-all duration-300 group-hover:border-[#32C45A]/30 group-hover:shadow-[inset_0_0_0_1px_rgba(235,89,14,0.2)]" />
           </Card>
         </Link>
       </div>
@@ -351,8 +351,8 @@ function FoodHomeContent({
                       <p className="truncate text-sm font-semibold tracking-tight text-gray-900 dark:text-white">
                         {restaurant.name}
                       </p>
-                      <p className="mt-1 flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-[#FF0000]">
-                        <Flame className="h-3.5 w-3.5 fill-[#FF0000]" />
+                      <p className="mt-1 flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-[#32C45A]">
+                        <Flame className="h-3.5 w-3.5 fill-[#32C45A]" />
                         Near & Fast
                       </p>
                     </div>

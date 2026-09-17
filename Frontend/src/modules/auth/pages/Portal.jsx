@@ -137,7 +137,7 @@ export default function SuperAppPortal() {
                  repeat: Infinity,
                  ease: "linear"
                }}
-               className="absolute w-64 h-64 bg-[#CB202D]/5 rounded-full blur-3xl"
+               className="absolute w-64 h-64 bg-[#32C45A]/5 rounded-full blur-3xl"
                style={{
                  left: particle.left,
                  top: particle.top,

@@ -560,7 +560,7 @@ export default function AdminEditFoodPage() {
                   />
                   <label 
                     onClick={handleImageClick}
-                    className="absolute bottom-0 right-0 bg-[#ff8100] text-white p-2 rounded-full cursor-pointer hover:bg-[#e67300]"
+                    className="absolute bottom-0 right-0 bg-[#32C45A] text-white p-2 rounded-full cursor-pointer hover:bg-[#28A047]"
                   >
                     <Upload className="w-4 h-4" />
                     <input
@@ -590,7 +590,7 @@ export default function AdminEditFoodPage() {
                     value={formData.restaurantId}
                     onChange={(e) => handleInputChange("restaurantId", e.target.value)}
                     disabled={!isNewFood}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#ff8100] focus:border-transparent outline-none disabled:bg-gray-100"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#32C45A] focus:border-transparent outline-none disabled:bg-gray-100"
                     required
                   >
                     <option value="">Select a restaurant</option>
@@ -610,7 +610,7 @@ export default function AdminEditFoodPage() {
                     type="text"
                     value={formData.name}
                     onChange={(e) => handleInputChange("name", e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#ff8100] focus:border-transparent outline-none"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#32C45A] focus:border-transparent outline-none"
                     required
                   />
                 </div>
@@ -623,7 +623,7 @@ export default function AdminEditFoodPage() {
                     type="text"
                     value={formData.nameArabic}
                     onChange={(e) => handleInputChange("nameArabic", e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#ff8100] focus:border-transparent outline-none"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#32C45A] focus:border-transparent outline-none"
                   />
                 </div>
 
@@ -635,7 +635,7 @@ export default function AdminEditFoodPage() {
                     value={formData.description}
                     onChange={(e) => handleInputChange("description", e.target.value)}
                     rows={4}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#ff8100] focus:border-transparent outline-none resize-none"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#32C45A] focus:border-transparent outline-none resize-none"
                   />
                 </div>
               </div>
@@ -670,7 +670,7 @@ export default function AdminEditFoodPage() {
                           : "Veg",
                       }))
                     }}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#ff8100] focus:border-transparent outline-none"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#32C45A] focus:border-transparent outline-none"
                   >
                     {categoryOptions.map((category) => (
                       <option key={category.id} value={category.id}>
@@ -699,7 +699,7 @@ export default function AdminEditFoodPage() {
                   <select
                     value={formData.foodType}
                     onChange={(e) => handleInputChange("foodType", e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#ff8100] focus:border-transparent outline-none"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#32C45A] focus:border-transparent outline-none"
                   >
                     <option value="Veg">Veg</option>
                     {showNonVegFoodType && <option value="Non-Veg">Non-Veg</option>}
@@ -726,7 +726,7 @@ export default function AdminEditFoodPage() {
                       min="0"
                       value={formData.price}
                       onChange={(e) => handleInputChange("price", e.target.value)}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#ff8100] focus:border-transparent outline-none"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#32C45A] focus:border-transparent outline-none"
                       required
                     />
                   </div>
@@ -743,7 +743,7 @@ export default function AdminEditFoodPage() {
                   <select
                     value={formData.discountType}
                     onChange={(e) => handleInputChange("discountType", e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#ff8100] focus:border-transparent outline-none"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#32C45A] focus:border-transparent outline-none"
                   >
                     <option value="Percent">Percent</option>
                     <option value="Fixed">Fixed</option>
@@ -759,7 +759,7 @@ export default function AdminEditFoodPage() {
                     step="0.1"
                     value={formData.discountAmount}
                     onChange={(e) => handleInputChange("discountAmount", parseFloat(e.target.value) || 0)}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#ff8100] focus:border-transparent outline-none"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#32C45A] focus:border-transparent outline-none"
                   />
                 </div>
               </div>
@@ -778,7 +778,7 @@ export default function AdminEditFoodPage() {
                     type="button"
                     onClick={() => handleInputChange("isAvailable", !formData.isAvailable)}
                     className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                      formData.isAvailable ? 'bg-[#ff8100]' : 'bg-gray-300'
+                      formData.isAvailable ? 'bg-[#32C45A]' : 'bg-gray-300'
                     }`}
                   >
                     <span
@@ -795,7 +795,7 @@ export default function AdminEditFoodPage() {
                     type="button"
                     onClick={() => handleInputChange("isRecommended", !formData.isRecommended)}
                     className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                      formData.isRecommended ? 'bg-[#ff8100]' : 'bg-gray-300'
+                      formData.isRecommended ? 'bg-[#32C45A]' : 'bg-gray-300'
                     }`}
                   >
                     <span
@@ -815,7 +815,7 @@ export default function AdminEditFoodPage() {
                       type="text"
                       value={formData.availabilityTimeStart}
                       onChange={(e) => handleInputChange("availabilityTimeStart", e.target.value)}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#ff8100] focus:border-transparent outline-none"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#32C45A] focus:border-transparent outline-none"
                       placeholder="12:01 AM"
                     />
                   </div>
@@ -827,7 +827,7 @@ export default function AdminEditFoodPage() {
                       type="text"
                       value={formData.availabilityTimeEnd}
                       onChange={(e) => handleInputChange("availabilityTimeEnd", e.target.value)}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#ff8100] focus:border-transparent outline-none"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#32C45A] focus:border-transparent outline-none"
                       placeholder="11:57 PM"
                     />
                   </div>
@@ -844,7 +844,7 @@ export default function AdminEditFoodPage() {
                 <button
                   type="button"
                   onClick={handleAddVariation}
-                  className="text-[#ff8100] hover:text-[#e67300] flex items-center gap-1 text-sm font-medium"
+                  className="text-[#32C45A] hover:text-[#28A047] flex items-center gap-1 text-sm font-medium"
                 >
                   <Plus className="w-4 h-4" />
                   Add Variant
@@ -872,7 +872,7 @@ export default function AdminEditFoodPage() {
                         type="text"
                         value={variation.name}
                         onChange={(e) => handleVariationChange(variation.id, "name", e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#ff8100] focus:border-transparent outline-none text-sm"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#32C45A] focus:border-transparent outline-none text-sm"
                       />
                     </div>
                       <div>
@@ -883,7 +883,7 @@ export default function AdminEditFoodPage() {
                           min="0"
                           value={variation.price}
                           onChange={(e) => handleVariationChange(variation.id, "price", e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#ff8100] focus:border-transparent outline-none text-sm"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#32C45A] focus:border-transparent outline-none text-sm"
                         />
                       </div>
                     </div>
@@ -927,12 +927,12 @@ export default function AdminEditFoodPage() {
                   onChange={(e) => setNewTag(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTag())}
                   placeholder="Add tag"
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#ff8100] focus:border-transparent outline-none text-sm"
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#32C45A] focus:border-transparent outline-none text-sm"
                 />
                 <button
                   type="button"
                   onClick={handleAddTag}
-                  className="px-4 py-2 bg-[#ff8100] text-white rounded-lg hover:bg-[#e67300] text-sm font-medium"
+                  className="px-4 py-2 bg-[#32C45A] text-white rounded-lg hover:bg-[#28A047] text-sm font-medium"
                 >
                   Add
                 </button>
@@ -970,12 +970,12 @@ export default function AdminEditFoodPage() {
                   onChange={(e) => setNewNutrition(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddNutrition())}
                   placeholder="Add nutrition"
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#ff8100] focus:border-transparent outline-none text-sm"
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#32C45A] focus:border-transparent outline-none text-sm"
                 />
                 <button
                   type="button"
                   onClick={handleAddNutrition}
-                  className="px-4 py-2 bg-[#ff8100] text-white rounded-lg hover:bg-[#e67300] text-sm font-medium"
+                  className="px-4 py-2 bg-[#32C45A] text-white rounded-lg hover:bg-[#28A047] text-sm font-medium"
                 >
                   Add
                 </button>
@@ -1013,12 +1013,12 @@ export default function AdminEditFoodPage() {
                   onChange={(e) => setNewAllergy(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddAllergy())}
                   placeholder="Add allergy"
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#ff8100] focus:border-transparent outline-none text-sm"
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#32C45A] focus:border-transparent outline-none text-sm"
                 />
                 <button
                   type="button"
                   onClick={handleAddAllergy}
-                  className="px-4 py-2 bg-[#ff8100] text-white rounded-lg hover:bg-[#e67300] text-sm font-medium"
+                  className="px-4 py-2 bg-[#32C45A] text-white rounded-lg hover:bg-[#28A047] text-sm font-medium"
                 >
                   Add
                 </button>
@@ -1034,7 +1034,7 @@ export default function AdminEditFoodPage() {
           <Button
             type="submit"
             form="edit-food-form"
-            className="w-full bg-[#ff8100] hover:bg-[#e67300] text-white font-semibold py-3 rounded-lg text-base md:text-lg"
+            className="w-full bg-[#32C45A] hover:bg-[#28A047] text-white font-semibold py-3 rounded-lg text-base md:text-lg"
           >
             Update
           </Button>

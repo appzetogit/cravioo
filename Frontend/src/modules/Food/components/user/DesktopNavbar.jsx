@@ -115,7 +115,7 @@ export default function DesktopNavbar({ showLogo = true }) {
                                 <span className="text-sm font-bold text-black">Loading...</span>
                             ) : (
                                 <div className="flex items-center gap-2 w-full">
-                                    <FaLocationDot className="h-4 w-4 text-[#FF0000]" />
+                                    <FaLocationDot className="h-4 w-4 text-[#32C45A]" />
                                     <span className="truncate text-sm font-semibold text-gray-800">
                                         {mainLocationName}
                                     </span>

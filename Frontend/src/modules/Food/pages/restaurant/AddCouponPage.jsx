@@ -178,7 +178,7 @@ export default function AddCouponPage(props) {
                   />
                   <button
                     onClick={generateCouponCode}
-                    className="p-2.5 bg-[#ff8100] hover:bg-[#e67300] rounded-lg transition-colors flex items-center justify-center"
+                    className="p-2.5 bg-[#32C45A] hover:bg-[#28A047] rounded-lg transition-colors flex items-center justify-center"
                   >
                     <Wand2 className="w-5 h-5 text-white" />
                   </button>
@@ -297,13 +297,13 @@ export default function AddCouponPage(props) {
                   <div className="flex flex-col">
                     <button
                       onClick={incrementLimit}
-                      className="p-1 bg-[#ff8100] hover:bg-[#e67300] rounded-t transition-colors"
+                      className="p-1 bg-[#32C45A] hover:bg-[#28A047] rounded-t transition-colors"
                     >
                       <ChevronUp className="w-3 h-3 text-white" />
                     </button>
                     <button
                       onClick={decrementLimit}
-                      className="p-1 bg-[#ff8100] hover:bg-[#e67300] rounded-b transition-colors"
+                      className="p-1 bg-[#32C45A] hover:bg-[#28A047] rounded-b transition-colors"
                     >
                       <ChevronDownIcon className="w-3 h-3 text-white" />
                     </button>
@@ -412,7 +412,7 @@ export default function AddCouponPage(props) {
                     onClick={() => setShowStartDatePicker(!showStartDatePicker)}
                     className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5"
                   >
-                    <Calendar className="w-5 h-5 text-[#ff8100]" />
+                    <Calendar className="w-5 h-5 text-[#32C45A]" />
                   </button>
                 </div>
                 {showStartDatePicker && (
@@ -428,7 +428,7 @@ export default function AddCouponPage(props) {
                         handleInputChange("startDate", e.target.value)
                         setShowStartDatePicker(false)
                       }}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#ff8100]"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#32C45A]"
                     />
                   </motion.div>
                 )}
@@ -453,7 +453,7 @@ export default function AddCouponPage(props) {
                     onClick={() => setShowEndDatePicker(!showEndDatePicker)}
                     className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5"
                   >
-                    <Calendar className="w-5 h-5 text-[#ff8100]" />
+                    <Calendar className="w-5 h-5 text-[#32C45A]" />
                   </button>
                 </div>
                 {showEndDatePicker && (
@@ -469,7 +469,7 @@ export default function AddCouponPage(props) {
                         handleInputChange("endDate", e.target.value)
                         setShowEndDatePicker(false)
                       }}
-                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#ff8100]"
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#32C45A]"
                     />
                   </motion.div>
                 )}
@@ -491,7 +491,7 @@ export default function AddCouponPage(props) {
             // Navigate to coupon list after save
             navigate("/restaurant/coupon")
           }}
-          className="w-full bg-[#ff8100] hover:bg-[#e67300] text-white font-semibold py-3 rounded-lg"
+          className="w-full bg-[#32C45A] hover:bg-[#28A047] text-white font-semibold py-3 rounded-lg"
         >
           {isEditMode ? "Update" : "Add"}
         </Button>

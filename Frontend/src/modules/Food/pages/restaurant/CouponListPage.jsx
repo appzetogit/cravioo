@@ -117,7 +117,7 @@ export default function CouponListPage() {
                     className="p-1.5 bg-red-100 hover:bg-red-200 rounded transition-colors"
                     data-menu-id={coupon.id}
                   >
-                    <MoreVertical className="w-4 h-4 text-[#ff8100]" />
+                    <MoreVertical className="w-4 h-4 text-[#32C45A]" />
                   </motion.button>
                   
                   {/* Context Menu */}
@@ -168,7 +168,7 @@ export default function CouponListPage() {
                   {/* Left Section */}
                   <div className="flex-1 p-4 flex flex-col items-center justify-center bg-gradient-to-br from-red-50 to-red-100/50">
                     <div className="mb-3">
-                      <div className="w-16 h-16 bg-[#ff8100] rounded-full flex items-center justify-center shadow-md">
+                      <div className="w-16 h-16 bg-[#32C45A] rounded-full flex items-center justify-center shadow-md">
                         <Flame className="w-8 h-8 text-white" />
                       </div>
                     </div>
@@ -230,7 +230,7 @@ export default function CouponListPage() {
         onClick={() => {
           navigate("/restaurant/coupon/new")
         }}
-        className="fixed bottom-20 md:bottom-6 right-4 md:right-6 w-14 h-14 bg-[#ff8100] hover:bg-[#e67300] text-white rounded-full shadow-lg flex items-center justify-center z-40 transition-colors"
+        className="fixed bottom-20 md:bottom-6 right-4 md:right-6 w-14 h-14 bg-[#32C45A] hover:bg-[#28A047] text-white rounded-full shadow-lg flex items-center justify-center z-40 transition-colors"
       >
         <Plus className="w-6 h-6" />
       </motion.button>

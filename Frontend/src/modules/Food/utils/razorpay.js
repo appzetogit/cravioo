@@ -73,7 +73,7 @@ export const initRazorpayPayment = async (options) => {
       },
       notes: options.notes || {},
       theme: {
-        color: '#FF0000'
+        color: '#32C45A'
       },
       handler: function (response) {
         if (options.handler) {
@@ -154,7 +154,7 @@ export const initRazorpaySubscription = async (options) => {
         contact: options.prefill?.contact || ''
       },
       theme: {
-        color: '#FF0000'
+        color: '#32C45A'
       },
       handler: function (response) {
         if (options.handler) {
@@ -391,7 +391,7 @@ export const handleFlutterRazorpayPayment = (rzpOptions) => {
             description: rzpOptions.description || '',
             prefill: rzpOptions.prefill || {},
             notes: rzpOptions.notes || {},
-            theme: { color: '#FF0000' },
+            theme: { color: '#32C45A' },
             retry: { enabled: true, max_count: 3 },
             handler: (response) => {
               resolve({

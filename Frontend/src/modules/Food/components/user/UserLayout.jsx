@@ -144,7 +144,7 @@ export default function UserLayout({ children }) {
     isProfileRoot ||
     normalizedPath === "" // Handle empty string case for root relative to /food
 
-  const footerColor = "#FF0000"
+  const footerColor = "#32C45A"
 
   return (
     <div className="min-h-screen flex flex-col bg-[#f5f5f5] dark:bg-[#0a0a0a] transition-colors duration-200">

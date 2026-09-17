@@ -10,7 +10,7 @@ import {
     serializeItemSlotTiming
 } from './itemSlotTiming.util.js';
 
-const MAX_UNDER_250_PRICE = 250;
+const MAX_UNDER_250_PRICE = 150;
 const MAX_RESTAURANTS = 1000;
 const MAX_FOOD_ITEMS = 10000;
 

@@ -645,7 +645,7 @@ export default function UnifiedOTPFastLogin() {
               className={`w-full py-4 rounded-2xl font-black text-lg transition-all relative overflow-hidden shadow-xl ${
                 loading
                   ? "bg-gray-100 dark:bg-gray-800 cursor-not-allowed opacity-50"
-                  : "bg-primary-orange hover:bg-primary-hover text-white hover:shadow-2xl hover:shadow-[#CB202D]/30 active:scale-[0.98] hover:-translate-y-0.5"
+                  : "bg-primary-orange hover:bg-primary-hover text-white hover:shadow-2xl hover:shadow-[#32C45A]/30 active:scale-[0.98] hover:-translate-y-0.5"
               }`}
             >
               {loading ? (

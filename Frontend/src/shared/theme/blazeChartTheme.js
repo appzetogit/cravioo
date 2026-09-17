@@ -2,9 +2,9 @@
  * BLAZE chart theme tokens.
  *
  * Mirrors the EXISTING Blaze Food/Admin brand tokens (global.css):
- *   primary  = #FF0000 (--primary / --color-orange-500)
- *   hover    = #CC0000 (--color-primary-hover)
- *   light    = #FFEDED (--secondary / --color-orange-50)
+ *   primary  = #32C45A (--primary / --color-orange-500)
+ *   hover    = #28A047 (--color-primary-hover)
+ *   light    = #EAF9EE (--secondary / --color-orange-50)
  *   success  = #2E7D32 (--color-accent-green)
  *   border   = #EDE8E0 (--border, warm paper)
  *   muted    = #5C5247 (--muted-foreground)
@@ -12,9 +12,9 @@
  * rest of the Blaze Admin. This is NOT a component, only constants.
  */
 export const BLAZE_CHART = {
-  primary: "#FF0000",
-  primaryHover: "#CC0000",
-  primaryLight: "#FFEDED",
+  primary: "#32C45A",
+  primaryHover: "#28A047",
+  primaryLight: "#EAF9EE",
   success: "#2E7D32",
   warning: "#F59E0B",
   info: "#2563EB",
@@ -25,7 +25,7 @@ export const BLAZE_CHART = {
   axis: "#5C5247",
 
   // Ordered categorical palette for multi-series charts
-  series: ["#FF0000", "#2563EB", "#2E7D32", "#F59E0B", "#7C3AED", "#DC2626"],
+  series: ["#32C45A", "#2563EB", "#2E7D32", "#F59E0B", "#7C3AED", "#DC2626"],
 
   // Shared modern tooltip / cursor styling
   tooltip: {
@@ -43,8 +43,8 @@ export const BLAZE_CHART = {
       fontSize: 12,
     },
     itemStyle: { color: "#1A1A1A", fontSize: 12 },
-    cursor: { fill: "rgba(255,0,0,0.05)" },
-    lineCursor: { stroke: "rgba(255,0,0,0.25)", strokeWidth: 1 },
+    cursor: { fill: "rgba(50, 196, 90,0.05)" },
+    lineCursor: { stroke: "rgba(50, 196, 90,0.25)", strokeWidth: 1 },
   },
 };
 

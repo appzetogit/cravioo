@@ -539,7 +539,7 @@ export default function OutletInfo() {
                 className="absolute -bottom-1 -right-1 bg-white p-2 rounded-full shadow-md hover:bg-gray-50 transition-colors border border-gray-100"
                 title="Edit photo"
               >
-                <Pencil className="w-4 h-4 text-[#FF0000]" />
+                <Pencil className="w-4 h-4 text-[#32C45A]" />
               </button>
               <input
                 ref={profileImageInputRef}
@@ -555,7 +555,7 @@ export default function OutletInfo() {
                 {restaurantName || "Restaurant Name"}
               </h2>
               <div className="flex items-center gap-2 mt-1">
-                <div className="h-1 w-8 bg-[#FF0000] rounded-full" />
+                <div className="h-1 w-8 bg-[#32C45A] rounded-full" />
                 <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">
                   Information
                 </p>
@@ -579,7 +579,7 @@ export default function OutletInfo() {
                   <p className="text-base font-bold text-gray-900">{restaurantName || "N/A"}</p>
                 </div>
                 <button onClick={handleOpenEditDialog} className="p-2 hover:bg-gray-50 rounded-full transition-colors">
-                  <Pencil className="w-4 h-4 text-[#FF0000]" />
+                  <Pencil className="w-4 h-4 text-[#32C45A]" />
                 </button>
               </div>
               
@@ -594,7 +594,7 @@ export default function OutletInfo() {
                   </div>
                 </div>
                 <button onClick={handleOpenFoodTypeDialog} className="p-2 hover:bg-gray-50 rounded-full transition-colors">
-                  <Pencil className="w-4 h-4 text-[#FF0000]" />
+                  <Pencil className="w-4 h-4 text-[#32C45A]" />
                 </button>
               </div>
             </div>
@@ -613,7 +613,7 @@ export default function OutletInfo() {
                   <p className="text-sm font-semibold text-gray-800 leading-relaxed">{address || "Address not set"}</p>
                 </div>
                 <button onClick={() => navigate("/food/restaurant/edit-address")} className="p-2 hover:bg-gray-50 rounded-full transition-colors">
-                  <Pencil className="w-4 h-4 text-[#FF0000]" />
+                  <Pencil className="w-4 h-4 text-[#32C45A]" />
                 </button>
               </div>
 
@@ -623,7 +623,7 @@ export default function OutletInfo() {
                   <p className="text-sm font-bold text-gray-800">{primaryPhone || "Not provided"}</p>
                 </div>
                 <button onClick={handleOpenPhoneDialog} className="p-2 hover:bg-gray-50 rounded-full transition-colors">
-                  <Pencil className="w-4 h-4 text-[#FF0000]" />
+                  <Pencil className="w-4 h-4 text-[#32C45A]" />
                 </button>
               </div>
             </div>
@@ -639,7 +639,7 @@ export default function OutletInfo() {
                   <p className="text-sm font-bold text-gray-800">{restaurantData?.ownerName || "Not provided"}</p>
                 </div>
                 <button onClick={() => navigate("/food/restaurant/edit-owner")} className="p-2 hover:bg-gray-50 rounded-full transition-colors">
-                  <Pencil className="w-4 h-4 text-[#FF0000]" />
+                  <Pencil className="w-4 h-4 text-[#32C45A]" />
                 </button>
               </div>
               
@@ -665,7 +665,7 @@ export default function OutletInfo() {
                   <p className="text-sm font-bold text-gray-800">{restaurantData?.fssaiNumber || "Not provided"}</p>
                 </div>
                 <button onClick={() => navigate("/food/restaurant/fssai")} className="p-2 hover:bg-gray-50 rounded-full transition-colors">
-                  <Pencil className="w-4 h-4 text-[#FF0000]" />
+                  <Pencil className="w-4 h-4 text-[#32C45A]" />
                 </button>
               </div>
 
@@ -698,7 +698,7 @@ export default function OutletInfo() {
                   </p>
                 </div>
                 <button onClick={() => navigate("/food/restaurant/outlet-timings")} className="p-2 hover:bg-gray-50 rounded-full transition-colors">
-                  <Pencil className="w-4 h-4 text-[#FF0000]" />
+                  <Pencil className="w-4 h-4 text-[#32C45A]" />
                 </button>
               </div>
 
@@ -719,7 +719,7 @@ export default function OutletInfo() {
                   <p className="text-sm font-bold text-gray-800">{bankInfo.account || "Not provided"}</p>
                 </div>
                 <button onClick={() => navigate("/food/restaurant/update-bank-details")} className="p-2 hover:bg-gray-50 rounded-full transition-colors">
-                  <Pencil className="w-4 h-4 text-[#FF0000]" />
+                  <Pencil className="w-4 h-4 text-[#32C45A]" />
                 </button>
               </div>
 
@@ -744,7 +744,7 @@ export default function OutletInfo() {
           <div className="p-4"><Input value={editNameValue} onChange={(e) => setEditNameValue(e.target.value)} placeholder="Enter restaurant name" className="w-full" /></div>
           <DialogFooter className="p-4 bg-gray-50 flex flex-row gap-3">
             <Button variant="outline" onClick={() => setShowEditNameDialog(false)}>Cancel</Button>
-            <Button onClick={handleSaveName} disabled={!editNameValue.trim()} className="bg-[#FF0000] text-white">Save</Button>
+            <Button onClick={handleSaveName} disabled={!editNameValue.trim()} className="bg-[#32C45A] text-white">Save</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

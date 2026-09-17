@@ -112,7 +112,7 @@ export default function UpdateReplyPage() {
                         key={i}
                         className={`w-4 h-4 ${
                           i < reviewData.rating
-                            ? "fill-[#ff8100] text-[#ff8100]"
+                            ? "fill-[#32C45A] text-[#32C45A]"
                             : "text-gray-300"
                         }`}
                       />
@@ -152,7 +152,7 @@ export default function UpdateReplyPage() {
                 onChange={(e) => setReplyText(e.target.value)}
                 placeholder="Write your reply..."
                 disabled={!reviewData}
-                className="w-full min-h-[120px] bg-red-50 border-red-200 text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-[#ff8100] focus:border-[#ff8100] resize-none"
+                className="w-full min-h-[120px] bg-red-50 border-red-200 text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-[#32C45A] focus:border-[#32C45A] resize-none"
                 rows={5}
               />
             </CardContent>
@@ -169,7 +169,7 @@ export default function UpdateReplyPage() {
             navigate("/restaurant/reviews")
           }}
           disabled={!reviewData}
-          className="w-full bg-[#ff8100] hover:bg-[#e67300] text-white font-semibold py-3 rounded-lg"
+          className="w-full bg-[#32C45A] hover:bg-[#28A047] text-white font-semibold py-3 rounded-lg"
         >
           Update Review
         </Button>

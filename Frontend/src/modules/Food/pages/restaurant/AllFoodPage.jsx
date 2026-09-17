@@ -182,9 +182,9 @@ export default function AllFoodPage() {
               transition={{ duration: 0.3, delay: 0.2 }}
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
-              className="p-2 border-2 border-[#ff8100] rounded-lg hover:bg-[#ff8100]/10 transition-colors"
+              className="p-2 border-2 border-[#32C45A] rounded-lg hover:bg-[#32C45A]/10 transition-colors"
             >
-              <Search className="w-5 h-5 text-[#ff8100]" />
+              <Search className="w-5 h-5 text-[#32C45A]" />
             </motion.button>
             <motion.button
               initial={{ opacity: 0, scale: 0.8 }}
@@ -193,9 +193,9 @@ export default function AllFoodPage() {
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
               onClick={() => setShowFilterModal(true)}
-              className="p-2 border-2 border-[#ff8100] rounded-lg hover:bg-[#ff8100]/10 transition-colors"
+              className="p-2 border-2 border-[#32C45A] rounded-lg hover:bg-[#32C45A]/10 transition-colors"
             >
-              <Filter className="w-5 h-5 text-[#ff8100]" />
+              <Filter className="w-5 h-5 text-[#32C45A]" />
             </motion.button>
           </div>
         </div>
@@ -222,7 +222,7 @@ export default function AllFoodPage() {
               {activeCategory === category && (
                 <motion.div
                   layoutId="activeCategoryTab"
-                  className="absolute inset-0 bg-[#ff8100] rounded-full z-0"
+                  className="absolute inset-0 bg-[#32C45A] rounded-full z-0"
                   transition={{ type: "spring", stiffness: 500, damping: 30 }}
                 />
               )}
@@ -291,10 +291,10 @@ export default function AllFoodPage() {
                   {food.originalPrice ? (
                     <>
                       <span className="text-xs text-gray-400 line-through">{formatCurrency(food.originalPrice)}</span>
-                      <span className="text-sm font-bold text-[#ff8100]">{formatCurrency(food.price)}</span>
+                      <span className="text-sm font-bold text-[#32C45A]">{formatCurrency(food.price)}</span>
                     </>
                   ) : (
-                    <span className="text-sm font-bold text-[#ff8100]">{formatCurrency(food.price)}</span>
+                    <span className="text-sm font-bold text-[#32C45A]">{formatCurrency(food.price)}</span>
                   )}
                 </div>
 
@@ -314,7 +314,7 @@ export default function AllFoodPage() {
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.9 }}
         onClick={() => navigate("/restaurant/food/new")}
-        className="fixed bottom-20 right-4 md:bottom-6 md:right-6 w-14 h-14 bg-[#ff8100] hover:bg-[#e67300] text-white rounded-full shadow-lg flex items-center justify-center z-50 transition-colors"
+        className="fixed bottom-20 right-4 md:bottom-6 md:right-6 w-14 h-14 bg-[#32C45A] hover:bg-[#28A047] text-white rounded-full shadow-lg flex items-center justify-center z-50 transition-colors"
       >
         <Plus className="w-6 h-6" />
       </motion.button>
@@ -370,7 +370,7 @@ export default function AllFoodPage() {
                         value="all"
                         checked={foodTypeFilter === "all"}
                         onChange={(e) => setFoodTypeFilter(e.target.value)}
-                        className="w-5 h-5 text-[#ff8100] border-gray-300 focus:ring-[#ff8100] focus:ring-2"
+                        className="w-5 h-5 text-[#32C45A] border-gray-300 focus:ring-[#32C45A] focus:ring-2"
                       />
                       <span className="text-sm text-gray-700">All Foods</span>
                     </label>
@@ -381,7 +381,7 @@ export default function AllFoodPage() {
                         value="veg"
                         checked={foodTypeFilter === "veg"}
                         onChange={(e) => setFoodTypeFilter(e.target.value)}
-                        className="w-5 h-5 text-[#ff8100] border-gray-300 focus:ring-[#ff8100] focus:ring-2"
+                        className="w-5 h-5 text-[#32C45A] border-gray-300 focus:ring-[#32C45A] focus:ring-2"
                       />
                       <span className="text-sm text-gray-700">Veg Foods</span>
                     </label>
@@ -392,7 +392,7 @@ export default function AllFoodPage() {
                         value="nonVeg"
                         checked={foodTypeFilter === "nonVeg"}
                         onChange={(e) => setFoodTypeFilter(e.target.value)}
-                        className="w-5 h-5 text-[#ff8100] border-gray-300 focus:ring-[#ff8100] focus:ring-2"
+                        className="w-5 h-5 text-[#32C45A] border-gray-300 focus:ring-[#32C45A] focus:ring-2"
                       />
                       <span className="text-sm text-gray-700">Non-Veg Foods</span>
                     </label>
@@ -413,7 +413,7 @@ export default function AllFoodPage() {
                         value="all"
                         checked={stockFilter === "all"}
                         onChange={(e) => setStockFilter(e.target.value)}
-                        className="w-5 h-5 text-[#ff8100] border-gray-300 focus:ring-[#ff8100] focus:ring-2"
+                        className="w-5 h-5 text-[#32C45A] border-gray-300 focus:ring-[#32C45A] focus:ring-2"
                       />
                       <span className="text-sm text-gray-700">All</span>
                     </label>
@@ -424,7 +424,7 @@ export default function AllFoodPage() {
                         value="outOfStock"
                         checked={stockFilter === "outOfStock"}
                         onChange={(e) => setStockFilter(e.target.value)}
-                        className="w-5 h-5 text-[#ff8100] border-gray-300 focus:ring-[#ff8100] focus:ring-2"
+                        className="w-5 h-5 text-[#32C45A] border-gray-300 focus:ring-[#32C45A] focus:ring-2"
                       />
                       <span className="text-sm text-gray-700">Out of Stock Foods</span>
                     </label>
@@ -446,7 +446,7 @@ export default function AllFoodPage() {
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={handleApplyFilter}
-                  className="flex-1 bg-[#ff8100] hover:bg-[#e67300] text-white font-semibold py-3 rounded-lg transition-colors"
+                  className="flex-1 bg-[#32C45A] hover:bg-[#28A047] text-white font-semibold py-3 rounded-lg transition-colors"
                 >
                   Filter
                 </motion.button>

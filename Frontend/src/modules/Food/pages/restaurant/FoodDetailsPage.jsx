@@ -225,7 +225,7 @@ export default function FoodDetailsPage() {
             onClick={() => setActiveTab("overview")}
             className={`flex-1 py-3 px-4 text-sm md:text-base font-medium transition-colors relative ${
               activeTab === "overview"
-                ? "text-[#ff8100]"
+                ? "text-[#32C45A]"
                 : "text-gray-600"
             }`}
           >
@@ -233,7 +233,7 @@ export default function FoodDetailsPage() {
             {activeTab === "overview" && (
               <motion.div
                 layoutId="activeTab"
-                className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#ff8100]"
+                className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#32C45A]"
               />
             )}
           </button>
@@ -241,7 +241,7 @@ export default function FoodDetailsPage() {
             onClick={() => setActiveTab("reviews")}
             className={`flex-1 py-3 px-4 text-sm md:text-base font-medium transition-colors relative ${
               activeTab === "reviews"
-                ? "text-[#ff8100]"
+                ? "text-[#32C45A]"
                 : "text-gray-600"
             }`}
           >
@@ -249,7 +249,7 @@ export default function FoodDetailsPage() {
             {activeTab === "reviews" && (
               <motion.div
                 layoutId="activeTab"
-                className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#ff8100]"
+                className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#32C45A]"
               />
             )}
           </button>
@@ -305,7 +305,7 @@ export default function FoodDetailsPage() {
                       <h2 className="text-lg md:text-xl font-bold text-gray-900 mb-2">
                         {foodData.nameArabic}
                       </h2>
-                      <p className="text-[#ff8100] font-bold text-lg md:text-xl mb-2">
+                      <p className="text-[#32C45A] font-bold text-lg md:text-xl mb-2">
                         {formatCurrency(foodData.price)}
                       </p>
                       <div className="flex items-center gap-2 mb-2">
@@ -334,7 +334,7 @@ export default function FoodDetailsPage() {
                         type="button"
                         onClick={() => setIsAvailable(!isAvailable)}
                         className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                          isAvailable ? 'bg-[#ff8100]' : 'bg-gray-300'
+                          isAvailable ? 'bg-[#32C45A]' : 'bg-gray-300'
                         }`}
                       >
                         <span
@@ -350,7 +350,7 @@ export default function FoodDetailsPage() {
                         type="button"
                         onClick={() => setIsRecommended(!isRecommended)}
                         className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                          isRecommended ? 'bg-[#ff8100]' : 'bg-gray-300'
+                          isRecommended ? 'bg-[#32C45A]' : 'bg-gray-300'
                         }`}
                       >
                         <span
@@ -564,7 +564,7 @@ export default function FoodDetailsPage() {
             variant="outline"
             onClick={handleOpenStockModal}
             disabled={!foodData}
-            className="flex-1 border-[#ff8100] text-[#ff8100] hover:bg-[#ff8100] hover:text-white font-semibold py-3"
+            className="flex-1 border-[#32C45A] text-[#32C45A] hover:bg-[#32C45A] hover:text-white font-semibold py-3"
           >
             Update Stock
           </Button>
@@ -572,7 +572,7 @@ export default function FoodDetailsPage() {
             type="button"
             disabled={!foodData}
             onClick={() => navigate(`/restaurant/food/${id}/edit`)}
-            className="flex-1 bg-[#ff8100] hover:bg-[#e67300] text-white font-semibold py-3"
+            className="flex-1 bg-[#32C45A] hover:bg-[#28A047] text-white font-semibold py-3"
           >
             Edit
           </Button>
@@ -635,7 +635,7 @@ export default function FoodDetailsPage() {
                         handleStockChange('main', value)
                       }
                     }}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#ff8100] focus:border-transparent outline-none"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#32C45A] focus:border-transparent outline-none"
                     placeholder="Enter stock or 'Unlimited'"
                   />
                 </div>
@@ -663,7 +663,7 @@ export default function FoodDetailsPage() {
                               type="number"
                               value={variation.stock}
                               onChange={(e) => handleStockChange('variation', e.target.value, variation.id)}
-                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#ff8100] focus:border-transparent outline-none"
+                              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#32C45A] focus:border-transparent outline-none"
                               placeholder="0"
                               min="0"
                             />
@@ -695,7 +695,7 @@ export default function FoodDetailsPage() {
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={handleUpdateStock}
-                  className="flex-1 bg-[#ff8100] hover:bg-[#e67300] text-white font-semibold py-3 rounded-lg transition-colors"
+                  className="flex-1 bg-[#32C45A] hover:bg-[#28A047] text-white font-semibold py-3 rounded-lg transition-colors"
                 >
                   Update
                 </motion.button>

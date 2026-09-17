@@ -73,6 +73,41 @@ export const adminSidebarMenu = [
   },
   {
     type: "section",
+    label: "DINING MANAGEMENT",
+    permissionKey: "dining_management",
+    items: [
+      {
+        type: "link",
+        label: "Dining Requests",
+        permissionKey: "requests",
+        path: "/admin/food/dining/requests",
+        icon: "ClipboardCheck",
+      },
+      {
+        type: "link",
+        label: "Dining Categories",
+        permissionKey: "categories",
+        path: "/admin/food/dining/categories",
+        icon: "FolderTree",
+      },
+      {
+        type: "link",
+        label: "Dining Banners",
+        permissionKey: "banners",
+        path: "/admin/food/dining/banners",
+        icon: "Image",
+      },
+      {
+        type: "link",
+        label: "Dining Bookings",
+        permissionKey: "bookings",
+        path: "/admin/food/dining/bookings",
+        icon: "Calendar",
+      },
+    ],
+  },
+  {
+    type: "section",
     label: "ORDER MANAGEMENT",
     permissionKey: "order_management",
     items: [

@@ -17,6 +17,11 @@ const FoodApproval = lazy(() => import("@food/pages/admin/restaurant/FoodApprova
 const OrdersPage = lazy(() => import("@food/pages/admin/orders/OrdersPage"));
 const OrderDetectDelivery = lazy(() => import("@food/pages/admin/OrderDetectDelivery"));
 const Category = lazy(() => import("@food/pages/admin/categories/Category"));
+// Dining Management
+const DiningCategories = lazy(() => import("@food/pages/admin/dining/DiningCategories"));
+const DiningBanners = lazy(() => import("@food/pages/admin/dining/DiningBanners"));
+const DiningRequests = lazy(() => import("@food/pages/admin/dining/DiningRequests"));
+const DiningBookings = lazy(() => import("@food/pages/admin/dining/DiningBookings"));
 const FeeSettings = lazy(() => import("@food/pages/admin/fee-settings/FeeSettings"));
 const ReferralSettings = lazy(() => import("@food/pages/admin/referral-settings/ReferralSettings"));
 // Restaurant Management
@@ -258,6 +263,12 @@ export default function AdminRouter() {
 
             {/* FOOD & CATEGORY MANAGEMENT */}
             <Route path="categories" element={<Category />} />
+
+            {/* DINING MANAGEMENT */}
+            <Route path="dining/categories" element={<DiningCategories />} />
+            <Route path="dining/banners" element={<DiningBanners />} />
+            <Route path="dining/requests" element={<DiningRequests />} />
+            <Route path="dining/bookings" element={<DiningBookings />} />
             {/* <Route path="subscriptions" element={<SubscriptionManagement />} /> */}
             <Route path="fee-settings" element={<FeeSettings />} />
             <Route path="referral-settings" element={<ReferralSettings />} />

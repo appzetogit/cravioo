@@ -3240,3 +3240,125 @@ export const onboardingFeeAPI = {
   updateConfig: (role, body) => apiClient.put(`/common/onboarding-fees/config/${role}`, body ?? {}, { contextModule: "admin" }),
   getPayments: (params = {}) => apiClient.get("/common/onboarding-fees/payments", { params, contextModule: "admin" })
 };
+
+/**
+ * Dining (table booking) APIs.
+ * Grouped by consumer: `admin` (catalog + approvals), `restaurant` (own dining panel),
+ * `user` (bookings) and `public` (discovery, no auth required).
+ */
+const multipart = (contextModule) => ({
+  headers: { "Content-Type": "multipart/form-data" },
+  contextModule,
+});
+
+export const diningAPI = {
+  admin: {
+    getOverview: () =>
+      apiClient.get("/food/admin/dining/overview", { contextModule: "admin" }),
+
+    listCategories: () =>
+      apiClient.get("/food/admin/dining/categories", { contextModule: "admin" }),
+    createCategory: (formData) =>
+      apiClient.post("/food/admin/dining/categories", formData, multipart("admin")),
+    updateCategory: (id, formData) =>
+      apiClient.patch(`/food/admin/dining/categories/${id}`, formData, multipart("admin")),
+    deleteCategory: (id) =>
+      apiClient.delete(`/food/admin/dining/categories/${id}`, { contextModule: "admin" }),
+
+    listBanners: () =>
+      apiClient.get("/food/admin/dining/banners", { contextModule: "admin" }),
+    updateBanner: (id, formData) =>
+      apiClient.patch(`/food/admin/dining/banners/${id}`, formData, multipart("admin")),
+
+    listRequests: (params = {}) =>
+      apiClient.get("/food/admin/dining/requests", { params, contextModule: "admin" }),
+    getRequest: (id) =>
+      apiClient.get(`/food/admin/dining/requests/${id}`, { contextModule: "admin" }),
+    reviewRequest: (id, body) =>
+      apiClient.patch(`/food/admin/dining/requests/${id}/review`, body ?? {}, {
+        contextModule: "admin",
+      }),
+
+    listBookings: (params = {}) =>
+      apiClient.get("/food/admin/dining/bookings", { params, contextModule: "admin" }),
+    getBooking: (id) =>
+      apiClient.get(`/food/admin/dining/bookings/${id}`, { contextModule: "admin" }),
+    getRestaurantSetup: (restaurantId) =>
+      apiClient.get(`/food/admin/dining/restaurants/${restaurantId}/setup`, {
+        contextModule: "admin",
+      }),
+  },
+
+  restaurant: {
+    getProfile: () =>
+      apiClient.get("/food/restaurant/dining/profile", { contextModule: "restaurant" }),
+    submitProfile: (formData) =>
+      apiClient.post("/food/restaurant/dining/profile", formData, multipart("restaurant")),
+    updateSettings: (body) =>
+      apiClient.patch("/food/restaurant/dining/settings", body ?? {}, {
+        contextModule: "restaurant",
+      }),
+    getDashboard: () =>
+      apiClient.get("/food/restaurant/dining/dashboard", { contextModule: "restaurant" }),
+
+    getSlots: () =>
+      apiClient.get("/food/restaurant/dining/slots", { contextModule: "restaurant" }),
+    saveSlots: (body) =>
+      apiClient.put("/food/restaurant/dining/slots", body ?? {}, { contextModule: "restaurant" }),
+    addBlockedDate: (body) =>
+      apiClient.post("/food/restaurant/dining/blocked-dates", body ?? {}, {
+        contextModule: "restaurant",
+      }),
+    removeBlockedDate: (id) =>
+      apiClient.delete(`/food/restaurant/dining/blocked-dates/${id}`, {
+        contextModule: "restaurant",
+      }),
+
+    listTables: () =>
+      apiClient.get("/food/restaurant/dining/tables", { contextModule: "restaurant" }),
+    createTable: (body) =>
+      apiClient.post("/food/restaurant/dining/tables", body ?? {}, { contextModule: "restaurant" }),
+    updateTable: (id, body) =>
+      apiClient.patch(`/food/restaurant/dining/tables/${id}`, body ?? {}, {
+        contextModule: "restaurant",
+      }),
+    deleteTable: (id) =>
+      apiClient.delete(`/food/restaurant/dining/tables/${id}`, { contextModule: "restaurant" }),
+
+    listBookings: (params = {}) =>
+      apiClient.get("/food/restaurant/dining/bookings", { params, contextModule: "restaurant" }),
+    getBooking: (id) =>
+      apiClient.get(`/food/restaurant/dining/bookings/${id}`, { contextModule: "restaurant" }),
+    updateBookingStatus: (id, body) =>
+      apiClient.patch(`/food/restaurant/dining/bookings/${id}/status`, body ?? {}, {
+        contextModule: "restaurant",
+      }),
+  },
+
+  user: {
+    createBooking: (body) =>
+      apiClient.post("/food/user/dining/bookings", body ?? {}, { contextModule: "user" }),
+    listBookings: (params = {}) =>
+      apiClient.get("/food/user/dining/bookings", { params, contextModule: "user" }),
+    getBooking: (id) =>
+      apiClient.get(`/food/user/dining/bookings/${id}`, { contextModule: "user" }),
+    cancelBooking: (id, body) =>
+      apiClient.patch(`/food/user/dining/bookings/${id}/cancel`, body ?? {}, {
+        contextModule: "user",
+      }),
+    rateBooking: (id, body) =>
+      apiClient.post(`/food/user/dining/bookings/${id}/rating`, body ?? {}, {
+        contextModule: "user",
+      }),
+  },
+
+  public: {
+    listCategories: () => apiClient.get("/food/dining/categories"),
+    listBanners: (placement) =>
+      apiClient.get("/food/dining/banners", { params: placement ? { placement } : {} }),
+    listRestaurants: (params = {}) => apiClient.get("/food/dining/restaurants", { params }),
+    getRestaurant: (restaurantId) => apiClient.get(`/food/dining/restaurants/${restaurantId}`),
+    getAvailability: (restaurantId, params = {}) =>
+      apiClient.get(`/food/dining/restaurants/${restaurantId}/availability`, { params }),
+  },
+};

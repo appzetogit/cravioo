@@ -4,6 +4,7 @@ import { invalidateCategoryCaches } from '../../shared/categoryCache.js';
 import * as adminController from '../controllers/admin.controller.js';
 import * as advertisementController from '../controllers/advertisement.controller.js';
 import roleRoutes from './role.routes.js';
+import diningAdminRoutes from '../../dining/routes/adminDining.routes.js';
 import { getCustomerContactsAdminController } from '../../user/controllers/userContact.controller.js';
 import * as foodApprovalController from '../controllers/foodApproval.controller.js';
 import * as addonsApprovalController from '../controllers/addonsApproval.controller.js';
@@ -30,6 +31,9 @@ const requireAdmin = (req, _res, next) => {
 };
 
 router.use(requireAdmin);
+
+// ----- Dining Management (categories, banners, requests, bookings) -----
+router.use('/dining', diningAdminRoutes);
 
 // ----- Broadcast Notifications -----
 router.post('/notifications/broadcast', checkPermission('food::system_settings::broadcast', 'create'), notificationBroadcastController.createBroadcastNotificationController);

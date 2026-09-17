@@ -488,7 +488,7 @@ export default function RestaurantStatus() {
             <div className="flex-1">
               <p className="text-base font-bold text-gray-900 mb-1.5">Delivery status</p>
               <div className="flex items-center gap-2">
-                <div className={`w-2 h-2 rounded-full ${deliveryStatus ? 'bg-[#FF0000]' : 'bg-gray-600'}`}></div>
+                <div className={`w-2 h-2 rounded-full ${deliveryStatus ? 'bg-[#32C45A]' : 'bg-gray-600'}`}></div>
                 <p className="text-sm text-gray-500">
                   {deliveryStatus ? 'Receiving orders' : 'Not receiving orders'}
                 </p>
@@ -497,7 +497,7 @@ export default function RestaurantStatus() {
             <Switch
               checked={deliveryStatus}
               onCheckedChange={handleDeliveryStatusChange}
-              className="ml-4 data-[state=unchecked]:bg-gray-300 data-[state=checked]:bg-[#FF0000]"
+              className="ml-4 data-[state=unchecked]:bg-gray-300 data-[state=checked]:bg-[#32C45A]"
             />
           </div>
 
@@ -629,11 +629,11 @@ export default function RestaurantStatus() {
               <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 text-left space-y-2">
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Benefits</p>
                 <div className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-[#FF0000]" />
+                  <div className="w-1.5 h-1.5 rounded-full bg-[#32C45A]" />
                   <p className="text-xs text-slate-700">Start receiving orders immediately</p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-[#FF0000]" />
+                  <div className="w-1.5 h-1.5 rounded-full bg-[#32C45A]" />
                   <p className="text-xs text-slate-700">Valid until midnight tonight</p>
                 </div>
               </div>

@@ -85,6 +85,7 @@ import {
 } from '../controllers/advertisement.controller.js';
 
 import { cacheResponse, invalidateCache } from '../../../../middleware/cache.js';
+import diningRestaurantRoutes from '../../dining/routes/restaurantDining.routes.js';
 import { invalidateCategoryCaches } from '../../shared/categoryCache.js';
 
 const router = express.Router();
@@ -152,6 +153,10 @@ const uploadFields = upload.fields([
     { name: 'fssaiImage', maxCount: 1 },
     { name: 'menuImages', maxCount: 10 }
 ]);
+
+// Dining Management — available inside the panel only for approved outlets.
+// The dining request itself is raised here (never during onboarding).
+router.use('/dining', authMiddleware, requireRestaurant, requireApprovedRestaurant, diningRestaurantRoutes);
 
 router.post('/register', requireRestaurantRegistrationToken, uploadFields, registerRestaurantController);
 router.post('/onboarding/step/:step', requireRestaurantRegistrationToken, uploadFields, saveOnboardingStepController);

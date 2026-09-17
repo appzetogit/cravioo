@@ -73,7 +73,7 @@ export default function ConversationListPage() {
             placeholder="Search..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-4 pr-10 py-2.5 rounded-lg border border-gray-200 bg-white focus:border-[#ff8100] focus:ring-1 focus:ring-[#ff8100]"
+            className="w-full pl-4 pr-10 py-2.5 rounded-lg border border-gray-200 bg-white focus:border-[#32C45A] focus:ring-1 focus:ring-[#32C45A]"
           />
           <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
         </div>
@@ -96,7 +96,7 @@ export default function ConversationListPage() {
             {activeTab === "Customer" && (
               <motion.div
                 layoutId="activeTab"
-                className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#ff8100]"
+                className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#32C45A]"
                 initial={false}
                 transition={{ type: "spring", stiffness: 300, damping: 30 }}
               />
@@ -116,7 +116,7 @@ export default function ConversationListPage() {
             {activeTab === "Delivery Man" && (
               <motion.div
                 layoutId="activeTab"
-                className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#ff8100]"
+                className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#32C45A]"
                 initial={false}
                 transition={{ type: "spring", stiffness: 300, damping: 30 }}
               />
@@ -142,7 +142,7 @@ export default function ConversationListPage() {
               <div className="flex items-start gap-3">
                 {/* Avatar/Icon */}
                 <div className="flex-shrink-0">
-                  <div className="w-12 h-12 rounded-full bg-[#ff8100] flex items-center justify-center">
+                  <div className="w-12 h-12 rounded-full bg-[#32C45A] flex items-center justify-center">
                     {activeTab === "Customer" ? (
                       <Utensils className="w-6 h-6 text-white" />
                     ) : (
@@ -161,7 +161,7 @@ export default function ConversationListPage() {
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
                       {conversation.role && (
-                        <span className="bg-red-100 text-[#ff8100] text-xs font-medium px-2 py-0.5 rounded-md whitespace-nowrap">
+                        <span className="bg-red-100 text-[#32C45A] text-xs font-medium px-2 py-0.5 rounded-md whitespace-nowrap">
                           {conversation.role}
                         </span>
                       )}

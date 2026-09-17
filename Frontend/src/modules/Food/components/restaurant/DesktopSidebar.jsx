@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import {
+  UtensilsCrossed,
   Store,
   FileText,
   History,
@@ -94,6 +95,7 @@ export default function DesktopSidebar({ isCollapsed, onToggle }) {
       items: [
         { name: "Outlet info", path: "/food/restaurant/outlet-info", icon: Info },
         { name: "Outlet timings", path: "/food/restaurant/outlet-timings", icon: Clock },
+        { name: "Dining management", path: "/food/restaurant/dining", icon: UtensilsCrossed },
       ],
     },
     {

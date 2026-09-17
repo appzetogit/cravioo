@@ -423,8 +423,8 @@ export default function OTP() {
           <div className="text-center space-y-4">
             {showNameInput && (
               <div className="flex justify-center">
-                <div className="w-16 h-16 bg-[#EB590E]/10 rounded-full flex items-center justify-center">
-                  <div className="w-10 h-10 bg-[#EB590E] rounded-full flex items-center justify-center shadow-lg shadow-[#EB590E]/30 text-white">
+                <div className="w-16 h-16 bg-[#32C45A]/10 rounded-full flex items-center justify-center">
+                  <div className="w-10 h-10 bg-[#32C45A] rounded-full flex items-center justify-center shadow-lg shadow-[#32C45A]/30 text-white">
                     <Smartphone className="h-5 w-5" />
                   </div>
                 </div>
@@ -464,7 +464,7 @@ export default function OTP() {
                     onPaste={index === 0 ? handlePaste : undefined}
                     disabled={isLoading}
                     aria-label={`OTP digit ${index + 1} of 4`}
-                    className="w-12 h-12 sm:w-14 sm:h-14 text-center text-xl font-bold border-2 border-gray-200 dark:border-gray-700 rounded-xl focus:border-[#EB590E] focus:ring-1 focus:ring-[#EB590E] bg-white dark:bg-[#2a2a2a] text-gray-900 dark:text-white transition-all outline-none"
+                    className="w-12 h-12 sm:w-14 sm:h-14 text-center text-xl font-bold border-2 border-gray-200 dark:border-gray-700 rounded-xl focus:border-[#32C45A] focus:ring-1 focus:ring-[#32C45A] bg-white dark:bg-[#2a2a2a] text-gray-900 dark:text-white transition-all outline-none"
                   />
                 ))}
               </div>
@@ -487,7 +487,7 @@ export default function OTP() {
                       type="button"
                       onClick={handleResend}
                       disabled={isLoading}
-                      className="text-[#EB590E] hover:text-[#D94F0C] font-bold transition-colors disabled:opacity-50"
+                      className="text-[#32C45A] hover:text-[#28A047] font-bold transition-colors disabled:opacity-50"
                     >
                       Resend SMS
                     </button>
@@ -510,7 +510,7 @@ export default function OTP() {
                   }}
                   disabled={isLoading}
                   placeholder="Full Name"
-                  className={`h-12 md:h-14 text-lg bg-white dark:bg-[#1a1a1a] text-gray-900 dark:text-white border-gray-300 dark:border-gray-700 rounded-xl focus-visible:ring-1 focus-visible:ring-[#EB590E] focus-visible:border-[#EB590E] ${nameError ? "border-red-500" : ""} transition-all`}
+                  className={`h-12 md:h-14 text-lg bg-white dark:bg-[#1a1a1a] text-gray-900 dark:text-white border-gray-300 dark:border-gray-700 rounded-xl focus-visible:ring-1 focus-visible:ring-[#32C45A] focus-visible:border-[#32C45A] ${nameError ? "border-red-500" : ""} transition-all`}
                 />
                 {nameError && (
                   <p className="text-xs text-red-500 pl-1">
@@ -522,7 +522,7 @@ export default function OTP() {
               <Button
                 onClick={handleSubmitName}
                 disabled={isLoading}
-                className="w-full h-12 md:h-14 bg-[#EB590E] hover:bg-[#D94F0C] text-white font-bold text-lg rounded-xl transition-all hover:shadow-lg active:scale-[0.98]"
+                className="w-full h-12 md:h-14 bg-[#32C45A] hover:bg-[#28A047] text-white font-bold text-lg rounded-xl transition-all hover:shadow-lg active:scale-[0.98]"
               >
                 {isLoading ? "Getting things ready..." : "Finish Registration"}
               </Button>
@@ -532,7 +532,7 @@ export default function OTP() {
           {/* Verification Loading Overlay */}
           {isLoading && !showNameInput && (
             <div className="flex justify-center pt-2">
-              <Loader2 className="h-6 w-6 text-[#EB590E] animate-spin" />
+              <Loader2 className="h-6 w-6 text-[#32C45A] animate-spin" />
             </div>
           )}
         </div>

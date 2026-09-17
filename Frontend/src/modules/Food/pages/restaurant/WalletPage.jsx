@@ -146,7 +146,7 @@ export default function WalletPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-[#f6e9dc] flex items-center justify-center">
-        <Loader2 className="w-10 h-10 text-[#ff8100] animate-spin" />
+        <Loader2 className="w-10 h-10 text-[#32C45A] animate-spin" />
       </div>
     )
   }
@@ -178,7 +178,7 @@ export default function WalletPage() {
           </h1>
           <Button
             variant="outline"
-            className="border-[#ff8100] text-[#ff8100] hidden md:flex"
+            className="border-[#32C45A] text-[#32C45A] hidden md:flex"
             onClick={() => navigate('/food/restaurant/business-plan')}
           >
             Manage Plans

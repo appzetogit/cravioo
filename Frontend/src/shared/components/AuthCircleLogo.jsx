@@ -104,7 +104,7 @@ export default function AuthCircleLogo({
   alt = "Logo",
   fallbackText = "B",
   className = "",
-  accentClassName = "bg-primary-orange",
+  accentClassName = "bg-white",
 }) {
   const [logoSrc, setLogoSrc] = useState("")
   const [trimmed, setTrimmed] = useState(false)
@@ -156,7 +156,7 @@ export default function AuthCircleLogo({
           }
         />
       ) : (
-        <span className="text-2xl font-black italic text-white">
+        <span className="text-2xl font-black italic text-[#32C45A]">
           {String(fallbackText || "B").charAt(0).toUpperCase()}
         </span>
       )}

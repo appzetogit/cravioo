@@ -24,6 +24,12 @@ const RestaurantNotifications = lazy(() => import("@food/pages/restaurant/Notifi
 const OrderDetails = lazy(() => import("@food/pages/restaurant/OrderDetails"))
 const OrdersMain = lazy(() => import("@food/pages/restaurant/OrdersMain"))
 const RestaurantOnboarding = lazy(() => import("@food/pages/restaurant/Onboarding"))
+// Dining Management
+const DiningManagement = lazy(() => import("@food/pages/restaurant/dining/DiningManagement"))
+const DiningRequestForm = lazy(() => import("@food/pages/restaurant/dining/DiningRequestForm"))
+const DiningSlots = lazy(() => import("@food/pages/restaurant/dining/DiningSlots"))
+const DiningTables = lazy(() => import("@food/pages/restaurant/dining/DiningTables"))
+const RestaurantDiningBookings = lazy(() => import("@food/pages/restaurant/dining/DiningBookings"))
 const TermsAndConditionsPage = lazy(() => import("@food/pages/restaurant/TermsAndConditionsPage"))
 const PrivacyPolicyPage = lazy(() => import("@food/pages/restaurant/PrivacyPolicyPage"))
 const SupportPolicyPage = lazy(() => import("@food/pages/restaurant/SupportPolicyPage"))
@@ -154,6 +160,12 @@ export default function RestaurantRouter() {
           <Route element={<ProtectedRoute requiredRole="restaurant" loginPath="/food/restaurant/login"><UpdateBankDetails /></ProtectedRoute>} path="update-bank-details" />
           <Route element={<ProtectedRoute requiredRole="restaurant" loginPath="/food/restaurant/login"><ZoneSetup /></ProtectedRoute>} path="zone-setup" />
           <Route element={<ProtectedRoute requiredRole="restaurant" loginPath="/food/restaurant/login"><RestaurantProfilePage /></ProtectedRoute>} path="profile" />
+          {/* Dining Management */}
+          <Route element={<ProtectedRoute requiredRole="restaurant" loginPath="/food/restaurant/login"><DiningManagement /></ProtectedRoute>} path="dining" />
+          <Route element={<ProtectedRoute requiredRole="restaurant" loginPath="/food/restaurant/login"><DiningRequestForm /></ProtectedRoute>} path="dining/request" />
+          <Route element={<ProtectedRoute requiredRole="restaurant" loginPath="/food/restaurant/login"><DiningSlots /></ProtectedRoute>} path="dining/slots" />
+          <Route element={<ProtectedRoute requiredRole="restaurant" loginPath="/food/restaurant/login"><DiningTables /></ProtectedRoute>} path="dining/tables" />
+          <Route element={<ProtectedRoute requiredRole="restaurant" loginPath="/food/restaurant/login"><RestaurantDiningBookings /></ProtectedRoute>} path="dining/bookings" />
           <Route element={<ProtectedRoute requiredRole="restaurant" loginPath="/food/restaurant/login"><RestaurantReferEarn /></ProtectedRoute>} path="refer-earn" />
         </Route>
 

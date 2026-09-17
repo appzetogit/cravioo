@@ -736,7 +736,8 @@ export async function getDashboardStats(query = {}) {
         recentPendingOrders,
         recentDeliveredOrders,
         recentCancelledOrders,
-        recentCustomers
+        recentCustomers,
+        topCustomersAgg
     ] = await Promise.all([
         FoodOrder.aggregate([
             { $match: orderMatch },
@@ -995,7 +996,41 @@ export async function getDashboardStats(query = {}) {
                     }
                 }
             ])
-            : FoodUser.find({}).sort({ createdAt: -1 }).limit(5).select('name createdAt').lean()
+            : FoodUser.find({}).sort({ createdAt: -1 }).limit(5).select('name createdAt').lean(),
+        FoodOrder.aggregate([
+            { $match: { ...orderMatch, userId: { $ne: null } } },
+            {
+                $group: {
+                    _id: '$userId',
+                    orderCount: { $sum: 1 },
+                    totalSpent: { $sum: { $ifNull: ['$pricing.total', 0] } },
+                    lastOrderAt: { $max: '$createdAt' }
+                }
+            },
+            { $sort: { orderCount: -1, totalSpent: -1 } },
+            { $limit: 10 },
+            {
+                $lookup: {
+                    from: 'common_users',
+                    localField: '_id',
+                    foreignField: '_id',
+                    as: 'user'
+                }
+            },
+            { $unwind: { path: '$user', preserveNullAndEmptyArrays: true } },
+            {
+                $project: {
+                    _id: 0,
+                    userId: '$_id',
+                    name: { $ifNull: ['$user.name', 'Unknown Customer'] },
+                    phone: '$user.phone',
+                    email: '$user.email',
+                    orderCount: 1,
+                    totalSpent: 1,
+                    lastOrderAt: 1
+                }
+            }
+        ])
     ]);
 
     const liveSignals = [];
@@ -1175,7 +1210,16 @@ export async function getDashboardStats(query = {}) {
             slaCompensationPaid: Number(totals.quickSlaCompensationPaid || 0),
         },
         monthlyData,
-        liveSignals: finalLiveSignals
+        liveSignals: finalLiveSignals,
+        topCustomers: (topCustomersAgg || []).map((c) => ({
+            userId: c.userId,
+            name: c.name || 'Unknown Customer',
+            phone: c.phone || null,
+            email: c.email || null,
+            orderCount: Number(c.orderCount || 0),
+            totalSpent: Number(c.totalSpent || 0),
+            lastOrderAt: c.lastOrderAt || null
+        }))
     };
 
     setCache(cacheKey, result, DASHBOARD_STATS_CACHE_TTL_MS);

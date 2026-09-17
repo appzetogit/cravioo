@@ -145,9 +145,9 @@ const defaultBannersImages = [
 ];
 
 const defaultBannersData = [
-  { isFallback: true, title: "Order food & groceries.\nDiscover best restaurants.\nFudron it! ⚡", subtitle: "", action: "" },
-  { isFallback: true, title: "Order food & groceries.\nDiscover best restaurants.\nFudron it! ⚡", subtitle: "", action: "" },
-  { isFallback: true, title: "Order food & groceries.\nDiscover best restaurants.\nFudron it! ⚡", subtitle: "", action: "" }
+  { isFallback: true, title: "Order food & groceries.\nDiscover best restaurants.\nCravioo it! ⚡", subtitle: "", action: "" },
+  { isFallback: true, title: "Order food & groceries.\nDiscover best restaurants.\nCravioo it! ⚡", subtitle: "", action: "" },
+  { isFallback: true, title: "Order food & groceries.\nDiscover best restaurants.\nCravioo it! ⚡", subtitle: "", action: "" }
 ];
 
 export default function Home() {
@@ -334,7 +334,7 @@ export default function Home() {
             style={{
               background: vegMode
                 ? "linear-gradient(135deg, #2e7d32 0%, #388e3c 100%)"
-                : "linear-gradient(135deg, #FF0000 0%, #CC0000 100%)",
+                : "linear-gradient(135deg, #32C45A 0%, #28A047 100%)",
             }}
           >
             <Suspense fallback={<HeroBannerSkeleton className="h-[130px] w-full" />}>
@@ -368,7 +368,7 @@ export default function Home() {
                   <h1 className="text-3xl lg:text-4xl font-bold mb-3 drop-shadow-md">
                     Order food & groceries <br /> from your favourite restaurants.
                   </h1>
-                  <p className="text-xl lg:text-2xl font-bold drop-shadow-md">Fudron It! 🔥</p>
+                  <p className="text-xl lg:text-2xl font-bold drop-shadow-md">Cravioo It! 🔥</p>
                 </div>
               </div>
             </Suspense>
@@ -382,7 +382,7 @@ export default function Home() {
                   onClick={() => openLocationSelector()}
                   className="flex items-center gap-1.5 px-4 py-3 bg-transparent border-0 hover:bg-gray-50 transition-colors shrink-0 max-w-[140px]"
                 >
-                  <MapPin className="h-4 w-4 shrink-0 text-[#FF0000]" strokeWidth={2.5} />
+                  <MapPin className="h-4 w-4 shrink-0 text-[#32C45A]" strokeWidth={2.5} />
                   <div className="flex items-center min-w-0">
                     <span className="truncate text-xs font-bold text-gray-800">
                       {imgUtils.formatSavedAddress(effectiveLocation) || "Select Location"}
