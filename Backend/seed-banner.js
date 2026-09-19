@@ -1,7 +1,7 @@
 import fs from 'fs';
 import mongoose from 'mongoose';
 import { FoodHeroBanner } from './src/modules/food/landing/models/heroBanner.model.js';
-import { uploadImageBufferDetailed } from './src/services/cloudinary.service.js';
+import { uploadImageBufferDetailed } from './src/services/storage.service.js';
 import dotenv from 'dotenv';
 
 // Load env vars

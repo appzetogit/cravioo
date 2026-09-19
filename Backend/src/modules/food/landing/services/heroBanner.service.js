@@ -1,7 +1,6 @@
 import mongoose from 'mongoose';
 import { FoodHeroBanner } from '../models/heroBanner.model.js';
-import { v2 as cloudinary } from 'cloudinary';
-import { uploadImageBufferDetailed } from '../../../../services/cloudinary.service.js';
+import { uploadImageBufferDetailed, deleteStoredFile } from '../../../../services/storage.service.js';
 
 export const listHeroBanners = async () => {
     return FoodHeroBanner.find()
@@ -71,7 +70,7 @@ export const deleteHeroBanner = async (id) => {
 
     if (doc.publicId) {
         try {
-            await cloudinary.uploader.destroy(doc.publicId);
+            await deleteStoredFile(doc.publicId);
         } catch {
             // ignore cloudinary deletion errors to avoid blocking deletion
         }

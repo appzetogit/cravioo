@@ -1,8 +1,7 @@
-import { v2 as cloudinary } from 'cloudinary';
 import { FoodDiningCategory } from '../models/diningCategory.model.js';
 import { FoodDiningBanner } from '../models/diningBanner.model.js';
 import { FoodDiningProfile } from '../models/diningProfile.model.js';
-import { uploadImageBufferDetailed } from '../../../../services/cloudinary.service.js';
+import { uploadImageBufferDetailed, deleteStoredFile } from '../../../../services/storage.service.js';
 import { ValidationError, NotFoundError, ConflictError } from '../../../../core/auth/errors.js';
 import { toObjectId } from '../utils/dining.util.js';
 
@@ -16,7 +15,7 @@ const uploadImage = async (buffer, folder) => {
 
 const destroyImage = async (publicId) => {
     if (!publicId) return;
-    await cloudinary.uploader.destroy(publicId).catch(() => { });
+    await deleteStoredFile(publicId).catch(() => { });
 };
 
 export const serializeDiningCategory = (doc) => {

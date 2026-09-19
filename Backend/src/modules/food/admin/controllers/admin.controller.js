@@ -1976,7 +1976,7 @@ export async function updateDepositPaymentSettings(req, res, next) {
     try {
         const body = { ...req.body };
         if (req.file) {
-            const { uploadImageBuffer } = await import('../../../../services/cloudinary.service.js');
+            const { uploadImageBuffer } = await import('../../../../services/storage.service.js');
             const qrCodeUrl = await uploadImageBuffer(req.file.buffer, 'delivery/deposit');
             body.qrCodeUrl = qrCodeUrl;
         }

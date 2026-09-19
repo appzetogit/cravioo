@@ -13,6 +13,7 @@ import { requestIdMiddleware } from './middleware/requestId.js';
 import { healthCheck } from './config/health.js';
 import { config } from './config/env.js';
 import { corsOptions } from './config/cors.js';
+import { getUploadDir } from './services/storage.service.js';
 
 const app = express();
 
@@ -21,6 +22,12 @@ app.set('trust proxy', 1);
 
 // Request ID tracing (before other middlewares so all logs can use it)
 app.use(requestIdMiddleware);
+
+// Uploaded images. In production nginx serves UPLOAD_DIR directly; this covers local dev.
+app.use('/uploads', (_req, res, next) => {
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    next();
+}, express.static(getUploadDir(), { maxAge: '30d', immutable: true }));
 
 // Health endpoints (no rate limit, minimal JSON, no secrets)
 app.get('/health', async (_req, res) => {

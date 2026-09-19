@@ -1,6 +1,5 @@
 import { FoodUnder250Banner } from '../models/under250Banner.model.js';
-import { v2 as cloudinary } from 'cloudinary';
-import { uploadImageBufferDetailed } from '../../../../services/cloudinary.service.js';
+import { uploadImageBufferDetailed, deleteStoredFile } from '../../../../services/storage.service.js';
 
 export const listUnder250Banners = async () => {
     return FoodUnder250Banner.find().sort({ sortOrder: 1, createdAt: -1 }).lean();
@@ -51,7 +50,7 @@ export const deleteUnder250Banner = async (id) => {
 
     if (doc.publicId) {
         try {
-            await cloudinary.uploader.destroy(doc.publicId);
+            await deleteStoredFile(doc.publicId);
         } catch {
             // ignore cloudinary deletion errors
         }

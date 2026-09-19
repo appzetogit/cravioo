@@ -1,9 +1,8 @@
-import { v2 as cloudinary } from 'cloudinary';
 import { FoodDiningProfile } from '../models/diningProfile.model.js';
 import { FoodDiningCategory } from '../models/diningCategory.model.js';
 import { FoodDiningBooking } from '../models/diningBooking.model.js';
 import { FoodRestaurant } from '../../restaurant/models/restaurant.model.js';
-import { uploadImageBufferDetailed } from '../../../../services/cloudinary.service.js';
+import { uploadImageBufferDetailed, deleteStoredFile } from '../../../../services/storage.service.js';
 import {
     ValidationError,
     NotFoundError,
@@ -29,7 +28,7 @@ const destroyImages = async (images = []) => {
     await Promise.all(
         images
             .filter((image) => image?.publicId)
-            .map((image) => cloudinary.uploader.destroy(image.publicId).catch(() => { }))
+            .map((image) => deleteStoredFile(image.publicId).catch(() => { }))
     );
 };
 

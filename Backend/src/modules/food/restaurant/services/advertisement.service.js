@@ -4,9 +4,9 @@ import { FoodAdvertisement, ADS_TYPE_OPTIONS } from '../../admin/models/advertis
 import { FoodRestaurant } from '../models/restaurant.model.js';
 import {
     uploadImageBufferDetailed,
-    uploadBufferDetailed
-} from '../../../../services/cloudinary.service.js';
-import { v2 as cloudinary } from 'cloudinary';
+    uploadBufferDetailed,
+    deleteStoredFile
+} from '../../../../services/storage.service.js';
 
 function generateAdsId() {
     const suffix = Date.now().toString(36).toUpperCase().slice(-6);
@@ -151,7 +151,7 @@ function toAdminRequestView(ad, index = 0) {
 async function destroyCloudinary(publicId, resourceType = 'image') {
     if (!publicId) return;
     try {
-        await cloudinary.uploader.destroy(publicId, { resource_type: resourceType });
+        await deleteStoredFile(publicId);
     } catch {
         // ignore cleanup failures
     }
