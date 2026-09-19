@@ -33,7 +33,11 @@ export default function CustomerRoleRequests() {
       const requestsList = reqsResponse?.data?.data || reqsResponse?.data || [];
       const zonesList = zonesResponse?.data?.data?.zones || zonesResponse?.data?.zones || zonesResponse?.data || [];
 
-      setRequests(Array.isArray(requestsList) ? requestsList : []);
+      setRequests(
+        Array.isArray(requestsList)
+          ? requestsList.filter((r) => r.role !== "SELLER")
+          : [],
+      );
       setAllZones(Array.isArray(zonesList) ? zonesList : []);
     } catch (error) {
       console.error("Error loading role requests:", error);
@@ -468,7 +472,7 @@ export default function CustomerRoleRequests() {
             </div>
             <div>
               <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">Customer Role Requests</h1>
-              <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">Verify and approve seller, restaurant, and delivery partner requests</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">Verify and approve restaurant and delivery partner requests</p>
             </div>
           </div>
           <button 
@@ -516,7 +520,7 @@ export default function CustomerRoleRequests() {
             <div className="flex flex-wrap items-center gap-3">
               {/* Role filter */}
               <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-1 rounded-lg">
-                {["ALL", "RESTAURANT", "SELLER", "DELIVERY_BOY"].map((role) => (
+                {["ALL", "RESTAURANT", "DELIVERY_BOY"].map((role) => (
                   <button
                     key={role}
                     onClick={() => setRoleFilter(role)}

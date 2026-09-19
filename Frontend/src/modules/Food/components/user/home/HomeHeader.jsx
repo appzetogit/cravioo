@@ -22,6 +22,7 @@ import {
 } from "@food/components/ui/popover";
 import { Badge } from "@food/components/ui/badge";
 import useNotificationInbox from "@food/hooks/useNotificationInbox";
+import { useAppBranding } from "@common/hooks/useBusinessSettingsCache";
 
 const foodTheme = (vegMode) => ({
   accent: vegMode ? "#2e7d32" : "#32C45A",
@@ -96,6 +97,7 @@ export default function HomeHeader({
   embedded = false,
 }) {
   const navigate = useNavigate();
+  const { logoUrl, companyName } = useAppBranding("user");
   const { cart } = useCart();
   const cartItemCount = cart?.reduce((total, item) => total + (item.quantity || 1), 0) || 0;
   const [isListening, setIsListening] = useState(false);
@@ -210,7 +212,7 @@ export default function HomeHeader({
             to="/food/user"
             className="flex shrink-0 items-center border-0 bg-transparent p-0 outline-none"
           >
-            <img src="/final_logo200-removebg-preview.png" alt="Cravioo" className="h-7 sm:h-8 w-auto object-contain dark:brightness-0 dark:invert" />
+            <img src={logoUrl || "/final_logo200-removebg-preview.png"} alt={companyName || "Cravioo"} className="h-7 sm:h-8 w-auto object-contain" />
           </Link>
 
           {!embedded && (
