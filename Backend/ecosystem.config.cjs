@@ -31,7 +31,7 @@ const worker = (name, script, extra = {}) => ({
 module.exports = {
     apps: [
         {
-            name: 'fudron-backend',
+            name: 'cravioo-backend',
             script: path.join(CWD, 'server.js'),
             cwd: CWD,
             exec_mode: 'fork',
@@ -45,18 +45,18 @@ module.exports = {
         },
 
         // Activates scheduled orders at T-15 and runs the 30-min stuck-order watchdog.
-        worker('fudron-worker-order', 'src/queues/workers/order.worker.js'),
+        worker('cravioo-worker-order', 'src/queues/workers/order.worker.js'),
 
         // Wallet credits, payment capture, refunds.
-        worker('fudron-worker-payment', 'src/queues/workers/payment.worker.js'),
+        worker('cravioo-worker-payment', 'src/queues/workers/payment.worker.js'),
 
         // High-frequency delivery-partner location persistence.
-        worker('fudron-worker-tracking', 'src/queues/workers/tracking.worker.js', {
+        worker('cravioo-worker-tracking', 'src/queues/workers/tracking.worker.js', {
             max_memory_restart: '300M',
         }),
 
         // Hourly subscription expiry sweep.
-        worker('fudron-worker-subscription', 'src/queues/workers/subscription.worker.js', {
+        worker('cravioo-worker-subscription', 'src/queues/workers/subscription.worker.js', {
             max_memory_restart: '250M',
         }),
 
