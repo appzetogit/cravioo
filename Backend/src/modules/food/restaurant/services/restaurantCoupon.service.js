@@ -102,6 +102,7 @@ function normalizeRestaurantCouponPayload(body, existingCoupon = null) {
         isFirstOrderOnly: Boolean(body?.isFirstOrderOnly),
         description: String(body?.description || '').trim(),
         showInCart: body?.showInCart !== false,
+        membershipOnly: body?.membershipOnly === true,
     };
 }
 
@@ -209,6 +210,7 @@ export async function updateRestaurantCoupon(restaurantId, couponId, body) {
         isFirstOrderOnly: Boolean(existingCoupon.isFirstOrderOnly),
         description: existingCoupon.description || '',
         showInCart: existingCoupon.showInCart !== false,
+        membershipOnly: Boolean(existingCoupon.membershipOnly),
         status: existingCoupon.status,
     };
 

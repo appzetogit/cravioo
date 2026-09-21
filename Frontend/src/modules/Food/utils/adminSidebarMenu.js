@@ -160,6 +160,13 @@ export const adminSidebarMenu = [
         icon: "FileCheck",
       },
       {
+        type: "link",
+        label: "Memberships",
+        permissionKey: "memberships",
+        path: "/admin/food/memberships",
+        icon: "Award",
+      },
+      {
         type: "expandable",
         label: "Advertisements",
         permissionKey: "advertisement",

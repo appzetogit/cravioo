@@ -99,6 +99,10 @@ const feeSettingsSchema = new mongoose.Schema(
         platformFee: { type: Number, min: 0 },
         packagingFee: { type: Number, min: 0 },
         gstRate: { type: Number, min: 0, max: 100 },
+        /** GST % INCLUDED in the platform fee the customer pays (0 / unset = no GST split). */
+        platformFeeGstRate: { type: Number, min: 0, max: 100 },
+        /** GST % INCLUDED in the packaging fee the customer pays (0 / unset = no GST split). */
+        packagingFeeGstRate: { type: Number, min: 0, max: 100 },
         mixedOrderDistanceLimit: { type: Number, min: 0, default: 2 },
         mixedOrderAngleLimit: { type: Number, min: 0, default: 35 },
         /** Global Quick Delivery control + knobs. Missing/undefined ⇒ treat enabled as false. */

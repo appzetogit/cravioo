@@ -11,6 +11,8 @@ import dayjs from 'dayjs';
 import { OnboardingPaymentLog } from '../../../modules/common/models/onboardingPaymentLog.model.js';
 import { processOrderPostPaymentFulfillment } from '../../../modules/food/orders/services/order.service.js';
 
+import { UserMembership } from '../../../modules/food/membership/models/userMembership.model.js';
+import { activateMembershipForPayment } from '../../../modules/food/membership/services/membership.service.js';
 import * as walletService from '../../../modules/food/subscriptions/services/wallet.service.js';
 import { invalidateSubscriptionStatsCache } from '../../../modules/food/admin/utils/subscriptionStatsCache.js';
 import { sendNotificationToOwners } from '../../../core/notifications/firebase.service.js';
@@ -49,6 +51,22 @@ export const handleRazorpayWebhook = async (req, res) => {
             const rzOrderId = paymentObj.order_id;
             const rzPaymentId = paymentObj.id;
             const notes = paymentObj.notes || {};
+
+            // 📂 CASE M: Customer membership purchase (resolved by Razorpay order id)
+            if (rzOrderId && (await UserMembership.exists({ razorpayOrderId: rzOrderId }))) {
+                try {
+                    const result = await activateMembershipForPayment({
+                        razorpayOrderId: rzOrderId,
+                        razorpayPaymentId: rzPaymentId,
+                        amountPaise: paymentObj.amount
+                    });
+                    logger.info(`Webhook [payment.captured]: membership order=${rzOrderId} activated=${result.activated}`);
+                } catch (err) {
+                    logger.error(`Webhook membership activation error: ${err.message}`);
+                    return res.status(500).json({ status: 'retry' });
+                }
+                return res.status(200).json({ status: 'ok' });
+            }
 
             // 📂 CASE A-1: Subscription Wallet Topup
             if (notes.type === 'subscription_wallet_topup') {

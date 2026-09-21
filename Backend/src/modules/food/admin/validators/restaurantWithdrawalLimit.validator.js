@@ -14,7 +14,8 @@ function parseOptionalNonNegNumber(value) {
 const upsertSchema = z
     .object({
         restaurantMinWithdrawalLimit: z.number().min(0).optional(),
-        restaurantMaxWithdrawalLimit: z.number().min(0).nullable().optional()
+        restaurantMaxWithdrawalLimit: z.number().min(0).nullable().optional(),
+        restaurantWithdrawalDay: z.number().int().min(0).max(6).nullable().optional()
     })
     .refine(
         (data) => {
@@ -42,6 +43,13 @@ export const validateRestaurantWithdrawalLimitUpsertDto = (body = {}) => {
                       const parsed = parseOptionalNonNegNumber(body.restaurantMaxWithdrawalLimit);
                       return parsed === null || parsed === 0 ? null : parsed;
                   })()
+                : undefined,
+        // null / '' = every day allowed
+        restaurantWithdrawalDay:
+            body?.restaurantWithdrawalDay !== undefined
+                ? body.restaurantWithdrawalDay === null || body.restaurantWithdrawalDay === ''
+                    ? null
+                    : Number(body.restaurantWithdrawalDay)
                 : undefined
     };
 

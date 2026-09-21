@@ -65,6 +65,7 @@ export default function Coupons() {
     usageLimit: "",
     perUserLimit: "",
     isFirstOrderOnly: false,
+    membershipOnly: false,
   })
 
   const fetchOffers = useCallback(async () => {
@@ -208,6 +209,7 @@ export default function Coupons() {
       usageLimit: "",
       perUserLimit: "",
       isFirstOrderOnly: false,
+      membershipOnly: false,
     })
     setErrors({})
   }
@@ -237,6 +239,7 @@ export default function Coupons() {
       usageLimit: offer.usageLimit != null ? String(offer.usageLimit) : "",
       perUserLimit: offer.perUserLimit != null ? String(offer.perUserLimit) : "",
       isFirstOrderOnly: Boolean(offer.isFirstOrderOnly),
+      membershipOnly: Boolean(offer.membershipOnly),
     })
     setErrors({})
     setSubmitError("")
@@ -287,6 +290,7 @@ export default function Coupons() {
         usageLimit: formData.usageLimit !== "" ? Number(formData.usageLimit) : undefined,
         perUserLimit: formData.perUserLimit !== "" ? Number(formData.perUserLimit) : undefined,
         isFirstOrderOnly: Boolean(formData.isFirstOrderOnly),
+        membershipOnly: Boolean(formData.membershipOnly),
       }
       if (editingOfferId) {
         await adminAPI.updateAdminOffer(editingOfferId, payload)
@@ -559,6 +563,19 @@ export default function Coupons() {
                 <label htmlFor="isFirstOrderOnly" className="text-sm text-slate-700">First order only</label>
               </div>
 
+              <div className="flex items-center gap-2">
+                <input
+                  id="membershipOnly"
+                  type="checkbox"
+                  checked={Boolean(formData.membershipOnly)}
+                  onChange={(e) => handleFormChange("membershipOnly", e.target.checked)}
+                  className="h-4 w-4"
+                />
+                <label htmlFor="membershipOnly" className="text-sm text-slate-700">
+                  Members only (visible &amp; usable only by users with an active membership)
+                </label>
+              </div>
+
                 {formData.restaurantScope === "selected" && (
                   <div className="md:col-span-2 lg:col-span-3">
                     <label className="block text-xs font-semibold text-slate-600 mb-1">Select Restaurant</label>
@@ -701,6 +718,9 @@ export default function Coupons() {
                           </span>
                           {offer.isFirstOrderOnly ? (
                             <span className="text-[10px] font-semibold text-amber-700">First order only</span>
+                          ) : null}
+                          {offer.membershipOnly ? (
+                            <span className="text-[10px] font-semibold text-orange-700">Members only</span>
                           ) : null}
                         </div>
                       </td>

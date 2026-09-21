@@ -112,6 +112,150 @@ const getPaymentStatusColor = (paymentStatus) => {
   return "text-slate-600"
 }
 
+/**
+ * Reads the GST split of an order. Platform/packaging fees are GST-inclusive: `platformFee` / `packagingFee`
+ * are the NET parts (platform earning / restaurant credit) and their GST is included in `tax`.
+ * Orders placed before the GST split have no split fields, so every derived GST part is 0.
+ */
+const getOrderGst = (order) => {
+  const pricing = order?.pricing || {}
+  const num = (...values) => {
+    for (const v of values) {
+      const n = Number(v)
+      if (v !== undefined && v !== null && v !== "" && Number.isFinite(n)) return n
+    }
+    return 0
+  }
+  const totalGst = num(order?.vatTax, pricing.tax, order?.taxAmount)
+  const platformFee = num(pricing.platformFee, order?.platformFee)
+  const packagingFee = num(pricing.packagingFee, order?.packagingFee)
+  const platformFeeGst = num(pricing.platformFeeGst, order?.platformFeeGst)
+  const packagingFeeGst = num(pricing.packagingFeeGst, order?.packagingFeeGst)
+  const foodGst = pricing.foodGst !== undefined || order?.foodGst !== undefined
+    ? num(pricing.foodGst, order?.foodGst)
+    : Math.max(0, totalGst - platformFeeGst - packagingFeeGst)
+  return {
+    totalGst,
+    foodGst,
+    foodGstRate: num(pricing.foodGstRate, order?.foodGstRate),
+    platformFee,
+    platformFeeGst,
+    platformFeeGstRate: num(pricing.platformFeeGstRate, order?.platformFeeGstRate),
+    platformFeeGross: num(pricing.platformFeeGross, order?.platformFeeGross, platformFee + platformFeeGst),
+    packagingFee,
+    packagingFeeGst,
+    packagingFeeGstRate: num(pricing.packagingFeeGstRate, order?.packagingFeeGstRate),
+    packagingFeeGross: num(pricing.packagingFeeGross, order?.packagingFeeGross, packagingFee + packagingFeeGst),
+    hasFeeGst: platformFeeGst > 0 || packagingFeeGst > 0,
+  }
+}
+
+const money2 = (v) => `₹${Number(v || 0).toFixed(2)}`
+
+/** Platform fee, packaging fee and tax rows with a click-to-expand GST breakdown and settlement split. */
+function FeesAndGstSection({ order }) {
+  const [open, setOpen] = useState(false)
+  const g = getOrderGst(order)
+  const rate = (r) => (r > 0 ? ` (${r}%)` : "")
+
+  return (
+    <>
+      <div className="flex justify-between text-sm">
+        <span className="text-slate-600">
+          Platform Fee
+          {g.platformFeeGst > 0 && (
+            <span className="block text-[11px] text-slate-400">
+              Customer paid {money2(g.platformFeeGross)} incl. GST {money2(g.platformFeeGst)}
+            </span>
+          )}
+        </span>
+        <span className="font-medium text-slate-900">{money2(g.platformFee)}</span>
+      </div>
+      <div className="flex justify-between text-sm">
+        <span className="text-slate-600">
+          Packaging Fee
+          {g.packagingFeeGst > 0 && (
+            <span className="block text-[11px] text-slate-400">
+              Customer paid {money2(g.packagingFeeGross)} incl. GST {money2(g.packagingFeeGst)}
+            </span>
+          )}
+        </span>
+        <span className="font-medium text-slate-900">{money2(g.packagingFee)}</span>
+      </div>
+
+      {g.totalGst > 0 && (
+        <div>
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            className="flex w-full justify-between text-sm text-left"
+          >
+            <span className="text-slate-600 border-b border-dashed border-slate-400 flex items-center gap-1">
+              Tax (GST)
+              <span className={`inline-block text-slate-400 transition-transform ${open ? "rotate-90" : ""}`}>{"›"}</span>
+            </span>
+            <span className="font-medium text-slate-900">{money2(g.totalGst)}</span>
+          </button>
+
+          {open && (
+            <div className="mt-2 rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs space-y-2">
+              <p className="font-semibold text-slate-700">GST breakdown</p>
+              <div className="flex justify-between text-slate-600">
+                <span>GST on food items{rate(g.foodGstRate)}</span>
+                <span className="font-medium">{money2(g.foodGst)}</span>
+              </div>
+              {g.platformFeeGst > 0 && (
+                <div className="flex justify-between text-slate-600">
+                  <span>
+                    GST on Platform fee{rate(g.platformFeeGstRate)}
+                    <span className="block text-[11px] text-slate-400">
+                      {money2(g.platformFeeGross)} = {money2(g.platformFee)} + {money2(g.platformFeeGst)}
+                    </span>
+                  </span>
+                  <span className="font-medium">{money2(g.platformFeeGst)}</span>
+                </div>
+              )}
+              {g.packagingFeeGst > 0 && (
+                <div className="flex justify-between text-slate-600">
+                  <span>
+                    GST on Packaging fee{rate(g.packagingFeeGstRate)}
+                    <span className="block text-[11px] text-slate-400">
+                      {money2(g.packagingFeeGross)} = {money2(g.packagingFee)} + {money2(g.packagingFeeGst)}
+                    </span>
+                  </span>
+                  <span className="font-medium">{money2(g.packagingFeeGst)}</span>
+                </div>
+              )}
+              <div className="flex justify-between border-t border-dashed border-slate-300 pt-2 font-semibold text-slate-800">
+                <span>Total GST collected</span>
+                <span>{money2(g.totalGst)}</span>
+              </div>
+
+              {g.hasFeeGst && (
+                <div className="border-t border-slate-200 pt-2 space-y-1">
+                  <p className="font-semibold text-slate-700">Where the fees go</p>
+                  <div className="flex justify-between text-slate-600">
+                    <span>Platform earning (platform fee after GST)</span>
+                    <span className="font-medium text-emerald-700">{money2(g.platformFee)}</span>
+                  </div>
+                  <div className="flex justify-between text-slate-600">
+                    <span>Packaging credited to restaurant (after GST)</span>
+                    <span className="font-medium">{money2(g.packagingFee)}</span>
+                  </div>
+                  <div className="flex justify-between text-slate-600">
+                    <span>Fee GST retained by admin (platform + packaging)</span>
+                    <span className="font-medium">{money2(g.platformFeeGst + g.packagingFeeGst)}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </>
+  )
+}
+
 export default function ViewOrderDialog({ isOpen, onOpenChange, order: orderProp }) {
   const [detailOrder, setDetailOrder] = useState(null)
   const [detailLoading, setDetailLoading] = useState(false)
@@ -667,28 +811,7 @@ export default function ViewOrderDialog({ isOpen, onOpenChange, order: orderProp
                   </span>
                 </div>
               )}
-              <div className="flex justify-between text-sm">
-                <span className="text-slate-600">Platform Fee</span>
-                <span className="font-medium text-slate-900">
-                  {order.platformFee !== undefined && Number(order.platformFee || 0) > 0 
-                    ? `₹${Number(order.platformFee || 0).toFixed(2)}` 
-                    : <span className="text-slate-400">₹0.00</span>}
-                </span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-slate-600">Packaging Fee</span>
-                <span className="font-medium text-slate-900">
-                  {order.packagingFee !== undefined && Number(order.packagingFee || 0) > 0 
-                    ? `₹${Number(order.packagingFee || 0).toFixed(2)}` 
-                    : <span className="text-slate-400">₹0.00</span>}
-                </span>
-              </div>
-              {order.vatTax !== undefined && order.vatTax > 0 && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-600">Tax (GST)</span>
-                  <span className="font-medium text-slate-900">₹{Number(order.vatTax || 0).toFixed(2)}</span>
-                </div>
-              )}
+              <FeesAndGstSection order={order} />
               <div className="pt-2 border-t border-slate-200">
                 <div className="flex justify-between items-center">
                   <span className="text-base font-semibold text-slate-700">Total Amount</span>

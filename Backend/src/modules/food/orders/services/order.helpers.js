@@ -639,7 +639,8 @@ async function buildRestaurantNewOrderSocketPayload(orderDoc) {
   const subtotalRaw = Number(pricingSrc.subtotal ?? pricingSrc.itemSubtotal);
   const subtotal =
     Number.isFinite(subtotalRaw) && subtotalRaw >= 0 ? subtotalRaw : itemsSum;
-  const tax = Number(pricingSrc.tax ?? pricingSrc.taxes) || 0;
+  // Restaurant bill carries food GST only; GST on platform/packaging fees belongs to the platform.
+  const tax = Number(pricingSrc.foodGst ?? pricingSrc.tax ?? pricingSrc.taxes) || 0;
   const packagingFee = Number(pricingSrc.packagingFee) || 0;
   const discount = Number(pricingSrc.discount) || 0;
   const quickRestaurantShare = Number(pricingSrc.quickRestaurantShare) || 0;

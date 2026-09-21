@@ -100,6 +100,14 @@ const pricingSchema = new mongoose.Schema(
     {
         subtotal: { type: Number, required: true, min: 0 },
         tax: { type: Number, default: 0, min: 0 },
+        foodGst: { type: Number, default: 0, min: 0 },
+        foodGstRate: { type: Number, default: 0, min: 0 },
+        platformFeeGross: { type: Number, default: 0, min: 0 },
+        platformFeeGst: { type: Number, default: 0, min: 0 },
+        platformFeeGstRate: { type: Number, default: 0, min: 0 },
+        packagingFeeGross: { type: Number, default: 0, min: 0 },
+        packagingFeeGst: { type: Number, default: 0, min: 0 },
+        packagingFeeGstRate: { type: Number, default: 0, min: 0 },
         packagingFee: { type: Number, default: 0, min: 0 },
         deliveryFee: { type: Number, default: 0, min: 0 },
         totalDeliveryFee: { type: Number, default: 0, min: 0 },
@@ -510,6 +518,7 @@ orderSchema.index({ 'deliveryAddress.location': '2dsphere' });
 orderSchema.index({ lastRiderLocation: '2dsphere' });
 orderSchema.index({ orderType: 1, sessionId: 1, createdAt: -1 });
 orderSchema.index({ userId: 1, createdAt: -1 });
+orderSchema.index({ userId: 1, orderStatus: 1 });
 orderSchema.index({ restaurantId: 1, orderStatus: 1, createdAt: -1 });
 orderSchema.index({ 'dispatch.deliveryPartnerId': 1, orderStatus: 1 });
 orderSchema.index({ 'dispatch.status': 1, orderStatus: 1 });

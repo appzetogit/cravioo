@@ -9,6 +9,15 @@ const debugError = (...args) => {}
 
 
 // Fee Settings Component - Range-based delivery fee configuration
+
+/** Splits a GST-inclusive fee into net + GST (mirrors the server so the preview matches real orders). */
+const splitInclusiveGst = (gross, ratePct) => {
+  const g = Number(gross) || 0
+  const r = Number(ratePct) || 0
+  if (!(g > 0) || !(r > 0)) return { gst: 0, net: g }
+  const gst = Math.round((g - g / (1 + r / 100)) * 100) / 100
+  return { gst, net: Math.round((g - gst) * 100) / 100 }
+}
 export default function FeeSettings() {
   const [feeSettings, setFeeSettings] = useState({
     deliveryFee: "",
@@ -16,6 +25,8 @@ export default function FeeSettings() {
     platformFee: "",
     packagingFee: "",
     gstRate: "",
+    platformFeeGstRate: "",
+    packagingFeeGstRate: "",
     quickDelivery: {
       enabled: false,
       charge: 30,
@@ -48,6 +59,8 @@ export default function FeeSettings() {
       platformFee: src?.platformFee ?? "",
       packagingFee: src?.packagingFee ?? "",
       gstRate: src?.gstRate ?? "",
+      platformFeeGstRate: src?.platformFeeGstRate ?? "",
+      packagingFeeGstRate: src?.packagingFeeGstRate ?? "",
       quickDelivery: {
         ...defaultQuickDeliveryBusiness(),
         enabled: qd.enabled === true,
@@ -171,6 +184,8 @@ export default function FeeSettings() {
           platformFee: "",
           packagingFee: "",
           gstRate: "",
+          platformFeeGstRate: "",
+          packagingFeeGstRate: "",
           quickDelivery: defaultQuickDeliveryBusiness(),
         })
       }
@@ -214,6 +229,9 @@ export default function FeeSettings() {
         platformFee: settingsToSave.platformFee === "" ? undefined : Number(settingsToSave.platformFee),
         packagingFee: settingsToSave.packagingFee === "" ? undefined : Number(settingsToSave.packagingFee),
         gstRate: settingsToSave.gstRate === "" ? undefined : Number(settingsToSave.gstRate),
+        // Blank clears the rate (null) so removing a GST % actually takes effect.
+        platformFeeGstRate: settingsToSave.platformFeeGstRate === "" ? null : Number(settingsToSave.platformFeeGstRate),
+        packagingFeeGstRate: settingsToSave.packagingFeeGstRate === "" ? null : Number(settingsToSave.packagingFeeGstRate),
         // Business fields only — server preserves / defaults engineering internals
         quickDelivery: {
           enabled: qd.enabled === true,
@@ -813,6 +831,66 @@ export default function FeeSettings() {
                   <p className="text-xs text-slate-500">
                     GST percentage applied on order subtotal
                   </p>
+                </div>
+              </div>
+
+
+              {/* GST included in platform / packaging fees */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-t border-slate-200 pt-6 mt-6">
+                <div className="space-y-2">
+                  <label className="block text-sm font-semibold text-slate-700">
+                    GST on Platform Fee (%)
+                  </label>
+                  <input
+                    type="number"
+                    value={feeSettings.platformFeeGstRate}
+                    onChange={(e) => setFeeSettings({ ...feeSettings, platformFeeGstRate: e.target.value })}
+                    min="0"
+                    max="100"
+                    step="0.1"
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all"
+                    placeholder="0 (no GST split)"
+                  />
+                  <p className="text-xs text-slate-500">
+                    GST is <strong>included</strong> in the platform fee the customer pays. The GST part goes to the GST
+                    account; only the remaining amount is platform earning.
+                  </p>
+                  {Number(feeSettings.platformFee) > 0 && Number(feeSettings.platformFeeGstRate) > 0 && (() => {
+                    const p = splitInclusiveGst(feeSettings.platformFee, feeSettings.platformFeeGstRate)
+                    return (
+                      <p className="text-xs font-medium text-emerald-700 bg-emerald-50 rounded-md px-3 py-2">
+                        Customer pays ₹{Number(feeSettings.platformFee).toFixed(2)} → Platform earning ₹{p.net.toFixed(2)} + GST ₹{p.gst.toFixed(2)}
+                      </p>
+                    )
+                  })()}
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-sm font-semibold text-slate-700">
+                    GST on Packaging Fee (%)
+                  </label>
+                  <input
+                    type="number"
+                    value={feeSettings.packagingFeeGstRate}
+                    onChange={(e) => setFeeSettings({ ...feeSettings, packagingFeeGstRate: e.target.value })}
+                    min="0"
+                    max="100"
+                    step="0.1"
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all"
+                    placeholder="0 (no GST split)"
+                  />
+                  <p className="text-xs text-slate-500">
+                    GST is <strong>included</strong> in the packaging fee the customer pays. The GST part goes to the GST
+                    account; the restaurant receives the remaining amount.
+                  </p>
+                  {Number(feeSettings.packagingFee) > 0 && Number(feeSettings.packagingFeeGstRate) > 0 && (() => {
+                    const p = splitInclusiveGst(feeSettings.packagingFee, feeSettings.packagingFeeGstRate)
+                    return (
+                      <p className="text-xs font-medium text-emerald-700 bg-emerald-50 rounded-md px-3 py-2">
+                        Customer pays ₹{Number(feeSettings.packagingFee).toFixed(2)} → Restaurant gets ₹{p.net.toFixed(2)} + GST ₹{p.gst.toFixed(2)}
+                      </p>
+                    )
+                  })()}
                 </div>
               </div>
 

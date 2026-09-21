@@ -1318,6 +1318,13 @@ const mapTransactionReportRow = (tx) => {
         referralDiscount,
         discountedAmount: Math.max(0, subtotal - totalDiscount),
         vatTax: tx.amounts?.taxAmount || pricing.tax || 0,
+        foodGst: Number(pricing.foodGst ?? 0) || 0,
+        platformFeeGross: Number(pricing.platformFeeGross ?? 0) || 0,
+        platformFeeGst: Number(pricing.platformFeeGst ?? 0) || 0,
+        platformFeeGstRate: Number(pricing.platformFeeGstRate ?? 0) || 0,
+        packagingFeeGross: Number(pricing.packagingFeeGross ?? 0) || 0,
+        packagingFeeGst: Number(pricing.packagingFeeGst ?? 0) || 0,
+        packagingFeeGstRate: Number(pricing.packagingFeeGstRate ?? 0) || 0,
         deliveryCharge: pricing.deliveryFee || 0,
         platformFee,
         packagingFee,
@@ -2995,6 +3002,10 @@ export async function upsertFeeSettings(body) {
 
         if (body.gstRate === null) $unset.gstRate = 1;
         else if (body.gstRate !== undefined) $set.gstRate = body.gstRate;
+        if (body.platformFeeGstRate === null) $unset.platformFeeGstRate = 1;
+        else if (body.platformFeeGstRate !== undefined) $set.platformFeeGstRate = body.platformFeeGstRate;
+        if (body.packagingFeeGstRate === null) $unset.packagingFeeGstRate = 1;
+        else if (body.packagingFeeGstRate !== undefined) $set.packagingFeeGstRate = body.packagingFeeGstRate;
         if (body.mixedOrderDistanceLimit !== undefined) $set.mixedOrderDistanceLimit = body.mixedOrderDistanceLimit;
         if (body.mixedOrderAngleLimit !== undefined) $set.mixedOrderAngleLimit = body.mixedOrderAngleLimit;
         if (body.quickDelivery !== undefined) {
@@ -3036,6 +3047,8 @@ export async function upsertFeeSettings(body) {
     if (body.platformFee !== undefined && body.platformFee !== null) payload.platformFee = body.platformFee;
     if (body.packagingFee !== undefined && body.packagingFee !== null) payload.packagingFee = body.packagingFee;
     if (body.gstRate !== undefined && body.gstRate !== null) payload.gstRate = body.gstRate;
+    if (body.platformFeeGstRate !== undefined && body.platformFeeGstRate !== null) payload.platformFeeGstRate = body.platformFeeGstRate;
+    if (body.packagingFeeGstRate !== undefined && body.packagingFeeGstRate !== null) payload.packagingFeeGstRate = body.packagingFeeGstRate;
     if (body.mixedOrderDistanceLimit !== undefined) payload.mixedOrderDistanceLimit = body.mixedOrderDistanceLimit;
     if (body.mixedOrderAngleLimit !== undefined) payload.mixedOrderAngleLimit = body.mixedOrderAngleLimit;
     if (body.quickDelivery !== undefined) {
@@ -3307,27 +3320,56 @@ export async function upsertDeliveryCashLimitSettings(body = {}) {
 }
 
 // ----- Restaurant Withdrawal Limits (admin) — separate from delivery -----
+const WITHDRAWAL_DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const WITHDRAWAL_TIMEZONE = 'Asia/Kolkata';
+
+function normalizeWithdrawalDay(value) {
+    if (value === undefined || value === null || value === '') return null;
+    const n = Number(value);
+    return Number.isInteger(n) && n >= 0 && n <= 6 ? n : null;
+}
+
+/** Weekday index (0=Sunday) in the platform timezone. */
+function getCurrentWithdrawalWeekday(now = new Date()) {
+    const name = new Intl.DateTimeFormat('en-US', { timeZone: WITHDRAWAL_TIMEZONE, weekday: 'long' }).format(now);
+    return WITHDRAWAL_DAY_NAMES.indexOf(name);
+}
+
+/**
+ * Whether restaurants may request a withdrawal right now. No configured day = every day allowed.
+ * @returns {{ allowed: boolean, day: number|null, dayName: string|null }}
+ */
+export function getRestaurantWithdrawalDayStatus(withdrawalDay, now = new Date()) {
+    const day = normalizeWithdrawalDay(withdrawalDay);
+    if (day === null) return { allowed: true, day: null, dayName: null };
+    return { allowed: getCurrentWithdrawalWeekday(now) === day, day, dayName: WITHDRAWAL_DAY_NAMES[day] };
+}
+
+function toRestaurantWithdrawalLimitResponse(doc) {
+    return {
+        restaurantMinWithdrawalLimit: Number(doc.restaurantMinWithdrawalLimit) || 1,
+        restaurantMaxWithdrawalLimit: normalizeMaxWithdrawalLimit(doc.restaurantMaxWithdrawalLimit),
+        restaurantWithdrawalDay: normalizeWithdrawalDay(doc.restaurantWithdrawalDay)
+    };
+}
+
 export async function getRestaurantWithdrawalLimitSettings() {
     const doc = await FoodRestaurantWithdrawalLimit.findOne({ isActive: true }).sort({ createdAt: -1 }).lean();
-    const settings = doc || {
-        restaurantMinWithdrawalLimit: 1,
-        restaurantMaxWithdrawalLimit: null,
-        isActive: true
-    };
-    return {
-        restaurantMinWithdrawalLimit: Number(settings.restaurantMinWithdrawalLimit) || 1,
-        restaurantMaxWithdrawalLimit: normalizeMaxWithdrawalLimit(settings.restaurantMaxWithdrawalLimit)
-    };
+    return toRestaurantWithdrawalLimitResponse(
+        doc || { restaurantMinWithdrawalLimit: 1, restaurantMaxWithdrawalLimit: null, restaurantWithdrawalDay: null }
+    );
 }
 
 export async function upsertRestaurantWithdrawalLimitSettings(body = {}) {
     const existing = await FoodRestaurantWithdrawalLimit.findOne({ isActive: true }).sort({ createdAt: -1 });
     const nextMin = body.restaurantMinWithdrawalLimit;
     const nextMax = body.restaurantMaxWithdrawalLimit;
+    const nextDay = body.restaurantWithdrawalDay;
 
     if (existing) {
         if (nextMin !== undefined) existing.restaurantMinWithdrawalLimit = Math.max(0, Number(nextMin) || 0);
         if (nextMax !== undefined) existing.restaurantMaxWithdrawalLimit = normalizeMaxWithdrawalLimit(nextMax);
+        if (nextDay !== undefined) existing.restaurantWithdrawalDay = normalizeWithdrawalDay(nextDay);
         const effectiveMin = Number(existing.restaurantMinWithdrawalLimit) || 0;
         const effectiveMax = normalizeMaxWithdrawalLimit(existing.restaurantMaxWithdrawalLimit);
         if (effectiveMax != null && effectiveMax < effectiveMin) {
@@ -3336,22 +3378,17 @@ export async function upsertRestaurantWithdrawalLimitSettings(body = {}) {
             );
         }
         await existing.save();
-        return {
-            restaurantMinWithdrawalLimit: existing.restaurantMinWithdrawalLimit,
-            restaurantMaxWithdrawalLimit: normalizeMaxWithdrawalLimit(existing.restaurantMaxWithdrawalLimit)
-        };
+        return toRestaurantWithdrawalLimitResponse(existing);
     }
 
     const created = await FoodRestaurantWithdrawalLimit.create({
         restaurantMinWithdrawalLimit: nextMin !== undefined ? Math.max(0, Number(nextMin) || 0) : 1,
         restaurantMaxWithdrawalLimit: nextMax !== undefined ? normalizeMaxWithdrawalLimit(nextMax) : null,
+        restaurantWithdrawalDay: nextDay !== undefined ? normalizeWithdrawalDay(nextDay) : null,
         isActive: true
     });
 
-    return {
-        restaurantMinWithdrawalLimit: created.restaurantMinWithdrawalLimit,
-        restaurantMaxWithdrawalLimit: normalizeMaxWithdrawalLimit(created.restaurantMaxWithdrawalLimit)
-    };
+    return toRestaurantWithdrawalLimitResponse(created);
 }
 
 // ----- Delivery Emergency Help (admin) -----
@@ -5854,6 +5891,7 @@ export async function getAllOffers(_query = {}) {
             perUserLimit: o.perUserLimit ?? null,
             usedCount: o.usedCount ?? 0,
             isFirstOrderOnly: Boolean(o.isFirstOrderOnly),
+            membershipOnly: Boolean(o.membershipOnly),
             restaurantScope: o.restaurantScope,
             restaurantDbId: o.restaurantId
                 ? String(o.restaurantId?._id || o.restaurantId)
@@ -5881,6 +5919,7 @@ export async function createAdminOffer(body) {
         perUserLimit: body.perUserLimit ?? null,
         startDate: body.startDate,
         isFirstOrderOnly: body.isFirstOrderOnly ?? false,
+        membershipOnly: body.membershipOnly === true,
         endDate: body.endDate,
         status: body.endDate && new Date(body.endDate).getTime() <= Date.now() ? 'inactive' : 'active',
         showInCart: true,
@@ -5985,6 +6024,7 @@ export async function updateAdminOffer(id, body) {
         startDate: existing.startDate ?? null,
         endDate: existing.endDate ?? null,
         isFirstOrderOnly: Boolean(existing.isFirstOrderOnly),
+        membershipOnly: Boolean(existing.membershipOnly),
         status: existing.status,
     };
 
@@ -6015,6 +6055,7 @@ export async function updateAdminOffer(id, body) {
                 startDate: body.startDate ?? null,
                 endDate: body.endDate ?? null,
                 isFirstOrderOnly: body.isFirstOrderOnly ?? false,
+                membershipOnly: body.membershipOnly === true,
                 status,
             },
         },

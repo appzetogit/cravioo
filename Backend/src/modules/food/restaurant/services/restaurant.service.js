@@ -32,6 +32,7 @@ import {
     resolveRestaurantObjectId,
     getCouponCartEligibility,
 } from '../../shared/coupon.util.js';
+import { isUserActiveMember } from '../../membership/services/membership.service.js';
 
 const DUPLICATE_OWNER_PHONE_MESSAGE =
     'This phone number is already registered with another restaurant.';
@@ -2777,8 +2778,12 @@ export const listPublicOffers = async (query = {}) => {
 
     const { FoodOfferUsage } = await import('../../admin/models/offerUsage.model.js');
 
+    // Members-only coupons are visible solely to users with an active membership.
+    const isMember = userId ? await isUserActiveMember(userId) : false;
+
     const adminOffers = [];
     for (const o of list) {
+        if (o.membershipOnly && !isMember) continue;
         if (!isCouponWithinDateWindow(o, now) || !(await isCouponUsageAvailable(o))) continue;
 
         const { minOrderValue, meetsMinOrder, amountToUnlock, estimatedDiscount, displayDiscount } =
@@ -2827,6 +2832,7 @@ export const listPublicOffers = async (query = {}) => {
             usageLimit: o.usageLimit ?? null,
             usedCount: o.usedCount ?? 0,
             isFirstOrderOnly: Boolean(o.isFirstOrderOnly),
+            membershipOnly: Boolean(o.membershipOnly),
             couponSource: 'admin',
             meetsMinOrder,
             amountToUnlock,
@@ -2854,6 +2860,7 @@ export const listPublicOffers = async (query = {}) => {
 
         for (const c of dbCoupons) {
             if (c.showInCart === false) continue;
+            if (c.membershipOnly && !isMember) continue;
             if (!isCouponWithinDateWindow(c, now) || !(await isCouponUsageAvailable(c))) continue;
 
             const { minOrderValue, meetsMinOrder, amountToUnlock, estimatedDiscount, displayDiscount } =
@@ -2895,6 +2902,7 @@ export const listPublicOffers = async (query = {}) => {
                 usageLimit: c.usageLimit ?? null,
                 usedCount: c.usedCount ?? 0,
                 isFirstOrderOnly: Boolean(c.isFirstOrderOnly),
+                membershipOnly: Boolean(c.membershipOnly),
                 couponSource: 'restaurant',
                 meetsMinOrder,
                 amountToUnlock,

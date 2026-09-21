@@ -10,6 +10,8 @@ function toPublicFeeSettings(settings) {
     platformFee: settings.platformFee ?? null,
     packagingFee: settings.packagingFee ?? null,
     gstRate: settings.gstRate ?? null,
+    platformFeeGstRate: settings.platformFeeGstRate ?? null,
+    packagingFeeGstRate: settings.packagingFeeGstRate ?? null,
     deliveryFeeRanges: Array.isArray(settings.deliveryFeeRanges)
       ? settings.deliveryFeeRanges
       : [],

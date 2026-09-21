@@ -19,7 +19,7 @@ import { FoodRestaurantWallet, ensureRestaurantWallet } from '../models/restaura
 import { FoodRestaurantWithdrawal } from '../models/foodRestaurantWithdrawal.model.js';
 import { FoodDailyPass } from '../../subscriptions/models/foodDailyPass.model.js';
 import { FoodWalletLedger } from '../../subscriptions/models/foodWalletLedger.model.js';
-import { getRestaurantWithdrawalLimitSettings } from '../../admin/services/admin.service.js';
+import { getRestaurantWithdrawalLimitSettings, getRestaurantWithdrawalDayStatus } from '../../admin/services/admin.service.js';
 import { realizeFoodQuickRestaurantShare } from '../../orders/services/foodTransaction.service.js';
 import { logger } from '../../../../utils/logger.js';
 import dayjs from 'dayjs';
@@ -362,6 +362,10 @@ function mapTransactionToCycleOrder(tx) {
         orderTotal: orderTotalExclTax,
         /** Restaurant gross = item subtotal + packaging (excludes platform/delivery fees) */
         restaurantGross,
+        /** Packaging: customer paid `packagingFeeGross` (GST-inclusive); GST goes to the platform, restaurant is credited `packagingFee`. */
+        packagingFee: Number(order?.pricing?.packagingFee ?? 0) || 0,
+        packagingFeeGross: Number(order?.pricing?.packagingFeeGross ?? order?.pricing?.packagingFee ?? 0) || 0,
+        packagingFeeGst: Number(order?.pricing?.packagingFeeGst ?? 0) || 0,
         /** What the customer paid (incl. tax / fees when present on ledger) */
         totalAmount: customerPaid,
         /** Restaurant earning / share — correct payout field */
@@ -517,7 +521,11 @@ export async function getRestaurantFinance(restaurantId, query = {}) {
         },
         withdrawalLimits: {
             min: restaurantMinWithdrawalLimit,
-            max: restaurantMaxWithdrawalLimit
+            max: restaurantMaxWithdrawalLimit,
+            ...(() => {
+                const dayStatus = getRestaurantWithdrawalDayStatus(limitSettings.restaurantWithdrawalDay);
+                return { day: dayStatus.day, dayName: dayStatus.dayName, allowedToday: dayStatus.allowed };
+            })()
         },
         currentCycle,
         invoiceSummary,

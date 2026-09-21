@@ -700,6 +700,26 @@ export default function UserOrderDetails() {
                 ₹{Number(pricing.tax || 0).toFixed(2)}
               </span>
             </div>
+            {(Number(pricing.platformFeeGst) > 0 || Number(pricing.packagingFeeGst) > 0) && (
+              <div className="ml-3 pl-3 border-l-2 border-gray-100 space-y-1 text-xs text-gray-500">
+                <div className="flex justify-between">
+                  <span>GST on food items</span>
+                  <span>₹{Number(pricing.foodGst ?? 0).toFixed(2)}</span>
+                </div>
+                {Number(pricing.platformFeeGst) > 0 && (
+                  <div className="flex justify-between">
+                    <span>GST on Platform fee ({Number(pricing.platformFeeGstRate || 0)}%, incl. in ₹{Number(pricing.platformFeeGross || 0).toFixed(2)})</span>
+                    <span>₹{Number(pricing.platformFeeGst).toFixed(2)}</span>
+                  </div>
+                )}
+                {Number(pricing.packagingFeeGst) > 0 && (
+                  <div className="flex justify-between">
+                    <span>GST on Packaging fee ({Number(pricing.packagingFeeGstRate || 0)}%, incl. in ₹{Number(pricing.packagingFeeGross || 0).toFixed(2)})</span>
+                    <span>₹{Number(pricing.packagingFeeGst).toFixed(2)}</span>
+                  </div>
+                )}
+              </div>
+            )}
             <div className="flex justify-between">
               <span className="text-gray-400 font-medium">Delivery fee</span>
               <div className="flex items-center gap-1">

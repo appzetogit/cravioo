@@ -161,30 +161,93 @@ export default function FilterPanel({
             </div>
           </div>
 
-          {/* Date Range */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">
-                From Date
-              </label>
-              <input
-                type="date"
-                value={filters.fromDate || ""}
-                onChange={(e) => setFilters(prev => ({ ...prev, fromDate: e.target.value }))}
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
+          {/* Filter by Date OR by Time — pick one mode, only its fields apply */}
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-2">
+              Filter Orders By
+            </label>
+            <div className="grid grid-cols-2 gap-2 rounded-lg bg-slate-100 p-1">
+              <button
+                type="button"
+                onClick={() => setFilters(prev => ({ ...prev, dateFilterMode: "date" }))}
+                className={`rounded-md py-2 text-sm font-medium transition-colors ${
+                  (filters.dateFilterMode || "date") === "date"
+                    ? "bg-white text-emerald-700 shadow-sm"
+                    : "text-slate-500 hover:text-slate-700"
+                }`}
+              >
+                📅 Date
+              </button>
+              <button
+                type="button"
+                onClick={() => setFilters(prev => ({ ...prev, dateFilterMode: "time" }))}
+                className={`rounded-md py-2 text-sm font-medium transition-colors ${
+                  filters.dateFilterMode === "time"
+                    ? "bg-white text-emerald-700 shadow-sm"
+                    : "text-slate-500 hover:text-slate-700"
+                }`}
+              >
+                🕒 Time
+              </button>
             </div>
-            <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">
-                To Date
-              </label>
-              <input
-                type="date"
-                value={filters.toDate || ""}
-                onChange={(e) => setFilters(prev => ({ ...prev, toDate: e.target.value }))}
-                className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
-            </div>
+
+            {(filters.dateFilterMode || "date") === "date" ? (
+              <div className="grid grid-cols-2 gap-4 mt-3">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">
+                    From Date
+                  </label>
+                  <input
+                    type="date"
+                    value={filters.fromDate || ""}
+                    onChange={(e) => setFilters(prev => ({ ...prev, fromDate: e.target.value }))}
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">
+                    To Date
+                  </label>
+                  <input
+                    type="date"
+                    value={filters.toDate || ""}
+                    onChange={(e) => setFilters(prev => ({ ...prev, toDate: e.target.value }))}
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+                <p className="col-span-2 text-xs text-slate-500 -mt-2">
+                  Shows orders placed on or between these dates (any time of day).
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-4 mt-3">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">
+                    From Time
+                  </label>
+                  <input
+                    type="time"
+                    value={filters.fromTime || ""}
+                    onChange={(e) => setFilters(prev => ({ ...prev, fromTime: e.target.value }))}
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">
+                    To Time
+                  </label>
+                  <input
+                    type="time"
+                    value={filters.toTime || ""}
+                    onChange={(e) => setFilters(prev => ({ ...prev, toTime: e.target.value }))}
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+                <p className="col-span-2 text-xs text-slate-500 -mt-2">
+                  Shows orders placed in this time window every day (e.g. 18:00 to 23:00). Date range is ignored in this mode.
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Restaurant Filter */}

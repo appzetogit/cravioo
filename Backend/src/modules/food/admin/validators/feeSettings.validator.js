@@ -64,6 +64,8 @@ const feeSettingsUpsertSchema = z.object({
     platformFee: z.number().min(0).nullable().optional(),
     packagingFee: z.number().min(0).nullable().optional(),
     gstRate: z.number().min(0).max(100).nullable().optional(),
+    platformFeeGstRate: z.number().min(0).max(100).nullable().optional(),
+    packagingFeeGstRate: z.number().min(0).max(100).nullable().optional(),
     mixedOrderDistanceLimit: z.number().min(0).nullable().optional(),
     mixedOrderAngleLimit: z.number().min(0).nullable().optional(),
     quickDelivery: quickDeliverySchema.optional(),
@@ -133,6 +135,10 @@ export const validateFeeSettingsUpsertDto = (body) => {
             body?.packagingFee === null ? null : body?.packagingFee !== undefined ? Number(body.packagingFee) : undefined,
         gstRate:
             body?.gstRate === null ? null : body?.gstRate !== undefined ? Number(body.gstRate) : undefined,
+        platformFeeGstRate:
+            body?.platformFeeGstRate === null ? null : body?.platformFeeGstRate !== undefined ? Number(body.platformFeeGstRate) : undefined,
+        packagingFeeGstRate:
+            body?.packagingFeeGstRate === null ? null : body?.packagingFeeGstRate !== undefined ? Number(body.packagingFeeGstRate) : undefined,
         mixedOrderDistanceLimit:
             body?.mixedOrderDistanceLimit === null ? null : body?.mixedOrderDistanceLimit !== undefined ? Number(body.mixedOrderDistanceLimit) : undefined,
         mixedOrderAngleLimit:

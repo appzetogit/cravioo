@@ -885,6 +885,26 @@ export const adminAPI = {
       ...config,
     }),
 
+  /** Memberships (admin) */
+  getMembershipDashboard: () =>
+    apiClient.get("/food/admin/memberships/dashboard", { contextModule: "admin" }),
+  getMembershipPlans: () =>
+    apiClient.get("/food/admin/memberships/plans", { contextModule: "admin" }),
+  createMembershipPlan: (body) =>
+    apiClient.post("/food/admin/memberships/plans", body ?? {}, { contextModule: "admin" }),
+  updateMembershipPlan: (id, body) =>
+    apiClient.patch(`/food/admin/memberships/plans/${String(id)}`, body ?? {}, { contextModule: "admin" }),
+  setMembershipPlanStatus: (id, isActive) =>
+    apiClient.patch(`/food/admin/memberships/plans/${String(id)}/status`, { isActive }, { contextModule: "admin" }),
+  deleteMembershipPlan: (id) =>
+    apiClient.delete(`/food/admin/memberships/plans/${String(id)}`, { contextModule: "admin" }),
+  getMemberships: (params = {}) =>
+    apiClient.get("/food/admin/memberships", { params, contextModule: "admin" }),
+  cancelMembership: (id, reason) =>
+    apiClient.patch(`/food/admin/memberships/${String(id)}/cancel`, { reason }, { contextModule: "admin" }),
+  refundMembership: (id, reason) =>
+    apiClient.post(`/food/admin/memberships/${String(id)}/refund`, { reason }, { contextModule: "admin" }),
+
   /** Offers & Coupons (admin) */
   getAllOffers: (params = {}) =>
     apiClient.get("/food/admin/offers", { params, contextModule: "admin" }),
@@ -2735,6 +2755,18 @@ export const userAPI = {
   /** GET /food/user/referrals/details (Bearer USER) */
   getReferralDetails: () =>
     apiClient.get("/food/user/referrals/details", { contextModule: "user" }),
+  /** Memberships (Bearer USER) */
+  getMembershipPlans: () =>
+    apiClient.get("/food/user/memberships/plans", { contextModule: "user" }),
+  getMyMembership: () =>
+    apiClient.get("/food/user/memberships/me", { contextModule: "user" }),
+  createMembershipOrder: (planId) =>
+    apiClient.post("/food/user/memberships/order", { planId }, { contextModule: "user" }),
+  verifyMembershipPayment: (body) =>
+    apiClient.post("/food/user/memberships/verify", body ?? {}, { contextModule: "user" }),
+  /** GET /food/user/contacts/mutual (Bearer USER). Top 10 synced contacts on Cravioo by completed orders. */
+  getMutualUsers: () =>
+    apiClient.get("/food/user/contacts/mutual", { contextModule: "user" }),
   /** POST /food/user/wallet/topup/order (Bearer USER). Body: { amount } */
   createWalletTopupOrder: (amount) =>
     apiClient.post(

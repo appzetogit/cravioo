@@ -68,8 +68,10 @@ export default function HubFinance() {
     maxWithdrawalLimit != null
       ? Math.min(availableBalance, maxWithdrawalLimit)
       : availableBalance
+  const withdrawAllowedToday = financeData?.withdrawalLimits?.allowedToday !== false
+  const withdrawalDayName = financeData?.withdrawalLimits?.dayName || ""
   const canOpenWithdraw =
-    availableBalance > 0 && maxAllowedWithdrawal >= minWithdrawalLimit
+    withdrawAllowedToday && availableBalance > 0 && maxAllowedWithdrawal >= minWithdrawalLimit
 
   const fetchFinanceData = useCallback(async () => {
     try {
@@ -948,6 +950,11 @@ export default function HubFinance() {
                         Limit: Min ₹{minWithdrawalLimit.toLocaleString('en-IN')}
                         {maxWithdrawalLimit != null ? ` • Max ₹${maxWithdrawalLimit.toLocaleString('en-IN')}` : ''}
                       </p>
+                      {!withdrawAllowedToday && (
+                        <p className="mb-2 text-xs font-semibold text-amber-300">
+                          Withdrawals are only available on {withdrawalDayName}
+                        </p>
+                      )}
                       {maxWithdrawalLimit != null && availableBalance > maxWithdrawalLimit && (
                         <p className="mb-6 text-xs font-semibold text-amber-300">
                           You can withdraw up to ₹{maxAllowedWithdrawal.toLocaleString('en-IN')} per request

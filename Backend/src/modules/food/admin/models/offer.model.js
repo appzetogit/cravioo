@@ -18,6 +18,8 @@ const foodOfferSchema = new mongoose.Schema(
         endDate: { type: Date },
         status: { type: String, enum: ['active', 'paused', 'inactive'], default: 'active', index: true },
         showInCart: { type: Boolean, default: true },
+        // Visible / redeemable only by users holding an active Cravioo membership
+        membershipOnly: { type: Boolean, default: false },
         createdByRole: { type: String, enum: ['ADMIN', 'RESTAURANT'], default: 'ADMIN', index: true },
         adminBearPercentage: { type: Number, default: 100, min: 0, max: 100 },
         restaurantBearPercentage: { type: Number, default: 0, min: 0, max: 100 }

@@ -5,10 +5,14 @@ import { toast } from "sonner"
 
 const debugError = (...args) => {}
 
+const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+
 export default function RestaurantWithdrawalLimit() {
   const [loading, setLoading] = useState(true)
   const [savingMin, setSavingMin] = useState(false)
   const [savingMax, setSavingMax] = useState(false)
+  const [savingDay, setSavingDay] = useState(false)
+  const [withdrawalDay, setWithdrawalDay] = useState("")
   const [minLimit, setMinLimit] = useState("1")
   const [maxLimit, setMaxLimit] = useState("")
   const isMountedRef = useRef(true)
@@ -26,6 +30,8 @@ export default function RestaurantWithdrawalLimit() {
       )
       const max = data.restaurantMaxWithdrawalLimit
       setMaxLimit(max !== undefined && max !== null && Number(max) > 0 ? String(max) : "")
+      const day = data.restaurantWithdrawalDay
+      setWithdrawalDay(day !== undefined && day !== null ? String(day) : "")
     } catch (error) {
       debugError("Error fetching restaurant withdrawal limits:", error)
       if (!isMountedRef.current) return
@@ -62,19 +68,24 @@ export default function RestaurantWithdrawalLimit() {
       return
     }
 
-    const setSaving = which === "min" ? setSavingMin : setSavingMax
+    const setSaving = which === "min" ? setSavingMin : which === "day" ? setSavingDay : setSavingMax
     try {
       setSaving(true)
       const response = await adminAPI.updateRestaurantWithdrawalLimit({
         restaurantMinWithdrawalLimit: minValue,
         restaurantMaxWithdrawalLimit: maxValue,
+        restaurantWithdrawalDay: withdrawalDay === "" ? null : Number(withdrawalDay),
       })
       const saved = response?.data?.data || response?.data || {}
       setMinLimit(String(saved.restaurantMinWithdrawalLimit ?? minValue))
       const savedMax = saved.restaurantMaxWithdrawalLimit
       setMaxLimit(savedMax != null && Number(savedMax) > 0 ? String(savedMax) : "")
       toast.success(
-        which === "max" && maxValue == null
+        which === "day"
+          ? withdrawalDay === ""
+            ? "Withdrawal day cleared (allowed every day)"
+            : `Withdrawals now allowed only on ${WEEKDAYS[Number(withdrawalDay)]}`
+          : which === "max" && maxValue == null
           ? "Maximum withdrawal limit cleared (unlimited)"
           : "Restaurant withdrawal limits updated successfully"
       )
@@ -170,6 +181,42 @@ export default function RestaurantWithdrawalLimit() {
                     className="px-4 py-2.5 text-sm font-medium rounded-lg bg-sky-600 text-white hover:bg-sky-700 transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
                     {savingMax && <Loader2 className="w-4 h-4 animate-spin" />}
+                    Save
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-lg mt-6">
+            <div className="flex items-start gap-3">
+              <Wallet className="w-5 h-5 text-emerald-700 mt-0.5" />
+              <div className="flex-1">
+                <div className="font-semibold text-emerald-900 mb-1">Withdrawal Day</div>
+                <div className="text-sm text-emerald-800/80 mb-3">
+                  Restaurants can request a withdrawal only on this day (IST). On every other day the
+                  withdraw button stays disabled. Choose &quot;Every day&quot; for no restriction.
+                </div>
+                <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
+                  <div className="flex-1">
+                    <select
+                      value={withdrawalDay}
+                      onChange={(e) => setWithdrawalDay(e.target.value)}
+                      className="w-full px-4 py-2.5 border rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm border-emerald-200"
+                      disabled={loading || savingDay}
+                    >
+                      <option value="">Every day</option>
+                      {WEEKDAYS.map((name, idx) => (
+                        <option key={name} value={String(idx)}>{name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <button
+                    onClick={() => save({ which: "day" })}
+                    disabled={loading || savingDay}
+                    className="px-4 py-2.5 text-sm font-medium rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    {savingDay && <Loader2 className="w-4 h-4 animate-spin" />}
                     Save
                   </button>
                 </div>

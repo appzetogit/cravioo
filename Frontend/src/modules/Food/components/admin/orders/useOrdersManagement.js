@@ -30,8 +30,11 @@ export function useOrdersManagement(orders, statusKey, title) {
     deliveryMode: "",
     minAmount: "",
     maxAmount: "",
+    dateFilterMode: "date", // "date" = filter by date range, "time" = filter by time-of-day window
     fromDate: "",
     toDate: "",
+    fromTime: "",
+    toTime: "",
     restaurant: "",
   })
   const [visibleColumns, setVisibleColumns] = useState({
@@ -142,36 +145,37 @@ export function useOrdersManagement(orders, statusKey, title) {
       result = result.filter(order => order.restaurant === filters.restaurant)
     }
 
-    // Helper function to parse date format "16 JUL 2025"
-    const parseOrderDate = (dateStr) => {
-      const months = {
-        "JAN": "01", "FEB": "02", "MAR": "03", "APR": "04", "MAY": "05", "JUN": "06",
-        "JUL": "07", "AUG": "08", "SEP": "09", "OCT": "10", "NOV": "11", "DEC": "12"
-      }
-      const parts = dateStr.split(" ")
-      if (parts.length === 3) {
-        const day = parts[0].padStart(2, "0")
-        const month = months[parts[1].toUpperCase()] || "01"
-        const year = parts[2]
-        return new Date(`${year}-${month}-${day}`)
-      }
-      return new Date(dateStr)
-    }
+    // Exactly one mode applies at a time — "date" filters by calendar day, "time" by daily clock window.
+    const dateFilterMode = filters.dateFilterMode || "date"
 
-    if (filters.fromDate) {
-      result = result.filter(order => {
-        const orderDate = parseOrderDate(order.date)
-        const fromDate = new Date(filters.fromDate)
-        return orderDate >= fromDate
+    if (dateFilterMode === "date" && (filters.fromDate || filters.toDate)) {
+      const fromDay = filters.fromDate ? new Date(`${filters.fromDate}T00:00:00`).getTime() : null
+      const toDay = filters.toDate ? new Date(`${filters.toDate}T23:59:59.999`).getTime() : null
+
+      result = result.filter((order) => {
+        const created = order.createdAt ? new Date(order.createdAt) : null
+        if (!created || Number.isNaN(created.getTime())) return false
+        const ms = created.getTime()
+        if (fromDay !== null && ms < fromDay) return false
+        if (toDay !== null && ms > toDay) return false
+        return true
       })
-    }
+    } else if (dateFilterMode === "time" && (filters.fromTime || filters.toTime)) {
+      const toMinutes = (hhmm) => {
+        const [h, m] = String(hhmm).split(":").map(Number)
+        return h * 60 + m
+      }
+      const fromMin = filters.fromTime ? toMinutes(filters.fromTime) : 0
+      const toMin = filters.toTime ? toMinutes(filters.toTime) : 24 * 60 - 1
 
-    if (filters.toDate) {
-      result = result.filter(order => {
-        const orderDate = parseOrderDate(order.date)
-        const toDate = new Date(filters.toDate)
-        toDate.setHours(23, 59, 59, 999) // Include entire day
-        return orderDate <= toDate
+      result = result.filter((order) => {
+        const created = order.createdAt ? new Date(order.createdAt) : null
+        if (!created || Number.isNaN(created.getTime())) return false
+        const minutes = created.getHours() * 60 + created.getMinutes()
+        // A window like 22:00-02:00 wraps past midnight.
+        return fromMin <= toMin
+          ? minutes >= fromMin && minutes <= toMin
+          : minutes >= fromMin || minutes <= toMin
       })
     }
 
@@ -182,7 +186,8 @@ export function useOrdersManagement(orders, statusKey, title) {
 
   // Count active filters
   const activeFiltersCount = useMemo(() => {
-    return Object.values(filters).filter(value => value !== "").length
+    // dateFilterMode is just a selector, not itself a filter — don't count it.
+    return Object.entries(filters).filter(([key, value]) => key !== "dateFilterMode" && value !== "").length
   }, [filters])
 
   const handleApplyFilters = () => {
@@ -196,8 +201,11 @@ export function useOrdersManagement(orders, statusKey, title) {
       deliveryMode: "",
       minAmount: "",
       maxAmount: "",
+      dateFilterMode: "date",
       fromDate: "",
       toDate: "",
+      fromTime: "",
+      toTime: "",
       restaurant: "",
     })
   }

@@ -17,6 +17,7 @@ import * as orderController from '../../orders/controllers/order.controller.js';
 import { getAdminPageController, upsertAdminPageController } from '../controllers/pageContent.controller.js';
 import * as employeeController from '../controllers/employee.controller.js';
 import { upload } from '../../../../middleware/upload.js';
+import * as membershipController from '../../membership/controllers/membership.controller.js';
 import { checkPermission } from '../../../../core/auth/auth.middleware.js';
 
 const router = express.Router();
@@ -144,6 +145,16 @@ router.patch('/offers/:id/cart-visibility', checkPermission('food::promotions_ma
 router.patch('/offers/:id/status', checkPermission('food::promotions_management::coupons', 'edit'), adminController.updateAdminOfferStatus);
 router.patch('/offers/:id', checkPermission('food::promotions_management::coupons', 'edit'), adminController.updateAdminOffer);
 router.delete('/offers/:id', checkPermission('food::promotions_management::coupons', 'delete'), adminController.deleteAdminOffer);
+// Memberships (promotions management)
+router.get('/memberships/dashboard', checkPermission('food::promotions_management::memberships', 'view'), membershipController.getDashboardController);
+router.get('/memberships/plans', checkPermission('food::promotions_management::memberships', 'view'), membershipController.listPlansAdminController);
+router.post('/memberships/plans', checkPermission('food::promotions_management::memberships', 'create'), membershipController.createPlanController);
+router.patch('/memberships/plans/:id/status', checkPermission('food::promotions_management::memberships', 'edit'), membershipController.setPlanStatusController);
+router.patch('/memberships/plans/:id', checkPermission('food::promotions_management::memberships', 'edit'), membershipController.updatePlanController);
+router.delete('/memberships/plans/:id', checkPermission('food::promotions_management::memberships', 'delete'), membershipController.deletePlanController);
+router.get('/memberships', checkPermission('food::promotions_management::memberships', 'view'), membershipController.listMembershipsAdminController);
+router.patch('/memberships/:id/cancel', checkPermission('food::promotions_management::memberships', 'edit'), membershipController.cancelMembershipController);
+router.post('/memberships/:id/refund', checkPermission('food::promotions_management::memberships', 'edit'), membershipController.refundMembershipController);
 router.get('/restaurant-coupons', checkPermission('food::promotions_management::coupons', 'view'), adminController.getRestaurantCoupons);
 router.patch('/restaurant-coupons/:id/status', checkPermission('food::promotions_management::coupons', 'edit'), adminController.updateRestaurantCouponStatus);
 

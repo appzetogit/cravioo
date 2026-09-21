@@ -116,6 +116,7 @@ import { parseGeoPoint } from "@food/utils/geo";
 const BannerSection = lazy(() => import("@food/components/user/home/BannerSection"));
 const CategoryRail = lazy(() => import("@food/components/user/home/CategoryRail"));
 const RecommendedSection = lazy(() => import("@food/components/user/home/RecommendedSection"));
+const MutualSection = lazy(() => import("@food/components/user/home/MutualSection"));
 const RestaurantGrid = lazy(() => import("@food/components/user/home/RestaurantGrid"));
 const SortFilterSection = lazy(() => import("@food/components/user/home/SortFilterSection"));
 const ExploreMoreSection = lazy(() => import("@food/components/user/home/ExploreMoreSection"));
@@ -433,6 +434,10 @@ export default function Home() {
                 isFavorite={isFavorite}
                 onFavoriteToggle={handleFavoriteToggle}
               />
+            </Suspense>
+
+            <Suspense fallback={null}>
+              <MutualSection />
             </Suspense>
 
             <Suspense fallback={<HeroBannerSkeleton className="h-full w-full px-4 mt-3" />}>

@@ -101,6 +101,8 @@ export default function OrderDetails({ orderId: propOrderId, isSidebar = false, 
 
           const taxes =
             firstNumber(
+              // Restaurant bill carries food GST only; GST on platform/packaging fees goes to the platform.
+              pricing.foodGst,
               pricing.tax,
               pricing.gst,
               order.tax,
@@ -685,7 +687,15 @@ export default function OrderDetails({ orderId: propOrderId, isSidebar = false, 
             </div>
             {Number(orderData.billing.packagingFee) > 0 && (
               <div className="flex items-center justify-between mb-3">
-                <span className="text-sm text-gray-600">Packaging fee</span>
+                <span className="text-sm text-gray-600">
+                  Packaging fee
+                  {Number(orderData.originalOrder?.pricing?.packagingFeeGst) > 0 && (
+                    <span className="block text-xs text-gray-400">
+                      Customer paid {formatMoney(orderData.originalOrder.pricing.packagingFeeGross)} - GST{' '}
+                      {formatMoney(orderData.originalOrder.pricing.packagingFeeGst)} (to platform)
+                    </span>
+                  )}
+                </span>
                 <span className="text-sm text-gray-900">{formatMoney(orderData.billing.packagingFee)}</span>
               </div>
             )}

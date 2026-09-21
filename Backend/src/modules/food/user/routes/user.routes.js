@@ -34,6 +34,7 @@ import {
     importContactsController,
     updatePermissionStatusController
 } from '../controllers/userContact.controller.js';
+import { getMutualUsersController } from '../controllers/userMutual.controller.js';
 
 import {
     submitRoleRequestController,
@@ -42,12 +43,16 @@ import {
     deleteRoleRequestController
 } from '../controllers/userRoleRequest.controller.js';
 
+import membershipUserRoutes from '../../membership/routes/membership.user.routes.js';
 import diningUserRoutes from '../../dining/routes/userDining.routes.js';
 
 const router = express.Router();
 
 // Dining table bookings (Bearer USER)
 router.use('/dining', diningUserRoutes);
+
+// Customer memberships (Bearer USER)
+router.use('/memberships', membershipUserRoutes);
 
 router.get('/profile', getCurrentUserProfileController);
 router.patch('/profile', updateCurrentUserProfileController);
@@ -86,5 +91,6 @@ router.patch('/addresses/:addressId/default', setDefaultAddressController);
 // Contacts Sync & Permission Status routes (Bearer USER)
 router.post('/contacts/import', importContactsController);
 router.patch('/contacts/permission-status', updatePermissionStatusController);
+router.get('/contacts/mutual', getMutualUsersController);
 
 export default router;

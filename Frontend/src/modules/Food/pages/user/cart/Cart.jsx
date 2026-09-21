@@ -352,6 +352,7 @@ export default function Cart() {
   const [sendCutlery, setSendCutlery] = useState(true)
   const [isPlacingOrder, setIsPlacingOrder] = useState(false)
   const [showBillDetails, setShowBillDetails] = useState(true)
+  const [showTaxBreakdown, setShowTaxBreakdown] = useState(false)
   const [showPlacingOrder, setShowPlacingOrder] = useState(false)
   /** Food Instant delivery mode: "standard" (Basic) | "quick". Never confuse with QC. */
   const [deliveryType, setDeliveryType] = useState("standard")
@@ -1241,6 +1242,8 @@ useEffect(() => {
             : [],
           platformFee: Number(settings.platformFee ?? 0),
           packagingFee: Number(settings.packagingFee ?? 0),
+          platformFeeGstRate: Number(settings.platformFeeGstRate ?? 0),
+          packagingFeeGstRate: Number(settings.packagingFeeGstRate ?? 0),
           gstRate: Number(settings.gstRate ?? 0),
         })
       }
@@ -1329,9 +1332,45 @@ const hasDistanceDeliveryBreakdown = Number.isFinite(Number(resolvedDistanceKm))
 const deliveryFeeBreakdownText = hasDistanceDeliveryBreakdown
   ? `${Number(resolvedDistanceKm).toFixed(1)} km delivery`
   : null
-const platformFee = pricing?.platformFee ?? Number(feeSettings.platformFee || 0)
-const packagingFee = pricing?.packagingFee ?? Number(feeSettings.packagingFee || 0)
-const gstCharges = pricing?.tax ?? Math.round(subtotal * (Number(feeSettings.gstRate || 0) / 100))
+// Platform / packaging fees are GST-inclusive: the bill shows the net fee and folds the GST into
+// "Government Taxes" (server `pricing` is authoritative; the fallback mirrors it until it loads).
+const splitFeeGst = (gross, rate) => {
+  const g = Number(gross || 0)
+  const r = Number(rate || 0)
+  if (!(g > 0) || !(r > 0)) return { gross: g, gst: 0, net: g }
+  const gst = Math.round((g - g / (1 + r / 100)) * 100) / 100
+  return { gross: g, gst, net: Math.round((g - gst) * 100) / 100 }
+}
+const fallbackPlatformSplit = splitFeeGst(feeSettings.platformFee, feeSettings.platformFeeGstRate)
+const fallbackPackagingSplit = splitFeeGst(feeSettings.packagingFee, feeSettings.packagingFeeGstRate)
+const fallbackFoodGst = Math.round(subtotal * (Number(feeSettings.gstRate || 0) / 100))
+const platformFee = pricing?.platformFee ?? fallbackPlatformSplit.net
+const packagingFee = pricing?.packagingFee ?? fallbackPackagingSplit.net
+const foodGst = pricing?.foodGst ?? pricing?.tax ?? fallbackFoodGst
+const platformFeeGst = pricing ? Number(pricing.platformFeeGst || 0) : fallbackPlatformSplit.gst
+const packagingFeeGst = pricing ? Number(pricing.packagingFeeGst || 0) : fallbackPackagingSplit.gst
+const gstCharges = pricing?.tax ?? foodGst + platformFeeGst + packagingFeeGst
+const gstBreakdownRows = [
+  { key: "food", label: "GST on food items", rate: pricing?.foodGstRate ?? feeSettings.gstRate, amount: foodGst },
+  {
+    key: "platform",
+    label: "GST on Platform Fee",
+    rate: pricing?.platformFeeGstRate ?? feeSettings.platformFeeGstRate,
+    amount: platformFeeGst,
+    note: `included in your ${RUPEE_SYMBOL}${Number(pricing?.platformFeeGross ?? fallbackPlatformSplit.gross).toFixed(2)} fee`,
+  },
+  {
+    key: "packaging",
+    label: "GST on Packaging Fee",
+    rate: pricing?.packagingFeeGstRate ?? feeSettings.packagingFeeGstRate,
+    amount: packagingFeeGst,
+    note: `included in your ${RUPEE_SYMBOL}${Number(pricing?.packagingFeeGross ?? fallbackPackagingSplit.gross).toFixed(2)} fee`,
+  },
+].filter((row) => Number(row.amount) > 0)
+const formatBillAmount = (value) => {
+  const n = Number(value || 0)
+  return Number.isInteger(n) ? n.toFixed(0) : n.toFixed(2)
+}
 // Never invent coupon caps — wait for server pricing for actual discount.
 const discount = pricing?.discount ?? 0
 const totalBeforeDiscount =
@@ -3375,7 +3414,7 @@ return (
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600 dark:text-gray-400">Platform Fee</span>
                       <div className="text-right">
-                        <span className="text-gray-800 dark:text-gray-200 font-medium">{RUPEE_SYMBOL}{platformFee.toFixed(0)}</span>
+                        <span className="text-gray-800 dark:text-gray-200 font-medium">{RUPEE_SYMBOL}{formatBillAmount(platformFee)}</span>
                       </div>
                     </div>
                   )}
@@ -3383,13 +3422,40 @@ return (
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-600 dark:text-gray-400">Packaging Fee</span>
                       <div className="text-right">
-                        <span className="text-gray-800 dark:text-gray-200 font-medium">{RUPEE_SYMBOL}{packagingFee.toFixed(0)}</span>
+                        <span className="text-gray-800 dark:text-gray-200 font-medium">{RUPEE_SYMBOL}{formatBillAmount(packagingFee)}</span>
                       </div>
                     </div>
                   )}
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600 dark:text-gray-400 border-b border-dashed border-gray-400 pb-[1px]">Government Taxes</span>
-                    <span className="text-gray-800 dark:text-gray-200 font-medium">{RUPEE_SYMBOL}{gstCharges.toFixed(2)}</span>
+                  <div>
+                    <button
+                      type="button"
+                      onClick={() => setShowTaxBreakdown((v) => !v)}
+                      className="flex w-full justify-between text-sm text-left"
+                    >
+                      <span className="text-gray-600 dark:text-gray-400 border-b border-dashed border-gray-400 pb-[1px] flex items-center gap-1">
+                        Government Taxes
+                        <ChevronRight className={`h-3.5 w-3.5 text-gray-400 transition-transform ${showTaxBreakdown ? 'rotate-90' : ''}`} />
+                      </span>
+                      <span className="text-gray-800 dark:text-gray-200 font-medium">{RUPEE_SYMBOL}{gstCharges.toFixed(2)}</span>
+                    </button>
+                    {showTaxBreakdown && (
+                      <div className="mt-2 ml-2 pl-3 border-l-2 border-gray-100 dark:border-gray-800 space-y-2">
+                        {gstBreakdownRows.map((row) => (
+                          <div key={row.key} className="flex justify-between gap-3 text-xs">
+                            <span className="text-gray-500 dark:text-gray-400">
+                              {row.label}
+                              {Number(row.rate) > 0 ? ` (${Number(row.rate)}%)` : ""}
+                              {row.note && <span className="block text-[10px] text-gray-400">{row.note}</span>}
+                            </span>
+                            <span className="text-gray-700 dark:text-gray-300 font-medium">{RUPEE_SYMBOL}{Number(row.amount).toFixed(2)}</span>
+                          </div>
+                        ))}
+                        <div className="flex justify-between text-xs font-semibold pt-2 border-t border-dashed border-gray-200 dark:border-gray-800 text-gray-800 dark:text-gray-200">
+                          <span>Total Government Taxes</span>
+                          <span>{RUPEE_SYMBOL}{gstCharges.toFixed(2)}</span>
+                        </div>
+                      </div>
+                    )}
                   </div>
                   {discount > 0 && (
                     <div className="flex justify-between text-sm text-[#32C45A] font-medium">

@@ -20,6 +20,8 @@ const restaurantCouponSchema = new mongoose.Schema(
         isFirstOrderOnly: { type: Boolean, default: false },
         description: { type: String },
         showInCart: { type: Boolean, default: true },
+        // Visible / redeemable only by users holding an active Cravioo membership
+        membershipOnly: { type: Boolean, default: false },
         status: { type: String, enum: ['Pending', 'Approved', 'Rejected'], default: 'Pending', index: true }
     },
     { collection: 'food_restaurant_coupons', timestamps: true }

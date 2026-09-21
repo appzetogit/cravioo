@@ -99,6 +99,7 @@ import { roadDistanceKm, PAYMENT_QUEUE_ACTIONS, enqueueOrderEvent, notifyRestaur
 import { scorePointsByRoadDistance } from '../../../../services/roadDistance.service.js';
 import { assertDeliveryPartnerCodHeadroom } from '../../delivery/services/deliveryFinance.service.js';
 import { getDeliveryCashLimitSettings } from '../../admin/services/admin.service.js';
+import { splitInclusiveGst } from '../../shared/feeGst.util.js';
 
 export {
   tryAutoAssign,
@@ -934,6 +935,8 @@ function normalizeFoodFeeSettings(feeDoc = null) {
     feeSettings.packagingFee = 0;
   }
   feeSettings.gstRate = Number(feeSettings.gstRate ?? defaultFeeSettings.gstRate);
+  feeSettings.platformFeeGstRate = Number(feeSettings.platformFeeGstRate) || 0;
+  feeSettings.packagingFeeGstRate = Number(feeSettings.packagingFeeGstRate) || 0;
   feeSettings.mixedOrderDistanceLimit = Number(
     feeSettings.mixedOrderDistanceLimit ?? defaultFeeSettings.mixedOrderDistanceLimit,
   );
@@ -2600,8 +2603,12 @@ export async function calculateOrder(userId, dto, options = {}) {
     throw new ValidationError("Restaurant not available");
   const primaryRestaurantId = primaryRestaurant.sourceId;
 
-  const packagingFee = roundCurrency(Number(feeSettings.packagingFee || 0));
-  const platformFee = feeSettings.platformFee;
+  // Platform / packaging fees are GST-inclusive. `platformFee` / `packagingFee` below are the NET parts
+  // (what platform / restaurant earn); their GST is folded into `tax` so the customer total is unchanged.
+  const packagingSplit = splitInclusiveGst(feeSettings.packagingFee, feeSettings.packagingFeeGstRate);
+  const platformSplit = splitInclusiveGst(feeSettings.platformFee, feeSettings.platformFeeGstRate);
+  const packagingFee = packagingSplit.net;
+  const platformFee = platformSplit.net;
 
   let deliveryFee = 0;
   let totalDeliveryFee = 0;
@@ -2676,15 +2683,26 @@ export async function calculateOrder(userId, dto, options = {}) {
 
   const gstRate = feeSettings.gstRate;
   const discountedSubtotal = Math.max(0, subtotal - discount);
-  const tax = Number.isFinite(gstRate) && gstRate > 0
+  const foodTax = Number.isFinite(gstRate) && gstRate > 0
     ? Math.round(discountedSubtotal * (gstRate / 100))
     : 0;
+  const tax = roundCurrency(foodTax + platformSplit.gst + packagingSplit.gst);
+  const gstBreakdown = {
+    foodGst: foodTax,
+    foodGstRate: Number.isFinite(gstRate) ? gstRate : 0,
+    platformFeeGross: platformSplit.gross,
+    platformFeeGst: platformSplit.gst,
+    platformFeeGstRate: platformSplit.ratePct,
+    packagingFeeGross: packagingSplit.gross,
+    packagingFeeGst: packagingSplit.gst,
+    packagingFeeGstRate: packagingSplit.ratePct,
+  };
 
   const selectedDeliveryFee = deliveryFee;
-  let total = Math.max(
+  let total = roundCurrency(Math.max(
     0,
     subtotal + packagingFee + selectedDeliveryFee + platformFee + tax - discount,
-  );
+  ));
   const deliveryOptions = [];
 
   // ----- Food Quick Delivery — additive; Basic path untouched when deliveryMode≠quick -----
@@ -2760,7 +2778,7 @@ export async function calculateOrder(userId, dto, options = {}) {
         foodQuickSharePcts = split.quickSharePcts;
         foodQuickFinanceVersion = split.quickFinanceVersion;
         foodDeliveryMode = "quick";
-        total = Math.max(0, total + foodQuickDeliveryFee);
+        total = roundCurrency(Math.max(0, total + foodQuickDeliveryFee));
         etaPromise = eta.etaPromise;
         foodQuickDeliveryMeta.etaPromise = {
           min: etaPromise.min,
@@ -2787,6 +2805,7 @@ export async function calculateOrder(userId, dto, options = {}) {
     pricing: {
       subtotal,
       tax,
+      ...gstBreakdown,
       packagingFee,
       deliveryFee: selectedDeliveryFee,
       totalDeliveryFee,
@@ -3029,6 +3048,14 @@ export async function createOrder(userId, dto) {
   const normalizedPricing = {
     subtotal: Math.max(0, Number(serverPricing.subtotal || 0)),
     tax: Math.max(0, Number(serverPricing.tax || 0)),
+    foodGst: Math.max(0, Number(serverPricing.foodGst ?? serverPricing.tax ?? 0)),
+    foodGstRate: Math.max(0, Number(serverPricing.foodGstRate || 0)),
+    platformFeeGross: Math.max(0, Number(serverPricing.platformFeeGross ?? serverPricing.platformFee ?? 0)),
+    platformFeeGst: Math.max(0, Number(serverPricing.platformFeeGst || 0)),
+    platformFeeGstRate: Math.max(0, Number(serverPricing.platformFeeGstRate || 0)),
+    packagingFeeGross: Math.max(0, Number(serverPricing.packagingFeeGross ?? serverPricing.packagingFee ?? 0)),
+    packagingFeeGst: Math.max(0, Number(serverPricing.packagingFeeGst || 0)),
+    packagingFeeGstRate: Math.max(0, Number(serverPricing.packagingFeeGstRate || 0)),
     packagingFee: Math.max(0, Number(serverPricing.packagingFee || 0)),
     deliveryFee: resolvedDeliveryFee,
     totalDeliveryFee: useExpressMixedFees
@@ -3104,7 +3131,7 @@ export async function createOrder(userId, dto) {
   normalizedPricing.sponsoredDelivery =
     Boolean(normalizedPricing.sponsoredDelivery) ||
     normalizedPricing.restaurantDeliveryFee > 0;
-  const recomputedTotal = Math.max(
+  const recomputedTotal = roundCurrency(Math.max(
     0,
     normalizedPricing.subtotal +
       normalizedPricing.tax +
@@ -3113,7 +3140,7 @@ export async function createOrder(userId, dto) {
       normalizedPricing.platformFee +
       normalizedPricing.quickDeliveryFee -
       normalizedPricing.discount,
-  );
+  ));
   normalizedPricing.total = recomputedTotal;
 
   if (isCash) {
@@ -6140,7 +6167,8 @@ async function buildListOrdersAdminFilter(query = {}) {
       createdAt.$gte = start;
     }
     if (end && !Number.isNaN(end.getTime())) {
-      end.setHours(23, 59, 59, 999);
+      // Date-only input ("YYYY-MM-DD") means the whole day; a full timestamp is used as-is.
+      if (/^\d{4}-\d{2}-\d{2}$/.test(endDateRaw)) end.setHours(23, 59, 59, 999);
       createdAt.$lte = end;
     }
     if (Object.keys(createdAt).length > 0) {

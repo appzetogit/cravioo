@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import { FoodOrder } from '../orders/models/order.model.js';
 import { FoodOffer } from '../admin/models/offer.model.js';
+import { isUserActiveMember } from '../membership/services/membership.service.js';
 
 export const CANCELLED_ORDER_STATUSES = [
     'cancelled_by_user',
@@ -262,6 +263,9 @@ export async function validateAndApplyCoupon({
 
     const offer = await FoodOffer.findOne({ couponCode: codeRaw }).lean();
     if (offer) {
+        if (offer.membershipOnly && !(await isUserActiveMember(userId))) {
+            return { discount: 0, appliedCoupon: null };
+        }
         const statusOk = offer.status === 'active' && offer.showInCart !== false;
         const scopeOk = offerMatchesRestaurant(offer, resolvedRestaurantObjectId);
         const minOk = itemSubtotal >= getCouponMinOrderValue(offer);
@@ -303,6 +307,9 @@ export async function validateAndApplyCoupon({
     }).lean();
 
     if (!restCoupon || restCoupon.showInCart === false) {
+        return { discount: 0, appliedCoupon: null };
+    }
+    if (restCoupon.membershipOnly && !(await isUserActiveMember(userId))) {
         return { discount: 0, appliedCoupon: null };
     }
 

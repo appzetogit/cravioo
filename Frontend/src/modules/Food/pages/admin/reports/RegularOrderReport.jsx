@@ -66,6 +66,8 @@ const transformOrderForReport = (order) => {
   const quickDeliveryFee = Number(pricing.quickDeliveryFee || 0)
   const platformFee = Number(pricing.platformFee || 0)
   const vatTax = Number(pricing.tax || 0)
+  const platformFeeGst = Number(pricing.platformFeeGst || 0)
+  const packagingFeeGst = Number(pricing.packagingFeeGst || 0)
   const totalDiscount = Math.max(0, Number(pricing.discount || 0))
   // Correctly resolve coupon discount vs item discount
   const rawCouponDiscount = Number(pricing.couponDiscount || 0)
@@ -119,7 +121,9 @@ const transformOrderForReport = (order) => {
     deliveryMode: order.deliveryMode || "basic",
     slaBreached: Boolean(order?.sla?.breached),
     platformFee,
+    platformFeeGst,
     packagingFee,
+    packagingFeeGst,
     totalAmount,
     orderStatus: displayStatus,
   }
@@ -297,8 +301,10 @@ export default function RegularOrderReport() {
       { key: "deliveryCharge", label: "Delivery Charge" },
       { key: "quickDeliveryFee", label: "Quick Charge" },
       { key: "deliveryMode", label: "Delivery Mode" },
-      { key: "platformFee", label: "Platform Fee" },
-      { key: "packagingFee", label: "Packaging Fee" },
+      { key: "platformFee", label: "Platform Fee (net)" },
+      { key: "platformFeeGst", label: "GST on Platform Fee" },
+      { key: "packagingFee", label: "Packaging Fee (net)" },
+      { key: "packagingFeeGst", label: "GST on Packaging Fee" },
       { key: "totalAmount", label: "Order Amount" },
       { key: "orderStatus", label: "Status" },
     ]
@@ -347,7 +353,9 @@ export default function RegularOrderReport() {
               : "Quick"
             : "Basic",
         platformFee: money(order.platformFee),
+        platformFeeGst: money(order.platformFeeGst),
         packagingFee: money(order.packagingFee),
+        packagingFeeGst: money(order.packagingFeeGst),
         totalAmount: money(order.totalAmount),
         orderStatus: order.orderStatus || "N/A",
       }))
@@ -649,7 +657,7 @@ export default function RegularOrderReport() {
                     Coupon Discount
                   </th>
                   <th className="px-1.5 py-1 text-left text-[8px] font-bold text-slate-700 uppercase tracking-wider" style={{ width: "6%" }}>
-                    Vat/Tax
+                    Vat/Tax (total GST)
                   </th>
                   <th className="px-1.5 py-1 text-left text-[8px] font-bold text-slate-700 uppercase tracking-wider" style={{ width: "7%" }}>
                     Delivery Charge
@@ -661,10 +669,16 @@ export default function RegularOrderReport() {
                     Mode
                   </th>
                   <th className="px-1.5 py-1 text-left text-[8px] font-bold text-slate-700 uppercase tracking-wider" style={{ width: "6%" }}>
-                    Platform Fee
+                    Platform Fee (net)
                   </th>
                   <th className="px-1.5 py-1 text-left text-[8px] font-bold text-slate-700 uppercase tracking-wider" style={{ width: "6%" }}>
-                    Packaging Fee
+                    GST on Platform Fee
+                  </th>
+                  <th className="px-1.5 py-1 text-left text-[8px] font-bold text-slate-700 uppercase tracking-wider" style={{ width: "6%" }}>
+                    Packaging Fee (net)
+                  </th>
+                  <th className="px-1.5 py-1 text-left text-[8px] font-bold text-slate-700 uppercase tracking-wider" style={{ width: "6%" }}>
+                    GST on Packaging Fee
                   </th>
                   <th className="px-1.5 py-1 text-left text-[8px] font-bold text-slate-700 uppercase tracking-wider" style={{ width: "8%" }}>
                     Order Amount
@@ -677,7 +691,7 @@ export default function RegularOrderReport() {
               <tbody className={`bg-white divide-y divide-slate-100 transition-opacity duration-200 ${isFiltering ? "opacity-50 pointer-events-none" : "opacity-100"}`}>
                 {orders.length === 0 ? (
                   <tr>
-                    <td colSpan={13} className="px-6 py-20 text-center">
+                    <td colSpan={15} className="px-6 py-20 text-center">
                       <div className="flex flex-col items-center justify-center">
                         <p className="text-lg font-semibold text-slate-700 mb-1">No Data Found</p>
                         <p className="text-sm text-slate-500">No orders match your filters</p>
@@ -727,7 +741,13 @@ export default function RegularOrderReport() {
                         <span className="text-[10px] text-slate-700">{formatAmount(order.platformFee)}</span>
                       </td>
                       <td className="px-1.5 py-1">
+                        <span className="text-[10px] text-slate-700">{formatAmount(order.platformFeeGst || 0)}</span>
+                      </td>
+                      <td className="px-1.5 py-1">
                         <span className="text-[10px] text-slate-700">{formatAmount(order.packagingFee || 0)}</span>
+                      </td>
+                      <td className="px-1.5 py-1">
+                        <span className="text-[10px] text-slate-700">{formatAmount(order.packagingFeeGst || 0)}</span>
                       </td>
                       <td className="px-1.5 py-1">
                         <span className="text-[10px] font-medium text-slate-900">{formatAmount(order.totalAmount || order.totalItemAmount)}</span>

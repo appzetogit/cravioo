@@ -45,6 +45,8 @@ const statusConfig = {
 export default function OrdersPage({ statusKey = "all" }) {
   const config = statusConfig[statusKey] || statusConfig["all"]
   const [orders, setOrders] = useState([])
+  // Day range sent to the server so the fetched window covers the selected dates.
+  const [dateRange, setDateRange] = useState({ from: "", to: "" })
   const [isLoading, setIsLoading] = useState(true)
   const [processingRefund, setProcessingRefund] = useState(null)
   const [processingActionOrderId, setProcessingActionOrderId] = useState(null)
@@ -335,6 +337,8 @@ export default function OrdersPage({ statusKey = "all" }) {
               ? "cancelled"
               : statusKey,
         cancelledBy: statusKey === "restaurant-cancelled" ? "restaurant" : undefined,
+        startDate: dateRange.from ? new Date(`${dateRange.from}T00:00:00`).toISOString() : undefined,
+        endDate: dateRange.to ? new Date(`${dateRange.to}T23:59:59.999`).toISOString() : undefined,
       }
 
       const response = await adminAPI.getOrders(params)
@@ -409,7 +413,7 @@ export default function OrdersPage({ statusKey = "all" }) {
     } finally {
       if (!silent) setIsLoading(false)
     }
-  }, [statusKey, playDefaultRing, showBrowserNotification, startAlertLoop])
+  }, [statusKey, dateRange, playDefaultRing, showBrowserNotification, startAlertLoop])
 
   const normalizedOrders = useMemo(() => {
     const safeOrders = Array.isArray(orders) ? orders : []
@@ -664,14 +668,29 @@ export default function OrdersPage({ statusKey = "all" }) {
     count,
     activeFiltersCount,
     restaurants,
-    handleApplyFilters,
-    handleResetFilters,
+    handleApplyFilters: applyFiltersLocal,
+    handleResetFilters: resetFiltersLocal,
     handleExport,
     handleViewOrder,
     handlePrintOrder,
     toggleColumn,
     resetColumns,
   } = useOrdersManagement(normalizedOrders, statusKey, config.title)
+
+  const handleApplyFilters = () => {
+    // Server-side prefetch window only makes sense for the "date" mode — "time" mode
+    // filters within whatever is already loaded, across all dates.
+    const isDateMode = (filters.dateFilterMode || "date") === "date"
+    setDateRange({
+      from: isDateMode ? filters.fromDate || "" : "",
+      to: isDateMode ? filters.toDate || "" : "",
+    })
+    applyFiltersLocal()
+  }
+  const handleResetFilters = () => {
+    setDateRange({ from: "", to: "" })
+    resetFiltersLocal()
+  }
 
   useEffect(() => {
     isFirstLoadRef.current = true

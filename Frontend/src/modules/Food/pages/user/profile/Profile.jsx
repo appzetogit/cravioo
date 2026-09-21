@@ -31,6 +31,7 @@ import {
   Loader2,
   Package,
   Shield,
+  Crown,
   Facebook,
   Instagram,
   Twitter,
@@ -875,6 +876,20 @@ export default function Profile() {
                 </CardContent>
               </Card>
             </motion.div>
+          </Link>
+
+          <Link to="/food/user/membership" className="block">
+            <Card className="bg-white dark:bg-[#1a1a1a] py-0 rounded-xl shadow-sm border-0 dark:border-gray-800 cursor-pointer">
+              <CardContent className="p-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="bg-amber-100 dark:bg-amber-900/30 rounded-full p-2">
+                    <Crown className="h-5 w-5 text-amber-600" />
+                  </div>
+                  <span className="text-base font-medium text-gray-900 dark:text-white">Membership</span>
+                </div>
+                <ChevronRight className="h-5 w-5 text-gray-400 dark:text-gray-500" />
+              </CardContent>
+            </Card>
           </Link>
 
           <Link to={couponPath} className="block">

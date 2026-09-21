@@ -4,7 +4,7 @@ import { FoodRestaurantWithdrawal } from '../models/foodRestaurantWithdrawal.mod
 import { FoodRestaurantWallet } from '../models/restaurantWallet.model.js';
 import { FoodRestaurant } from '../models/restaurant.model.js';
 import { getRestaurantAvailableWithdrawalBalance, selfHealRestaurantFinanceLedger } from '../services/restaurantFinance.service.js';
-import { getRestaurantWithdrawalLimitSettings } from '../../admin/services/admin.service.js';
+import { getRestaurantWithdrawalLimitSettings, getRestaurantWithdrawalDayStatus } from '../../admin/services/admin.service.js';
 
 function resolveBankDetails(bodyBank, restaurant) {
     const fromBody = bodyBank && typeof bodyBank === 'object' ? bodyBank : {};
@@ -90,6 +90,11 @@ export const createWithdrawalRequestController = async (req, res, next) => {
             getRestaurantWithdrawalLimitSettings()
         ]);
         if (!restaurant) return sendError(res, 404, 'Restaurant not found');
+
+        const dayStatus = getRestaurantWithdrawalDayStatus(limitSettings.restaurantWithdrawalDay);
+        if (!dayStatus.allowed) {
+            return sendError(res, 400, `Withdrawals are only allowed on ${dayStatus.dayName}`);
+        }
 
         const minLimit = Number(limitSettings.restaurantMinWithdrawalLimit) || 1;
         const maxLimit =

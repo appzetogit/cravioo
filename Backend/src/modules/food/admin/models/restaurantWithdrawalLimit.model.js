@@ -5,6 +5,8 @@ const restaurantWithdrawalLimitSchema = new mongoose.Schema(
         restaurantMinWithdrawalLimit: { type: Number, default: 1, min: 0 },
         // null = unlimited (legacy / unset)
         restaurantMaxWithdrawalLimit: { type: Number, default: null, min: 0 },
+        // 0 (Sunday) - 6 (Saturday), IST. null = withdrawals allowed every day (legacy / unset)
+        restaurantWithdrawalDay: { type: Number, default: null, min: 0, max: 6 },
         isActive: { type: Boolean, default: true, index: true }
     },
     { collection: 'food_restaurant_withdrawal_limits', timestamps: true }

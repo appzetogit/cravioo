@@ -41,6 +41,7 @@ const defaultFormData = {
   usageLimit: "",
   perUserLimit: "",
   description: "",
+  membershipOnly: false,
 }
 
 const statusBadgeClass = (status) => {
@@ -132,6 +133,7 @@ export default function CreateCouponsPage() {
       usageLimit: coupon?.usageLimit || "",
       perUserLimit: coupon?.perUserLimit || "",
       description: coupon?.description || "",
+      membershipOnly: Boolean(coupon?.membershipOnly),
     })
     setShowModal(true)
   }
@@ -175,6 +177,7 @@ export default function CreateCouponsPage() {
         usageLimit: formData.usageLimit ? Number(formData.usageLimit) : null,
         perUserLimit: formData.perUserLimit ? Number(formData.perUserLimit) : null,
         description: formData.description.trim(),
+        membershipOnly: Boolean(formData.membershipOnly),
       }
 
       if (editingCoupon) {
@@ -268,6 +271,15 @@ export default function CreateCouponsPage() {
           <option value="all">All Users</option>
           <option value="first-time">First-time Users Only</option>
         </select>
+        <label className="mt-2 flex items-center gap-2 text-sm text-slate-700">
+          <input
+            type="checkbox"
+            checked={Boolean(formData.membershipOnly)}
+            onChange={(e) => setFormData((prev) => ({ ...prev, membershipOnly: e.target.checked }))}
+            className="h-4 w-4"
+          />
+          Members only (shown and usable only by customers with an active membership)
+        </label>
       </div>
 
       {formData.discountType === "percentage" && (
@@ -528,7 +540,7 @@ export default function CreateCouponsPage() {
                           Value: {coupon.discountType === "percentage" ? `${coupon.discountValue}% OFF` : `₹${coupon.discountValue} FLAT OFF`}
                         </p>
                         <p className="text-xs text-slate-500">
-                          Customers: {customerLabel}
+                          Customers: {customerLabel}{coupon.membershipOnly ? ' · Members only' : ''}
                         </p>
                         <p className="text-xs text-slate-500">
                           Min. Order Value: ₹{coupon.minOrderValue ?? coupon.minOrderAmount ?? 0}
