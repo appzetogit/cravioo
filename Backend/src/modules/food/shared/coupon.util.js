@@ -60,6 +60,7 @@ export { resolveRestaurantObjectId } from './restaurantIdentity.util.js';
 
 export function normalizeDiscountType(discountType) {
     const value = String(discountType || '').toLowerCase();
+    if (value === 'free-delivery' || value === 'free_delivery') return 'free-delivery';
     if (value === 'fixed' || value === 'flat-price' || value === 'flat') return 'flat-price';
     return 'percentage';
 }
@@ -69,6 +70,9 @@ export function calculateDiscountFromCoupon(coupon, itemSubtotal) {
     if (!coupon || safeSubtotal <= 0) return 0;
 
     const discountType = normalizeDiscountType(coupon.discountType);
+    // Free delivery never discounts the item subtotal — it zeroes the delivery fee instead
+    // (see validateAndApplyCoupon's `freeDelivery` flag, applied in order.service.js).
+    if (discountType === 'free-delivery') return 0;
     if (discountType === 'percentage') {
         const raw = safeSubtotal * ((Number(coupon.discountValue) || 0) / 100);
         const maxDiscount = Number(coupon.maxDiscount);
@@ -290,6 +294,7 @@ export async function validateAndApplyCoupon({
                     code: codeRaw,
                     discount,
                     source: 'admin',
+                    freeDelivery: normalizeDiscountType(offer.discountType) === 'free-delivery',
                 },
             };
         }

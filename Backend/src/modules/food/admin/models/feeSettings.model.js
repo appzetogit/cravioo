@@ -103,6 +103,12 @@ const feeSettingsSchema = new mongoose.Schema(
         platformFeeGstRate: { type: Number, min: 0, max: 100 },
         /** GST % INCLUDED in the packaging fee the customer pays (0 / unset = no GST split). */
         packagingFeeGstRate: { type: Number, min: 0, max: 100 },
+        /**
+         * % of the delivery amount the platform keeps when a base-pay slab is configured
+         * in deliveryFeeRanges (cumulative pricing). Rider gets the rest; customer price
+         * is unaffected. 0/unset = rider keeps 100% (legacy behaviour).
+         */
+        deliveryCommissionPct: { type: Number, min: 0, max: 100 },
         mixedOrderDistanceLimit: { type: Number, min: 0, default: 2 },
         mixedOrderAngleLimit: { type: Number, min: 0, default: 35 },
         /** Global Quick Delivery control + knobs. Missing/undefined ⇒ treat enabled as false. */

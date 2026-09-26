@@ -433,7 +433,6 @@ export default function Cart() {
     baseDeliveryFee: 0,
     deliveryFeeRanges: [],
     platformFee: 0,
-    packagingFee: 0,
     gstRate: 0,
   })
 
@@ -965,6 +964,7 @@ export default function Cart() {
 
         if (response?.data?.success && response?.data?.data?.coupons) {
           const coupons = response.data.data.coupons.map((coupon) => {
+            const isFreeDelivery = coupon.discountType === "free-delivery"
             const isPct = coupon.discountType === "percentage"
             const discountValue = Number(coupon.discountValue) || 0
             const estimatedDiscount = Number(coupon.estimatedDiscount) || 0
@@ -975,16 +975,21 @@ export default function Cart() {
               code: coupon.couponCode,
               discount: estimatedDiscount,
               discountType: coupon.discountType,
+              freeDelivery: isFreeDelivery,
               discountValue,
               displayDiscount,
               discountPercentage: coupon.discountPercentage,
-              discountDisplay: isPct
-                ? `${coupon.discountPercentage}% OFF`
-                : `${RUPEE_SYMBOL}${displayDiscount} OFF`,
+              discountDisplay: isFreeDelivery
+                ? "FREE DELIVERY"
+                : isPct
+                  ? `${coupon.discountPercentage}% OFF`
+                  : `${RUPEE_SYMBOL}${displayDiscount} OFF`,
               minOrder: coupon.minOrderValue || 0,
-              description: isPct
-                ? `${coupon.discountPercentage}% OFF on item total with '${coupon.couponCode}'`
-                : `Save ${RUPEE_SYMBOL}${displayDiscount} on item total with '${coupon.couponCode}'`,
+              description: isFreeDelivery
+                ? `Free delivery on this order with '${coupon.couponCode}'`
+                : isPct
+                  ? `${coupon.discountPercentage}% OFF on item total with '${coupon.couponCode}'`
+                  : `Save ${RUPEE_SYMBOL}${displayDiscount} on item total with '${coupon.couponCode}'`,
               customerGroup: coupon.customerGroup || coupon.customerScope || "all",
               customerScope: coupon.customerScope || coupon.customerGroup || "all",
               isFirstOrderOnly: Boolean(coupon.isFirstOrderOnly),
@@ -1241,9 +1246,7 @@ useEffect(() => {
             ? settings.deliveryFeeRanges
             : [],
           platformFee: Number(settings.platformFee ?? 0),
-          packagingFee: Number(settings.packagingFee ?? 0),
           platformFeeGstRate: Number(settings.platformFeeGstRate ?? 0),
-          packagingFeeGstRate: Number(settings.packagingFeeGstRate ?? 0),
           gstRate: Number(settings.gstRate ?? 0),
         })
       }
@@ -1342,13 +1345,13 @@ const splitFeeGst = (gross, rate) => {
   return { gross: g, gst, net: Math.round((g - gst) * 100) / 100 }
 }
 const fallbackPlatformSplit = splitFeeGst(feeSettings.platformFee, feeSettings.platformFeeGstRate)
-const fallbackPackagingSplit = splitFeeGst(feeSettings.packagingFee, feeSettings.packagingFeeGstRate)
 const fallbackFoodGst = Math.round(subtotal * (Number(feeSettings.gstRate || 0) / 100))
 const platformFee = pricing?.platformFee ?? fallbackPlatformSplit.net
-const packagingFee = pricing?.packagingFee ?? fallbackPackagingSplit.net
+// Packaging fee is set per food item now (no global fallback) — 0 until the server prices the cart.
+const packagingFee = Number(pricing?.packagingFee || 0)
 const foodGst = pricing?.foodGst ?? pricing?.tax ?? fallbackFoodGst
 const platformFeeGst = pricing ? Number(pricing.platformFeeGst || 0) : fallbackPlatformSplit.gst
-const packagingFeeGst = pricing ? Number(pricing.packagingFeeGst || 0) : fallbackPackagingSplit.gst
+const packagingFeeGst = Number(pricing?.packagingFeeGst || 0)
 const gstCharges = pricing?.tax ?? foodGst + platformFeeGst + packagingFeeGst
 const gstBreakdownRows = [
   { key: "food", label: "GST on food items", rate: pricing?.foodGstRate ?? feeSettings.gstRate, amount: foodGst },
@@ -1362,9 +1365,9 @@ const gstBreakdownRows = [
   {
     key: "packaging",
     label: "GST on Packaging Fee",
-    rate: pricing?.packagingFeeGstRate ?? feeSettings.packagingFeeGstRate,
+    rate: pricing?.packagingFeeGstRate ?? 0,
     amount: packagingFeeGst,
-    note: `included in your ${RUPEE_SYMBOL}${Number(pricing?.packagingFeeGross ?? fallbackPackagingSplit.gross).toFixed(2)} fee`,
+    note: `included in your ${RUPEE_SYMBOL}${Number(pricing?.packagingFeeGross || 0).toFixed(2)} fee`,
   },
 ].filter((row) => Number(row.amount) > 0)
 const formatBillAmount = (value) => {
@@ -1757,6 +1760,7 @@ const handleApplyCouponCode = async () => {
       matchedCoupon || {
         code: inputCode,
         discount: result.pricing.appliedCoupon.discount || 0,
+        freeDelivery: Boolean(result.pricing.appliedCoupon.freeDelivery),
         minOrder: 0,
         customerGroup: "all",
       },
@@ -2975,7 +2979,9 @@ return (
                     <Percent className="h-5 w-5 text-[#32C45A] mt-0.5" />
                     <div>
                       <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">'{appliedCoupon.code}' applied</p>
-                      <p className="text-xs text-[#32C45A] font-medium mt-0.5">You saved {RUPEE_SYMBOL}{discount}</p>
+                      <p className="text-xs text-[#32C45A] font-medium mt-0.5">
+                        {appliedCoupon.freeDelivery ? "Free delivery applied!" : `You saved ${RUPEE_SYMBOL}${discount}`}
+                      </p>
                     </div>
                   </div>
                   <button onClick={handleRemoveCoupon} className="text-[#32C45A] text-xs font-semibold px-2 hover:underline">REMOVE</button>

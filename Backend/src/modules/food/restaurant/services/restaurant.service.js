@@ -2804,9 +2804,11 @@ export const listPublicOffers = async (query = {}) => {
                 : 'All Restaurants';
 
         const title =
-            o.discountType === 'percentage'
-                ? `${Number(o.discountValue) || 0}% OFF`
-                : `Flat ₹${Number(o.discountValue) || 0} OFF`;
+            o.discountType === 'free-delivery'
+                ? 'FREE DELIVERY'
+                : o.discountType === 'percentage'
+                    ? `${Number(o.discountValue) || 0}% OFF`
+                    : `Flat ₹${Number(o.discountValue) || 0} OFF`;
 
         adminOffers.push({
             id: String(o._id),

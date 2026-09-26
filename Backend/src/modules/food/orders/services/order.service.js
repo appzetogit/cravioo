@@ -99,7 +99,7 @@ import { roadDistanceKm, PAYMENT_QUEUE_ACTIONS, enqueueOrderEvent, notifyRestaur
 import { scorePointsByRoadDistance } from '../../../../services/roadDistance.service.js';
 import { assertDeliveryPartnerCodHeadroom } from '../../delivery/services/deliveryFinance.service.js';
 import { getDeliveryCashLimitSettings } from '../../admin/services/admin.service.js';
-import { splitInclusiveGst } from '../../shared/feeGst.util.js';
+import { splitInclusiveGst, computeItemsPackagingTotals } from '../../shared/feeGst.util.js';
 
 export {
   tryAutoAssign,
@@ -691,7 +691,7 @@ async function applyServerFoodItemPricing(items = [], sourceMap = new Map()) {
     approvalStatus: "approved",
     isAvailable: true,
   })
-    .select("restaurantId name price variants image images foodType")
+    .select("restaurantId name price variants image images foodType packagingFee packagingFeeGstRate")
     .lean();
   const foodById = new Map(foodDocs.map((doc) => [String(doc._id), doc]));
 
@@ -742,6 +742,9 @@ async function applyServerFoodItemPricing(items = [], sourceMap = new Map()) {
       item.isAddon = false;
       item.sourceId = expectedRestaurantId;
       item.sourceName = source?.sourceName || item.sourceName || "";
+      // Packaging fee is set per food item by admin now (never trust client-sent values).
+      item.packagingFee = Number(foodDoc.packagingFee) || 0;
+      item.packagingFeeGstRate = Number(foodDoc.packagingFeeGstRate) || 0;
       continue;
     }
 
@@ -766,6 +769,9 @@ async function applyServerFoodItemPricing(items = [], sourceMap = new Map()) {
     item.variantPrice = item.price;
     item.sourceId = expectedRestaurantId;
     item.sourceName = source?.sourceName || item.sourceName || "";
+    // Addons don't carry their own packaging — only the dish itself does.
+    item.packagingFee = 0;
+    item.packagingFeeGstRate = 0;
   }
 }
 
@@ -937,6 +943,7 @@ function normalizeFoodFeeSettings(feeDoc = null) {
   feeSettings.gstRate = Number(feeSettings.gstRate ?? defaultFeeSettings.gstRate);
   feeSettings.platformFeeGstRate = Number(feeSettings.platformFeeGstRate) || 0;
   feeSettings.packagingFeeGstRate = Number(feeSettings.packagingFeeGstRate) || 0;
+  feeSettings.deliveryCommissionPct = Number(feeSettings.deliveryCommissionPct) || 0;
   feeSettings.mixedOrderDistanceLimit = Number(
     feeSettings.mixedOrderDistanceLimit ?? defaultFeeSettings.mixedOrderDistanceLimit,
   );
@@ -2603,9 +2610,11 @@ export async function calculateOrder(userId, dto, options = {}) {
     throw new ValidationError("Restaurant not available");
   const primaryRestaurantId = primaryRestaurant.sourceId;
 
-  // Platform / packaging fees are GST-inclusive. `platformFee` / `packagingFee` below are the NET parts
-  // (what platform / restaurant earn); their GST is folded into `tax` so the customer total is unchanged.
-  const packagingSplit = splitInclusiveGst(feeSettings.packagingFee, feeSettings.packagingFeeGstRate);
+  // Platform fee is GST-inclusive; `platformFee` below is the NET part (what platform earns) —
+  // its GST is folded into `tax` so the customer total is unchanged. Packaging fee is no longer
+  // a global setting — each food item carries its own packagingFee/packagingFeeGstRate
+  // (resolved in applyServerFoodItemPricing), summed here per line (fee × quantity).
+  const packagingSplit = computeItemsPackagingTotals(items);
   const platformSplit = splitInclusiveGst(feeSettings.platformFee, feeSettings.platformFeeGstRate);
   const packagingFee = packagingSplit.net;
   const platformFee = platformSplit.net;
@@ -2679,6 +2688,19 @@ export async function calculateOrder(userId, dto, options = {}) {
     });
     discount = couponResult.discount;
     appliedCoupon = couponResult.appliedCoupon;
+  }
+
+  // Free-delivery coupon: customer pays ₹0 delivery for this order, and (see createOrder)
+  // the rider is not paid for it either — the discount itself stays 0 (it never touches
+  // the item subtotal), it only zeroes the delivery charge already computed above.
+  if (appliedCoupon?.freeDelivery) {
+    deliveryFee = 0;
+    totalDeliveryFee = 0;
+    userDeliveryFee = 0;
+    restaurantDeliveryFee = 0;
+    sponsoredDelivery = false;
+    sponsoredKm = 0;
+    deliveryFeeBreakdown = { source: "free_delivery_coupon", distanceKm: deliveryDistanceKm, deliveryFee: 0 };
   }
 
   const gstRate = feeSettings.gstRate;
@@ -3185,10 +3207,13 @@ export async function createOrder(userId, dto) {
 
   const riderDistanceKm =
     normalizedPricing.deliveryDistanceKm ?? distanceKm ?? null;
+  // Free-delivery coupon: rider is not paid for this delivery, same as the customer paying ₹0 for it.
   const baseRiderEarning =
-    orderType === "food" || orderType === "quick" || orderType === "mixed"
-      ? calculateRiderEarning(feeSettingsForRider, riderDistanceKm)
-      : 0;
+    normalizedPricing.appliedCoupon?.freeDelivery
+      ? 0
+      : orderType === "food" || orderType === "quick" || orderType === "mixed"
+        ? calculateRiderEarning(feeSettingsForRider, riderDistanceKm)
+        : 0;
   const quickRiderBonus =
     orderDeliveryMode === "quick"
       ? Math.max(0, Number(normalizedPricing.quickRiderBonus || 0))

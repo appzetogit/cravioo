@@ -37,6 +37,10 @@ const foodSchema = new mongoose.Schema(
         availabilityTimeStart: { type: String, trim: true, default: '' },
         availabilityTimeEnd: { type: String, trim: true, default: '' },
         originalPrice: { type: Number, min: 0, default: 0 },
+        /** Per-order-unit packaging cost for this item, set by admin. 0/unset = no packaging charge. */
+        packagingFee: { type: Number, min: 0, default: 0 },
+        /** GST % INCLUDED in packagingFee for this item. 0/unset = no GST split. */
+        packagingFeeGstRate: { type: Number, min: 0, max: 100, default: 0 },
         approvalStatus: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'approved', index: true },
         rejectionReason: { type: String, trim: true, default: '' },
         requestedAt: { type: Date },

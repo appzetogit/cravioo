@@ -62,6 +62,27 @@ function resolveBaseDeliveryFee(feeSettings = {}) {
   return Number.isFinite(flat) && flat >= 0 ? flat : 0;
 }
 
+/**
+ * The only slab flow admins can configure now: exactly two ranges. The first (lowest min)
+ * range's plain "fee" is a flat charge covering everything up to its own max distance; the
+ * second range's "fee" is then a per-km RATE charged for every km beyond that (open-ended —
+ * with only two ranges there is nowhere else for the trip to go). No separate rider
+ * Base Pay / Per KM fields: this one number is both what the customer pays and what the
+ * rider earns before the global commission cut — see calculateRiderEarning.
+ */
+function calculateTwoSlabCumulativeAmount(ranges, distanceKm) {
+  const [first, second] = [...ranges].sort((a, b) => Number(a.min) - Number(b.min));
+  const firstFee = Number(first.fee) || 0;
+  const firstMax = Number(first.max);
+  if (distanceKm <= firstMax) return round2(firstFee);
+
+  const perKmRate = Number(second.fee) || 0;
+  const extraKm = Math.max(0, distanceKm - firstMax);
+  return round2(firstFee + extraKm * perKmRate);
+
+  return round2(total);
+}
+
 function matchFeeRange(ranges, distanceKm, pickValue) {
   if (!Array.isArray(ranges) || ranges.length === 0 || !Number.isFinite(distanceKm)) {
     return null;
@@ -143,6 +164,14 @@ export function resolveUserDeliveryFee(feeSettings = {}, { subtotal = 0, distanc
     : [];
 
   if (ranges.length > 0 && Number.isFinite(distanceKm)) {
+    if (ranges.length === 2) {
+      return {
+        deliveryFee: calculateTwoSlabCumulativeAmount(ranges, distanceKm),
+        distanceKm: Number(distanceKm.toFixed(2)),
+        source: 'distance_cumulative',
+      };
+    }
+
     const matchedFee = matchFeeRange(ranges, distanceKm, (range) => Number(range.fee));
     if (Number.isFinite(matchedFee)) {
       return {
@@ -175,6 +204,13 @@ export function calculateRiderEarning(feeSettings = {}, distanceKm) {
   const ranges = Array.isArray(feeSettings.deliveryFeeRanges)
     ? feeSettings.deliveryFeeRanges
     : [];
+
+  if (ranges.length === 2) {
+    const total = calculateTwoSlabCumulativeAmount(ranges, distance);
+    const commissionPct = Math.min(100, Math.max(0, Number(feeSettings.deliveryCommissionPct) || 0));
+    // Customer still pays `total`; only the rider's share shrinks by the commission.
+    return round2(total * (1 - commissionPct / 100));
+  }
 
   if (ranges.length > 0) {
     const earning = matchFeeRange(ranges, distance, (range) => {

@@ -3006,6 +3006,8 @@ export async function upsertFeeSettings(body) {
         else if (body.platformFeeGstRate !== undefined) $set.platformFeeGstRate = body.platformFeeGstRate;
         if (body.packagingFeeGstRate === null) $unset.packagingFeeGstRate = 1;
         else if (body.packagingFeeGstRate !== undefined) $set.packagingFeeGstRate = body.packagingFeeGstRate;
+        if (body.deliveryCommissionPct === null) $unset.deliveryCommissionPct = 1;
+        else if (body.deliveryCommissionPct !== undefined) $set.deliveryCommissionPct = body.deliveryCommissionPct;
         if (body.mixedOrderDistanceLimit !== undefined) $set.mixedOrderDistanceLimit = body.mixedOrderDistanceLimit;
         if (body.mixedOrderAngleLimit !== undefined) $set.mixedOrderAngleLimit = body.mixedOrderAngleLimit;
         if (body.quickDelivery !== undefined) {
@@ -3049,6 +3051,7 @@ export async function upsertFeeSettings(body) {
     if (body.gstRate !== undefined && body.gstRate !== null) payload.gstRate = body.gstRate;
     if (body.platformFeeGstRate !== undefined && body.platformFeeGstRate !== null) payload.platformFeeGstRate = body.platformFeeGstRate;
     if (body.packagingFeeGstRate !== undefined && body.packagingFeeGstRate !== null) payload.packagingFeeGstRate = body.packagingFeeGstRate;
+    if (body.deliveryCommissionPct !== undefined && body.deliveryCommissionPct !== null) payload.deliveryCommissionPct = body.deliveryCommissionPct;
     if (body.mixedOrderDistanceLimit !== undefined) payload.mixedOrderDistanceLimit = body.mixedOrderDistanceLimit;
     if (body.mixedOrderAngleLimit !== undefined) payload.mixedOrderAngleLimit = body.mixedOrderAngleLimit;
     if (body.quickDelivery !== undefined) {

@@ -3,7 +3,7 @@ import mongoose from 'mongoose';
 const foodOfferSchema = new mongoose.Schema(
     {
         couponCode: { type: String, required: true, trim: true, uppercase: true, unique: true },
-        discountType: { type: String, enum: ['percentage', 'flat-price'], default: 'percentage', index: true },
+        discountType: { type: String, enum: ['percentage', 'flat-price', 'free-delivery'], default: 'percentage', index: true },
         discountValue: { type: Number, required: true, min: 0 },
         customerScope: { type: String, enum: ['all', 'first-time'], default: 'all', index: true },
         restaurantScope: { type: String, enum: ['all', 'selected'], default: 'all', index: true },

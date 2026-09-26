@@ -1102,6 +1102,18 @@ export const adminAPI = {
       contextModule: "admin",
     }),
 
+  /** Packaging Fee — per food item (admin) */
+  getFoodsForPackaging: (params = {}) =>
+    apiClient.get("/food/admin/foods/packaging", { params, contextModule: "admin" }),
+  setFoodPackaging: (foodId, body) =>
+    apiClient.patch(`/food/admin/foods/${String(foodId)}/packaging`, body ?? {}, {
+      contextModule: "admin",
+    }),
+  bulkSetFoodPackaging: (body) =>
+    apiClient.patch("/food/admin/foods/packaging/bulk", body ?? {}, {
+      contextModule: "admin",
+    }),
+
   /** Referral Settings (admin) */
   getReferralSettings: () =>
     apiClient.get("/food/admin/referral-settings", { contextModule: "admin" }),

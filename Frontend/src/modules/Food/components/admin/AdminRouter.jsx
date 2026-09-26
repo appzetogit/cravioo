@@ -23,6 +23,7 @@ const DiningBanners = lazy(() => import("@food/pages/admin/dining/DiningBanners"
 const DiningRequests = lazy(() => import("@food/pages/admin/dining/DiningRequests"));
 const DiningBookings = lazy(() => import("@food/pages/admin/dining/DiningBookings"));
 const FeeSettings = lazy(() => import("@food/pages/admin/fee-settings/FeeSettings"));
+const PackagingFee = lazy(() => import("@food/pages/admin/fee-settings/PackagingFee"));
 const ReferralSettings = lazy(() => import("@food/pages/admin/referral-settings/ReferralSettings"));
 // Restaurant Management
 const ZoneSetup = lazy(() => import("@food/pages/admin/restaurant/ZoneSetup"));
@@ -272,6 +273,7 @@ export default function AdminRouter() {
             <Route path="dining/bookings" element={<DiningBookings />} />
             {/* <Route path="subscriptions" element={<SubscriptionManagement />} /> */}
             <Route path="fee-settings" element={<FeeSettings />} />
+            <Route path="packaging-fee" element={<PackagingFee />} />
             <Route path="referral-settings" element={<ReferralSettings />} />
             <Route path="foods" element={<FoodsList />} />
             <Route path="foods/new" element={<AdminItemDetailsPage />} />
