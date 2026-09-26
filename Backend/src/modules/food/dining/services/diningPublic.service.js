@@ -60,7 +60,7 @@ const SORTS = {
 export const listPublicDiningRestaurants = async (query) => {
     const { page, limit, search, categoryId, city, lat, lng, sort } = query;
 
-    const filter = { status: 'approved' };
+    const filter = { status: 'approved', isOnline: { $ne: false } };
     if (categoryId) filter.categories = toObjectId(categoryId, 'category id');
     if (city) filter.city = { $regex: `^${String(city).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: 'i' };
     if (search) {
@@ -114,11 +114,11 @@ export const listPublicDiningRestaurants = async (query) => {
 
 export const getPublicDiningRestaurant = async (restaurantId) => {
     const rid = toObjectId(restaurantId, 'restaurant id');
-    const profile = await FoodDiningProfile.findOne({ restaurantId: rid, status: 'approved' })
+    const profile = await FoodDiningProfile.findOne({ restaurantId: rid, status: 'approved', isOnline: { $ne: false } })
         .populate('categories', 'name image description')
         .lean();
     if (!profile) {
-        throw new NotFoundError('Dining is not available at this outlet');
+        throw new NotFoundError('Dining is not available or currently offline at this outlet');
     }
 
     const [restaurant, weeklySlots, blockedDates] = await Promise.all([
