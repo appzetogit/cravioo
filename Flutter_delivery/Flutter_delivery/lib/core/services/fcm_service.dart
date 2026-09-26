@@ -142,7 +142,14 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
     return;
   }
 
-  if (message.data['type'] != 'new_order') return;
+  final type = message.data['type']?.toString();
+  final isNewOrderPush = type == 'new_order' ||
+      type == 'new_order_available' ||
+      type == 'order_assigned' ||
+      type == 'delivery_partner_assigned' ||
+      (type == null && _orderIdOf(message.data) != null);
+
+  if (!isNewOrderPush) return;
 
   // The tray copy FCM posted itself is the fallback for ROMs where this handler
   // never runs. We take it down once OUR alert is actually on screen — never
@@ -529,7 +536,12 @@ class FcmService {
     // 'new_order' pushes are already handled by the full-screen incoming-
     // order overlay (driven by the line above) — showing the plain tray
     // notification too would duplicate/compete with it.
-    if (message.data['type'] == 'new_order') return;
+    final type = message.data['type']?.toString();
+    final isNewOrderPush = type == 'new_order' ||
+        type == 'new_order_available' ||
+        type == 'order_assigned' ||
+        type == 'delivery_partner_assigned';
+    if (isNewOrderPush) return;
     final notification = message.notification;
     if (notification == null) return;
     _localNotifications.show(

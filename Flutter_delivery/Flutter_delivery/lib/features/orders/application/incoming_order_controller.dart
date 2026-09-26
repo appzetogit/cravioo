@@ -55,7 +55,14 @@ class IncomingOrderController extends Notifier<DeliveryOrder?> {
       _withdraw(data);
       return;
     }
-    if (data['type'] != null && data['type'] != 'new_order') return;
+    final type = data['type']?.toString();
+    final isOrderType = type == null ||
+        type == 'new_order' ||
+        type == 'new_order_available' ||
+        type == 'order_assigned' ||
+        type == 'delivery_partner_assigned';
+
+    if (!isOrderType) return;
     final orderId =
         (data['orderMongoId'] ?? data['_id'] ?? data['orderId'])?.toString();
     if (orderId == null || orderId.isEmpty) return;
