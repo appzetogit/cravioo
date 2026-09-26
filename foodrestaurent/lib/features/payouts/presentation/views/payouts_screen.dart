@@ -278,7 +278,7 @@ class _PayoutsScreenState extends ConsumerState<PayoutsScreen> {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
           height: 52,
-          padding: const EdgeInsets.symmetric(horizontal: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 6),
           decoration: BoxDecoration(
             color: isSelected ? AppColors.primaryButton : surface,
             borderRadius: BorderRadius.circular(18),
@@ -301,21 +301,24 @@ class _PayoutsScreenState extends ConsumerState<PayoutsScreen> {
             children: [
               Icon(
                 icon,
-                size: 20,
+                size: 17,
                 color: isSelected ? Colors.white : secondaryText,
               ),
 
-              const SizedBox(width: 7),
+              const SizedBox(width: 4),
 
               Flexible(
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: isSelected ? Colors.white : primaryText,
-                    fontSize: 13.5,
-                    fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    style: TextStyle(
+                      color: isSelected ? Colors.white : primaryText,
+                      fontSize: 13,
+                      fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                    ),
                   ),
                 ),
               ),

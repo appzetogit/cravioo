@@ -629,24 +629,19 @@ class _DiningRequestScreenState extends ConsumerState<DiningRequestScreen> {
 
           // Gallery Images
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Expanded(
                 child: Text(
                   'Gallery / Ambience Photos',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5),
+                  maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
-              const SizedBox(width: 8),
-              TextButton.icon(
-                style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  visualDensity: VisualDensity.compact,
-                ),
-                icon: const Icon(Icons.add_a_photo, size: 15),
-                label: const Text('Add Photos', style: TextStyle(fontSize: 12)),
-                onPressed: () async {
+              const SizedBox(width: 4),
+              InkWell(
+                borderRadius: BorderRadius.circular(8),
+                onTap: () async {
                   try {
                     final list = await picker.pickMultiImage(imageQuality: 85);
                     if (list.isNotEmpty) {
@@ -662,6 +657,24 @@ class _DiningRequestScreenState extends ConsumerState<DiningRequestScreen> {
                     }
                   } catch (_) {}
                 },
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.add_a_photo, size: 14, color: AppColors.primary),
+                      SizedBox(width: 4),
+                      Text(
+                        'Add Photos',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ],
           ),
