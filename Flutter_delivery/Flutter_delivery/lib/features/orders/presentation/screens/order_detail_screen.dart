@@ -284,8 +284,14 @@ class OrderDetailScreen extends ConsumerWidget {
                           children: [
                             Text('Your Earning', style: TextStyle(fontSize: 12.sp, color: subTextColor)),
                             Text(
-                              '₹${order.riderEarning.toStringAsFixed(0)}',
-                              style: TextStyle(fontSize: 12.sp, fontWeight: FontWeight.w700, color: subTextColor),
+                              order.riderEarning == 0
+                                  ? '₹0 (Free Delivery Order)'
+                                  : '₹${order.riderEarning.toStringAsFixed(0)}',
+                              style: TextStyle(
+                                fontSize: 12.sp,
+                                fontWeight: FontWeight.w700,
+                                color: order.riderEarning == 0 ? Colors.amber.shade700 : subTextColor,
+                              ),
                             ),
                           ],
                         ),

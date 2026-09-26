@@ -18,6 +18,7 @@ class FoodModel {
   final bool isSpicy;
   final bool isPopular;
   final bool isQuickDelivery;
+  final double packagingFee;
 
   /// Size/portion choices. Empty when the item has a single price.
   final List<FoodVariant> variants;
@@ -39,6 +40,7 @@ class FoodModel {
     this.isSpicy = false,
     this.isPopular = false,
     this.isQuickDelivery = false,
+    this.packagingFee = 0.0,
     this.variants = const [],
   });
 
@@ -114,6 +116,7 @@ class FoodModel {
       isVeg: (json['foodType']?.toString().toLowerCase() ?? '') == 'veg',
       isPopular: json['isRecommended'] as bool? ?? false,
       isQuickDelivery: json['isQuickDelivery'] as bool? ?? false,
+      packagingFee: (json['packagingFee'] as num?)?.toDouble() ?? 0.0,
       variants: FoodVariant.listFrom(json),
     );
   }

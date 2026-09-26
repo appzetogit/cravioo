@@ -65,6 +65,25 @@ class _IncomingOrderBottomSheetState
                     fontWeight: FontWeight.w900,
                   ),
                 ),
+                if (order.riderEarning == 0) ...[
+                  SizedBox(height: 6.h),
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 4.h),
+                    decoration: BoxDecoration(
+                      color: Colors.amber.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(12.r),
+                      border: Border.all(color: Colors.amber, width: 1),
+                    ),
+                    child: Text(
+                      'Free Delivery Order (₹0 Earnings)',
+                      style: TextStyle(
+                        color: Colors.amber.shade200,
+                        fontSize: 12.sp,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
                 SizedBox(height: 12.h),
                 // Pickup / Drop distances
                 Row(

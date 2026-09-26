@@ -853,6 +853,17 @@ class _CartScreenState extends ConsumerState<CartScreen> {
                               ),
                             ),
                         ],
+                        if (food.packagingFee > 0) ...[
+                          const SizedBox(height: 3),
+                          Text(
+                            'Packing Charge: ₹${(food.packagingFee * item.quantity).toStringAsFixed(0)}',
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w500,
+                              color: isDark ? Colors.amber[300] : const Color(0xFFD97706),
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -1301,15 +1312,44 @@ class _CartScreenState extends ConsumerState<CartScreen> {
             // figure cannot be labelled with the rate behind it.
             if ((pricing?.tax ?? 0) > 0) ...[
               const SizedBox(height: 12),
-              _buildBillRow(
-                _gstLabel(
-                  AppLocalizations.of(context)!.gstLabel,
-                  pricing?.gstRate ?? 5.0,
-                  defaultRate: 5.0,
+              InkWell(
+                onTap: () => _showGstBreakdownSheet(context, pricing, isDark),
+                borderRadius: BorderRadius.circular(8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          _gstLabel(
+                            AppLocalizations.of(context)!.gstLabel,
+                            pricing?.gstRate ?? 5.0,
+                            defaultRate: 5.0,
+                          ),
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: secondaryColor,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(width: 5),
+                        Icon(
+                          Icons.info_outline_rounded,
+                          size: 15,
+                          color: AppColors.primary,
+                        ),
+                      ],
+                    ),
+                    Text(
+                      '₹${pricing!.tax.toStringAsFixed(2)}',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: textColor,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
                 ),
-                '₹${pricing!.tax.toStringAsFixed(2)}',
-                secondaryColor,
-                textColor,
               ),
             ],
 
@@ -1371,6 +1411,89 @@ class _CartScreenState extends ConsumerState<CartScreen> {
           ],
         ],
       ),
+    );
+  }
+
+  void _showGstBreakdownSheet(BuildContext context, OrderPricing? pricing, bool isDark) {
+    if (pricing == null) return;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.receipt_long_rounded, color: AppColors.primary, size: 22),
+                    const SizedBox(width: 8),
+                    Text(
+                      'GST & Taxes Breakdown',
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.bold,
+                        color: isDark ? Colors.white : Colors.black87,
+                      ),
+                    ),
+                  ],
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.pop(ctx),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Divider(color: isDark ? Colors.white12 : Colors.black12),
+            const SizedBox(height: 12),
+            _buildGstRow('GST on Food Items', pricing.foodGst, isDark),
+            const SizedBox(height: 10),
+            _buildGstRow('GST on Packaging Charge', pricing.packagingFeeGst, isDark),
+            const SizedBox(height: 10),
+            _buildGstRow('GST on Platform Fee', pricing.platformFeeGst, isDark),
+            const SizedBox(height: 14),
+            Divider(color: isDark ? Colors.white12 : Colors.black12),
+            const SizedBox(height: 12),
+            _buildGstRow('Total Taxes & GST', pricing.tax, isDark, isTotal: true),
+            const SizedBox(height: 20),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGstRow(String title, double amount, bool isDark, {bool isTotal = false}) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          title,
+          style: TextStyle(
+            fontSize: isTotal ? 15 : 13.5,
+            fontWeight: isTotal ? FontWeight.bold : FontWeight.w500,
+            color: isTotal
+                ? (isDark ? Colors.white : Colors.black87)
+                : (isDark ? Colors.white70 : Colors.black54),
+          ),
+        ),
+        Text(
+          '₹${amount.toStringAsFixed(2)}',
+          style: TextStyle(
+            fontSize: isTotal ? 15 : 13.5,
+            fontWeight: isTotal ? FontWeight.bold : FontWeight.w600,
+            color: isTotal ? AppColors.primary : (isDark ? Colors.white : Colors.black87),
+          ),
+        ),
+      ],
     );
   }
 

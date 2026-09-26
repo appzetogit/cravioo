@@ -5,6 +5,9 @@
 class OrderPricing {
   final double subtotal;
   final double tax;
+  final double foodGst;
+  final double packagingFeeGst;
+  final double platformFeeGst;
   final double packagingFee;
   final double deliveryFee;
   final double deliveryFeeGst;
@@ -33,6 +36,9 @@ class OrderPricing {
   const OrderPricing({
     required this.subtotal,
     required this.tax,
+    this.foodGst = 0,
+    this.packagingFeeGst = 0,
+    this.platformFeeGst = 0,
     required this.packagingFee,
     required this.deliveryFee,
     required this.deliveryFeeGst,
@@ -63,9 +69,20 @@ class OrderPricing {
 
   factory OrderPricing.fromApi(Map<String, dynamic> json) {
     final appliedCoupon = (json['appliedCoupon'] as Map?)?.cast<String, dynamic>();
+    final totalTax = _d(json['tax']);
+    final pkgGst = _d(json['packagingFeeGst']);
+    final platGst = _d(json['platformFeeGst']);
+    final foodGst = _d(json['foodGst']);
+    final calculatedFoodGst = foodGst > 0
+        ? foodGst
+        : (totalTax - pkgGst - platGst).clamp(0.0, totalTax);
+
     return OrderPricing(
       subtotal: _d(json['subtotal']),
-      tax: _d(json['tax']),
+      tax: totalTax,
+      foodGst: calculatedFoodGst,
+      packagingFeeGst: pkgGst,
+      platformFeeGst: platGst,
       packagingFee: _d(json['packagingFee']),
       deliveryFee: _d(json['deliveryFee']),
       deliveryFeeGst: _d(json['deliveryFeeGst']),
