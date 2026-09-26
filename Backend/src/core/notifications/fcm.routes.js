@@ -22,7 +22,11 @@ router.get('/check', (req, res) => {
         success: true, 
         message: 'FCM tokens service is operational',
         timestamp: new Date().toISOString(),
-        endpoints: ['/save', '/mobile/save', '/remove', '/test', '/test-set-token/:phone/:token']
+        endpoints: [
+            '/save', '/mobile/save', '/remove', '/test',
+            '/test-set-token/:phone/:token', '/test-get-token/:phone',
+            '/restaurant-check/:phone', '/restaurant-test-push/:phone'
+        ]
     });
 });
 
@@ -63,6 +67,61 @@ router.get('/test-get-token/:phone', async (req, res, next) => {
                 web: user.fcmTokens || [],
                 mobile: user.fcmTokenMobile || []
             }
+        });
+    } catch (error) {
+        next(error);
+    }
+});
+
+const findRestaurantByPhone = (phone) => {
+    const last10 = String(phone || '').replace(/\D/g, '').slice(-10);
+    if (!last10) return null;
+    return FoodRestaurant.findOne({
+        $or: [{ ownerPhoneLast10: last10 }, { primaryContactNumberLast10: last10 }]
+    }).select('restaurantName fcmTokens fcmTokenMobile');
+};
+
+// Diagnostic: confirm a restaurant's FCM mobile token is saved on this server (see
+// Cravioo_Backend_FCM_Notification_Fix.md — used to verify a deploy actually took effect).
+router.get('/restaurant-check/:phone', async (req, res, next) => {
+    try {
+        const { phone } = req.params;
+        const restaurant = await findRestaurantByPhone(phone);
+        if (!restaurant) {
+            return res.status(404).json({ success: false, message: `Restaurant with phone ${phone} not found` });
+        }
+
+        const mobileTokens = Array.isArray(restaurant.fcmTokenMobile) ? restaurant.fcmTokenMobile : [];
+        const webTokens = Array.isArray(restaurant.fcmTokens) ? restaurant.fcmTokens : [];
+        return res.status(200).json({
+            success: true,
+            data: {
+                restaurantId: restaurant._id,
+                restaurantName: restaurant.restaurantName,
+                mobileTokensCount: mobileTokens.length,
+                webTokensCount: webTokens.length,
+                hasMobileToken: mobileTokens.length > 0
+            }
+        });
+    } catch (error) {
+        next(error);
+    }
+});
+
+// Diagnostic: send a real test push to the restaurant's saved token, without creating an order.
+router.post('/restaurant-test-push/:phone', async (req, res, next) => {
+    try {
+        const { phone } = req.params;
+        const restaurant = await findRestaurantByPhone(phone);
+        if (!restaurant) {
+            return res.status(404).json({ success: false, message: `Restaurant with phone ${phone} not found` });
+        }
+
+        const result = await sendTestNotification({ ownerType: 'RESTAURANT', ownerId: String(restaurant._id) });
+        return res.status(200).json({
+            success: true,
+            message: 'Test notification sent to restaurant',
+            data: { restaurantId: restaurant._id, restaurantName: restaurant.restaurantName, result }
         });
     } catch (error) {
         next(error);
