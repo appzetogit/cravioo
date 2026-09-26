@@ -375,6 +375,11 @@ class OutletInfoScreen extends ConsumerWidget {
                     width: 125,
                     height: 125,
                     fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) => Icon(
+                      Icons.storefront_rounded,
+                      size: 90,
+                      color: Colors.orange.shade400,
+                    ),
                   ),
                 ),
               ),
