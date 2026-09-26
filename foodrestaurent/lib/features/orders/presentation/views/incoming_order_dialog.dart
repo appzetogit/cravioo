@@ -165,9 +165,11 @@ class _IncomingOrderDialogState extends ConsumerState<IncomingOrderDialog> {
       }
     });
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      backgroundColor: const Color(0xFFFFF9F5), // Light warm background
+      backgroundColor: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
       insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       child: ConstrainedBox(
         constraints: BoxConstraints(
@@ -178,7 +180,7 @@ class _IncomingOrderDialogState extends ConsumerState<IncomingOrderDialog> {
           child: _loading
               ? const SizedBox(
                   height: 120,
-                  child: Center(child: CircularProgressIndicator()),
+                  child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
                 )
               : _order == null
               ? _buildFallback(context)
@@ -235,8 +237,8 @@ class _IncomingOrderDialogState extends ConsumerState<IncomingOrderDialog> {
                     : () => _respond('cancelled_by_restaurant'),
                 style: OutlinedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 14),
-                  foregroundColor: Colors.red,
-                  side: const BorderSide(color: Colors.red),
+                  foregroundColor: AppColors.error,
+                  side: const BorderSide(color: AppColors.error),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(30),
                   ),
@@ -268,7 +270,7 @@ class _IncomingOrderDialogState extends ConsumerState<IncomingOrderDialog> {
                       onPressed: _acting ? null : () => _respond('confirmed'),
                       style: ElevatedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 14),
-                        backgroundColor: Colors.orange.shade700,
+                        backgroundColor: AppColors.primaryButton,
                         foregroundColor: Colors.white,
                         elevation: 0,
                         shape: RoundedRectangleBorder(
@@ -308,7 +310,7 @@ class _IncomingOrderDialogState extends ConsumerState<IncomingOrderDialog> {
                         vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.orange.shade50,
+                        color: AppColors.primaryTint,
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: _DialogAcceptanceCountdown(deadline: deadline),
@@ -335,13 +337,13 @@ class _IncomingOrderDialogState extends ConsumerState<IncomingOrderDialog> {
                 Icon(
                   Icons.visibility_outlined,
                   size: 16,
-                  color: Colors.orange.shade700,
+                  color: AppColors.primaryDark,
                 ),
                 const SizedBox(width: 6),
                 Text(
                   'View full details',
                   style: TextStyle(
-                    color: Colors.orange.shade700,
+                    color: AppColors.primaryDark,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -349,7 +351,7 @@ class _IncomingOrderDialogState extends ConsumerState<IncomingOrderDialog> {
                 Icon(
                   Icons.chevron_right,
                   size: 16,
-                  color: Colors.orange.shade700,
+                  color: AppColors.primaryDark,
                 ),
               ],
             ),
@@ -388,8 +390,8 @@ class _IncomingOrderDialogState extends ConsumerState<IncomingOrderDialog> {
                   width: 50,
                   height: 50,
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [Colors.orange.shade400, Colors.orange.shade600],
+                    gradient: const LinearGradient(
+                      colors: [AppColors.primary, AppColors.primaryDark],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
@@ -407,7 +409,7 @@ class _IncomingOrderDialogState extends ConsumerState<IncomingOrderDialog> {
                   child: Container(
                     padding: const EdgeInsets.all(4),
                     decoration: BoxDecoration(
-                      color: Colors.red,
+                      color: AppColors.error,
                       shape: BoxShape.circle,
                       border: Border.all(color: Colors.white, width: 2),
                     ),
@@ -434,7 +436,7 @@ class _IncomingOrderDialogState extends ConsumerState<IncomingOrderDialog> {
               ),
             ),
             const SizedBox(width: 6),
-            Icon(Icons.auto_awesome, color: Colors.orange.shade300, size: 20),
+            const Icon(Icons.auto_awesome, color: AppColors.primary, size: 20),
           ],
         ),
         Container(
@@ -443,7 +445,7 @@ class _IncomingOrderDialogState extends ConsumerState<IncomingOrderDialog> {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.orange.shade100, width: 1.5),
+            border: Border.all(color: AppColors.primaryAlpha(0.20), width: 1.5),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -477,7 +479,7 @@ class _IncomingOrderDialogState extends ConsumerState<IncomingOrderDialog> {
               Container(
                 width: 1,
                 height: 30,
-                color: Colors.orange.shade100,
+                color: AppColors.primaryAlpha(0.20),
                 margin: const EdgeInsets.symmetric(horizontal: 8),
               ),
               Row(
@@ -533,13 +535,13 @@ class _IncomingOrderDialogState extends ConsumerState<IncomingOrderDialog> {
                       Container(
                         width: 48,
                         height: 48,
-                        decoration: BoxDecoration(
-                          color: Colors.orange.shade100,
+                        decoration: const BoxDecoration(
+                          color: AppColors.primaryTint,
                           shape: BoxShape.circle,
                         ),
-                        child: Icon(
+                        child: const Icon(
                           Icons.person,
-                          color: Colors.orange.shade700,
+                          color: AppColors.primaryDark,
                           size: 28,
                         ),
                       ),
@@ -569,13 +571,13 @@ class _IncomingOrderDialogState extends ConsumerState<IncomingOrderDialog> {
                       ),
                       Container(
                         padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: Colors.orange.shade50,
+                        decoration: const BoxDecoration(
+                          color: AppColors.primaryTint,
                           shape: BoxShape.circle,
                         ),
-                        child: Icon(
+                        child: const Icon(
                           Icons.phone_outlined,
-                          color: Colors.orange.shade700,
+                          color: AppColors.primaryDark,
                           size: 20,
                         ),
                       ),
@@ -590,12 +592,12 @@ class _IncomingOrderDialogState extends ConsumerState<IncomingOrderDialog> {
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: Colors.orange.shade50,
+                          color: AppColors.primaryTint,
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: Icon(
+                        child: const Icon(
                           Icons.location_on,
-                          color: Colors.orange.shade700,
+                          color: AppColors.primaryDark,
                           size: 20,
                         ),
                       ),
@@ -621,15 +623,15 @@ class _IncomingOrderDialogState extends ConsumerState<IncomingOrderDialog> {
                                     vertical: 2,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: Colors.orange.shade50,
+                                    color: AppColors.primaryTint,
                                     borderRadius: BorderRadius.circular(4),
                                   ),
                                   child: Text(
                                     order.deliveryAddress.label.isEmpty
                                         ? 'Other'
                                         : order.deliveryAddress.label,
-                                    style: TextStyle(
-                                      color: Colors.orange.shade700,
+                                    style: const TextStyle(
+                                      color: AppColors.primaryDeep,
                                       fontSize: 10,
                                       fontWeight: FontWeight.bold,
                                     ),
@@ -659,12 +661,12 @@ class _IncomingOrderDialogState extends ConsumerState<IncomingOrderDialog> {
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: Colors.orange.shade50,
+                        color: AppColors.primaryTint,
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: Icon(
+                      child: const Icon(
                         Icons.shopping_bag,
-                        color: Colors.orange.shade700,
+                        color: AppColors.primaryDark,
                         size: 20,
                       ),
                     ),
@@ -728,12 +730,12 @@ class _IncomingOrderDialogState extends ConsumerState<IncomingOrderDialog> {
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: Colors.orange.shade50,
+                        color: AppColors.primaryTint,
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: Icon(
+                      child: const Icon(
                         Icons.receipt_long,
-                        color: Colors.orange.shade700,
+                        color: AppColors.primaryDark,
                         size: 20,
                       ),
                     ),
@@ -773,14 +775,14 @@ class _IncomingOrderDialogState extends ConsumerState<IncomingOrderDialog> {
                     vertical: 12,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.orange.shade50,
+                    color: AppColors.primaryTint,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Row(
                     children: [
-                      Icon(
+                      const Icon(
                         Icons.account_balance_wallet,
-                        color: Colors.orange.shade700,
+                        color: AppColors.primaryDark,
                         size: 20,
                       ),
                       const SizedBox(width: 12),
@@ -799,7 +801,7 @@ class _IncomingOrderDialogState extends ConsumerState<IncomingOrderDialog> {
                         style: const TextStyle(
                           fontWeight: FontWeight.w900,
                           fontSize: 16,
-                          color: Colors.black87,
+                          color: AppColors.primaryDeep,
                         ),
                       ),
                     ],

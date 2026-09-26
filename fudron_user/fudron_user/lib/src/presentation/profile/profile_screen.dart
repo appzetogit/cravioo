@@ -715,6 +715,19 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
               },
             ),
 
+            const SizedBox(height: 14),
+
+            // =========================================================
+            // ORDERS (My Orders)
+            // =========================================================
+            _buildOrderHistoryCard(
+              cardColor,
+              isDark,
+              textColor,
+              secondaryColor,
+              isLoggedIn,
+            ),
+
             const SizedBox(height: 12),
 
             // =========================================================
@@ -838,19 +851,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                 Haptics.light();
                 context.push(RouteNames.favorites);
               },
-            ),
-
-            const SizedBox(height: 14),
-
-            // =========================================================
-            // ORDERS
-            // =========================================================
-            _buildOrderHistoryCard(
-              cardColor,
-              isDark,
-              textColor,
-              secondaryColor,
-              isLoggedIn,
             ),
 
             const SizedBox(height: 14),

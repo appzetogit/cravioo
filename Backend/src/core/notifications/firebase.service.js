@@ -147,17 +147,22 @@ const buildMessagePayload = (payload = {}, token) => {
     };
     const rawData = { ...(payload.data || {}) };
     const audience = sanitizeString(rawData.audience).toLowerCase();
+    const type = sanitizeString(rawData.type).toLowerCase();
+
+    // new_order push for restaurant must be pure high-priority data message on Android
+    // so NewOrderMessagingService receives onMessageReceived in background/killed state and loops ringtone!
+    const isNewOrder = type === 'new_order';
+    const isDataOnly = Boolean(payload.dataOnly) || isNewOrder;
+
     // Restaurant/delivery/seller alerts must NOT use FCM auto-display on web.
     // Chrome shows webpush/top-level notification globally (visible while User tab is focused).
     // SW + page code filter by audience and show only on the matching role tab.
     const isActorScopedWebAlert = ['restaurant', 'delivery', 'seller'].includes(audience);
-    const omitWebAutoDisplay = Boolean(payload.dataOnly) || isActorScopedWebAlert;
+    const omitAutoDisplay = isDataOnly || isActorScopedWebAlert;
 
-    // Ensure SW/page can render title/body from data when notification block is omitted for web.
-    if (omitWebAutoDisplay) {
-        if (!rawData.title) rawData.title = notification.title;
-        if (!rawData.body) rawData.body = notification.body;
-    }
+    // Ensure SW/page/native can render title/body from data when notification block is omitted.
+    if (!rawData.title && notification.title) rawData.title = notification.title;
+    if (!rawData.body && notification.body) rawData.body = notification.body;
 
     const data = normalizeDataMap(rawData);
     const image =
@@ -165,8 +170,8 @@ const buildMessagePayload = (payload = {}, token) => {
 
     const message = { token };
 
-    // Top-level notification triggers Chrome OS auto-display. Skip for actor-scoped web alerts.
-    if (!omitWebAutoDisplay) {
+    // Top-level notification triggers Chrome OS auto-display. Skip for actor-scoped or data-only alerts.
+    if (!omitAutoDisplay) {
         message.notification = notification;
         if (image) {
             message.notification.image = image;
@@ -177,21 +182,28 @@ const buildMessagePayload = (payload = {}, token) => {
         message.data = data;
     }
 
+    // Android configuration:
+    // IMPORTANT: For isDataOnly (especially new_order), DO NOT include message.android.notification!
+    // Google Play Services intercepts android.notification in the background/killed state and DOES NOT
+    // deliver to onMessageReceived in NewOrderMessagingService.kt, which prevents custom ringtone & full-screen UI!
     message.android = {
         priority: 'high',
-        notification: {
+    };
+
+    if (!isDataOnly) {
+        message.android.notification = {
             title: notification.title,
             body: notification.body,
-            channel_id: 'default',
-            sound: 'default',
+            channel_id: payload.android?.channel_id || 'default',
+            sound: payload.android?.sound || 'default',
             default_vibrate_timings: true,
             default_light_settings: true,
             click_action: 'FLUTTER_NOTIFICATION_CLICK',
             actions: []
+        };
+        if (image) {
+            message.android.notification.image = image;
         }
-    };
-    if (image) {
-        message.android.notification.image = image;
     }
 
     message.webpush = {
@@ -203,7 +215,7 @@ const buildMessagePayload = (payload = {}, token) => {
         }
     };
     // Never attach webpush.notification for actor-scoped alerts — SW owns display + audience filter.
-    if (!omitWebAutoDisplay) {
+    if (!omitAutoDisplay) {
         message.webpush.notification = {
             title: notification.title,
             body: notification.body,

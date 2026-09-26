@@ -32,7 +32,7 @@ class OrderRemoteDataSource {
   /// the server's subtotal matches what the user was shown. Variant identity
   /// travels separately in `variantName` / `variantPrice`, which the order
   /// schema records on the line.
-  static Map<String, dynamic> itemPayload(CartItemModel item) {
+  static Map<String, dynamic> itemPayload(CartItemModel item, [String? fallbackRestaurantId]) {
     final variantName =
         (item.selectedVariant != null && item.selectedVariant!.isNotEmpty)
             ? item.selectedVariant!
@@ -45,10 +45,15 @@ class OrderRemoteDataSource {
         : item.food.price;
 
     final resolvedVariantId = hasVariant ? _variantIdFor(item.food, variantName) : null;
+    final sourceId = item.food.restaurantId.isNotEmpty
+        ? item.food.restaurantId
+        : (fallbackRestaurantId ?? '');
 
     return {
       'itemId': item.food.id,
       'name': item.food.name,
+      'type': 'food',
+      if (sourceId.isNotEmpty) 'sourceId': sourceId,
       // The unit price the user was actually shown/charged: base + variant +
       // add-ons. Sending the bare base price here was the bug — the server
       // bills off this field, so a base-only price silently dropped every
@@ -84,7 +89,7 @@ class OrderRemoteDataSource {
     DateTime? scheduledAt,
   }) async {
     final payload = {
-      'items': items.map(itemPayload).toList(),
+      'items': items.map((e) => itemPayload(e, restaurantId)).toList(),
       'restaurantId': restaurantId,
       'deliveryAddressId': ?deliveryAddressId,
       'zoneId': ?zoneId,
@@ -138,7 +143,7 @@ class OrderRemoteDataSource {
     String? zoneId,
   }) async {
     final payload = {
-      'items': items.map(itemPayload).toList(),
+      'items': items.map((e) => itemPayload(e, restaurantId)).toList(),
       'address': address,
       'restaurantId': restaurantId,
       'restaurantName': restaurantName,

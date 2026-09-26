@@ -227,12 +227,10 @@ export const submitDiningProfile = async (restaurantId, payload, files) => {
 };
 
 export const updateDiningProfileSettings = async (restaurantId, payload) => {
-    const profile = await FoodDiningProfile.findOne({ restaurantId: toObjectId(restaurantId, 'restaurant id') });
+    const rid = toObjectId(restaurantId, 'restaurant id');
+    let profile = await FoodDiningProfile.findOne({ restaurantId: rid });
     if (!profile) {
-        throw new NotFoundError('Dining request not found');
-    }
-    if (profile.status !== 'approved') {
-        throw new ForbiddenError('Dining settings unlock only after admin approval');
+        throw new NotFoundError('Dining profile not found. Please submit your dining request first.');
     }
 
     ['bookingWindowDays', 'slotDurationMins', 'maxGuestsPerBooking', 'minAdvanceMins', 'autoConfirm', 'isOnline']

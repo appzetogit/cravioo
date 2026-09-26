@@ -34,7 +34,7 @@ class PopularItemsList extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final eligibleFoods = foods.where((f) => f.price <= 99.0).toList();
+    final eligibleFoods = foods.where((f) => f.price <= 150.0).toList();
     if (eligibleFoods.isEmpty) return const SizedBox.shrink();
     final isDark = Theme.of(context).brightness == Brightness.dark;
 

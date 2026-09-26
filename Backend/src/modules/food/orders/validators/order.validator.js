@@ -15,14 +15,14 @@ function normalizeOrderItemsBody(body = {}) {
         const sourceId =
             rawSource != null && String(rawSource).trim() !== ''
                 ? String(rawSource).trim()
-                : '';
-        if (sourceId) return { ...item, sourceId };
+                : (restaurantId || '');
 
         const type = item.type === 'quick' ? 'quick' : 'food';
-        if (type === 'food' && restaurantId) {
-            return { ...item, sourceId: restaurantId };
-        }
-        return item;
+        return {
+            ...item,
+            type,
+            ...(sourceId ? { sourceId } : {})
+        };
     });
 
     return { ...body, items };
@@ -31,7 +31,7 @@ function normalizeOrderItemsBody(body = {}) {
 const orderItemSchema = z.object({
     itemId: z.string().min(1, 'Item id required'),
     name: z.string().min(1, 'Item name required'),
-    type: z.enum(['food', 'quick']),
+    type: z.enum(['food', 'quick']).default('food'),
     sourceId: z.string().min(1, 'Source id required'),
     sourceName: z.string().optional(),
     variantId: z.string().optional(),

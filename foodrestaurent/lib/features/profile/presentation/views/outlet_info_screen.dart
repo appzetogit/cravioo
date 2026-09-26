@@ -1740,7 +1740,7 @@ class OutletInfoScreen extends ConsumerWidget {
       return path;
     }
 
-    return 'https://suvio.appzeto.com$path';
+    return 'https://cravioo.in$path';
   }
 }
 

@@ -29,6 +29,8 @@ import 'package:food_user_application/features/auth/presentation/controllers/aut
 import 'package:food_user_application/features/auth/presentation/views/application_status_screen.dart';
 import 'package:food_user_application/features/registration/presentation/views/registration_screen.dart';
 import 'package:food_user_application/features/registration/presentation/views/registration_success_screen.dart';
+import 'package:food_user_application/features/dining/presentation/views/dining_bookings_screen.dart';
+import 'package:food_user_application/features/dining/presentation/views/dining_request_screen.dart';
 
 /// Notifies go_router to re-run [_redirect] on the current location whenever
 /// auth state changes — without recreating the GoRouter instance itself
@@ -97,8 +99,21 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
       GoRoute(
         path: '/register',
-        builder: (context, state) =>
-            RegistrationScreen(initialPhone: (state.extra as String?) ?? ''),
+        builder: (context, state) {
+          final extra = state.extra;
+          String phone = '';
+          String? token;
+          if (extra is Map) {
+            phone = extra['phone']?.toString() ?? '';
+            token = extra['token']?.toString();
+          } else if (extra is String) {
+            phone = extra;
+          }
+          return RegistrationScreen(
+            initialPhone: phone,
+            initialToken: token,
+          );
+        },
       ),
       GoRoute(
         path: '/register/success',
@@ -223,6 +238,14 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/bank-details',
         builder: (context, state) => const BankDetailsScreen(),
+      ),
+      GoRoute(
+        path: '/dining-bookings',
+        builder: (context, state) => const DiningBookingsScreen(),
+      ),
+      GoRoute(
+        path: '/dining-request',
+        builder: (context, state) => const DiningRequestScreen(),
       ),
     ],
   );

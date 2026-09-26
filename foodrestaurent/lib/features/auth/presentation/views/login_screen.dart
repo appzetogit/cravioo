@@ -145,8 +145,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     switch (state) {
       case AuthAuthenticated():
         context.go('/orders');
-      case AuthNeedsRegistration(:final phone):
-        context.go('/register', extra: phone);
+      case AuthNeedsRegistration(:final phone, :final registrationToken):
+        context.go('/register', extra: {'phone': phone, 'token': registrationToken});
       case AuthPendingApproval(:final message):
         context.go(
           '/application-status',

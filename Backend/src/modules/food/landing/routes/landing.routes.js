@@ -190,7 +190,10 @@ router.patch(
     toggleGourmetStatusAdmin
 );
 
+import { getMembersLeaderboardController } from '../../user/controllers/userLeaderboard.controller.js';
+
 // Public landing endpoints (Food user app)
+router.get('/members/leaderboard', getMembersLeaderboardController);
 router.get('/hero-banners/public', cacheResponse(300, 'landing_hero'), getPublicHeroBannersController);
 router.get('/hero-banners/under-250/public', cacheResponse(300, 'landing_under250'), getPublicUnder250BannersController);
 router.get('/explore-icons/public', cacheResponse(300, 'landing_explore'), getPublicExploreIconsController);

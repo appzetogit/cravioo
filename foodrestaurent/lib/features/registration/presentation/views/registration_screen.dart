@@ -17,9 +17,14 @@ const _stepTitles = [
 ];
 
 class RegistrationScreen extends ConsumerStatefulWidget {
-  const RegistrationScreen({super.key, required this.initialPhone});
+  const RegistrationScreen({
+    super.key,
+    required this.initialPhone,
+    this.initialToken,
+  });
 
   final String initialPhone;
+  final String? initialToken;
 
   @override
   ConsumerState<RegistrationScreen> createState() => _RegistrationScreenState();
@@ -34,9 +39,11 @@ class _RegistrationScreenState extends ConsumerState<RegistrationScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref
-          .read(registrationControllerProvider.notifier)
-          .prefillPhone(widget.initialPhone);
+      final notifier = ref.read(registrationControllerProvider.notifier);
+      notifier.prefillPhone(widget.initialPhone);
+      if (widget.initialToken != null && widget.initialToken!.isNotEmpty) {
+        notifier.setRegistrationToken(widget.initialToken!);
+      }
     });
   }
 

@@ -16,6 +16,7 @@ class TokenStorage {
   static const _restaurantStatusKey = 'restaurant_status';
   static const _hasSeenOnboardingKey = 'has_seen_onboarding';
   static const _hasSeenBatteryPromptKey = 'has_seen_battery_prompt';
+  static const _registrationTokenKey = 'registration_token';
 
   Future<void> saveTokens({
     required String accessToken,
@@ -28,6 +29,18 @@ class TokenStorage {
   Future<String?> get accessToken => _storage.read(key: _accessTokenKey);
 
   Future<String?> get refreshToken => _storage.read(key: _refreshTokenKey);
+
+  /// Save registration token separately so it survives [clear].
+  Future<void> saveRegistrationToken(String token) =>
+      _storage.write(key: _registrationTokenKey, value: token);
+
+  /// Get the stored registration token (survives session clear).
+  Future<String?> get registrationToken =>
+      _storage.read(key: _registrationTokenKey);
+
+  /// Clear only the registration token (after successful registration).
+  Future<void> clearRegistrationToken() =>
+      _storage.delete(key: _registrationTokenKey);
 
   Future<void> saveRestaurantSnapshot({
     required String id,
@@ -63,5 +76,7 @@ class TokenStorage {
     await _storage.delete(key: _refreshTokenKey);
     await _storage.delete(key: _restaurantIdKey);
     await _storage.delete(key: _restaurantStatusKey);
+    // NOTE: _registrationTokenKey is intentionally NOT cleared here
+    // so onboarding can survive app restarts / session clears.
   }
 }

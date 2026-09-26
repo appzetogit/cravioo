@@ -122,6 +122,9 @@ class AppLocalizationsHi extends AppLocalizations {
   String get store99 => '99 स्टोर';
 
   @override
+  String get dining => 'Dining';
+
+  @override
   String get loginTitleNewUser => 'अपनी प्रोफ़ाइल पूरी करें';
 
   @override

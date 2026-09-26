@@ -17,7 +17,6 @@ import '../navigation/route_names.dart';
 import '../search/widgets/voice_search_dialog.dart';
 
 import '../../data/models/restaurant_model.dart';
-import '../../data/models/food_model.dart';
 
 import '../orders/viewmodels/active_order_viewmodel.dart';
 import '../common_widgets/collapsing_header_delegate.dart';
@@ -750,14 +749,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   Widget _buildExploreMore(bool isDark) {
     final List<Map<String, dynamic>> items = [
-      // ================================================================
-      // OFFERS
-      // ================================================================
       {
         'title': 'Offers',
-        'icon': Icons.local_offer_rounded,
-        'iconColor': Colors.orange,
-        'background': const Color(0xFFFFF3E0),
+        'asset': 'assets/explore more icons/explore_offers.png',
         'onTap': () => _openFilter(
           title: 'Offers',
           emptyMessage: 'No special offers available right now',
@@ -765,15 +759,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           matches: (r) => r.offerBadges.isNotEmpty,
         ),
       },
-
-      // ================================================================
-      // TOP 10
-      // ================================================================
       {
         'title': 'Top 10',
-        'icon': Icons.location_on_rounded,
-        'iconColor': Colors.red,
-        'background': const Color(0xFFFFEBEE),
+        'asset': 'assets/explore more icons/explore_top10.png',
         'onTap': () => _openFilter(
           title: 'Top 10',
           emptyMessage: 'No top restaurants available right now',
@@ -781,15 +769,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           matches: (r) => r.isFeatured,
         ),
       },
-
-      // ================================================================
-      // COLLECTIONS
-      // ================================================================
       {
         'title': 'Collections',
-        'icon': Icons.collections_bookmark_rounded,
-        'iconColor': Colors.blue,
-        'background': const Color(0xFFE3F2FD),
+        'asset': 'assets/explore more icons/explore_collections.png',
         'onTap': () => _openFilter(
           title: 'Collections',
           emptyMessage: 'No collections available right now',
@@ -805,132 +787,118 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         // ================================================================
         // TITLE
         // ================================================================
-
         Padding(
           padding: EdgeInsets.symmetric(horizontal: 16.w),
-          child: Text(
-            'EXPLORE MORE',
-            style: TextStyle(
-              fontSize: 14.sp,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 1.1,
-              color: isDark
-                  ? AppColors.textSecondaryDark
-                  : AppColors.textSecondaryLight,
-            ),
+          child: Row(
+            children: [
+              Text(
+                'EXPLORE MORE',
+                style: TextStyle(
+                  fontSize: 15.sp,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 0.8,
+                  color: isDark ? Colors.white : const Color(0xFF0F3E2E),
+                ),
+              ),
+              SizedBox(width: 6.w),
+              CustomPaint(
+                size: Size(16.w, 16.h),
+                painter: const _ExploreMoreSparklePainter(
+                  color: Color(0xFF34D399),
+                ),
+              ),
+            ],
           ),
         ),
 
         SizedBox(height: 12.h),
 
         // ================================================================
-        // HORIZONTAL CARDS
+        // 3 CARDS ROW
         // ================================================================
-        SizedBox(
-          height: 126.h,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            padding: EdgeInsets.symmetric(horizontal: 16.w),
-            itemCount: items.length,
-            separatorBuilder: (context, index) {
-              return SizedBox(width: 12.w);
-            },
-            itemBuilder: (context, index) {
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16.w),
+          child: Row(
+            children: List.generate(items.length, (index) {
               final item = items[index];
-
-              final Color backgroundColor = isDark
-                  ? AppColors.surfaceDark
-                  : (item['background'] as Color);
-
-              final Color iconColor = item['iconColor'] as Color;
-
-              final IconData icon = item['icon'] as IconData;
-
               final String title = item['title'] as String;
-
+              final String assetPath = item['asset'] as String;
               final VoidCallback onTap = item['onTap'] as VoidCallback;
 
-              return InkWell(
-                onTap: onTap,
-                borderRadius: BorderRadius.circular(16.r),
-                child: SizedBox(
-                  width: 92.w,
-                  child: Column(
-                    children: [
-                      // ==================================================
-                      // ICON CARD
-                      // ==================================================
-
-                      Container(
-                        width: 92.w,
-                        height: 92.h,
+              return Expanded(
+                child: Padding(
+                  padding: EdgeInsets.only(
+                    right: index < items.length - 1 ? 10.w : 0,
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: onTap,
+                      borderRadius: BorderRadius.circular(18.r),
+                      child: Container(
+                        height: 112.h,
                         decoration: BoxDecoration(
-                          color: isDark ? AppColors.surfaceDark : Colors.white,
-
-                          borderRadius: BorderRadius.circular(16.r),
-
-                          // =================================================
-                          // APP THEME BORDER
-                          // =================================================
+                          color: isDark ? AppColors.surfaceDark : const Color(0xFFF3FAF6),
+                          borderRadius: BorderRadius.circular(18.r),
                           border: Border.all(
                             color: isDark
-                                ? AppColors.primary.withValues(alpha: 0.35)
-                                : AppColors.primary.withValues(alpha: 0.20),
-                            width: 1.2,
+                                ? AppColors.primary.withValues(alpha: 0.3)
+                                : const Color(0xFF6EE7B7),
+                            width: 1.5,
                           ),
-
-                          // =================================================
-                          // APP THEME SHADOW
-                          // =================================================
                           boxShadow: isDark
                               ? []
                               : [
                                   BoxShadow(
-                                    color: AppColors.primary.withValues(
-                                      alpha: 0.06,
-                                    ),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 3),
+                                    color: const Color(0xFF047857).withValues(alpha: 0.08),
+                                    blurRadius: 12,
+                                    offset: const Offset(0, 4),
                                   ),
                                 ],
                         ),
-
-                        child: Center(
-                          child: Container(
-                            width: 58.w,
-                            height: 58.h,
-                            decoration: BoxDecoration(
-                              color: backgroundColor,
-                              borderRadius: BorderRadius.circular(18.r),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Expanded(
+                              child: Padding(
+                                padding: EdgeInsets.fromLTRB(8.w, 10.h, 8.w, 2.h),
+                                child: ColorFiltered(
+                                  colorFilter: const ColorFilter.matrix([
+                                    0.78, 0,    0,    0, -15, // Red
+                                    0,    0.92, 0,    0, -5,  // Green (deeper, richer green)
+                                    0,    0,    0.78, 0, -15, // Blue
+                                    0,    0,    0,    1,  0,  // Alpha
+                                  ]),
+                                  child: Image.asset(
+                                    assetPath,
+                                    fit: BoxFit.contain,
+                                  ),
+                                ),
+                              ),
                             ),
-                            child: Icon(icon, size: 32.sp, color: iconColor),
-                          ),
+                            Padding(
+                              padding: EdgeInsets.only(bottom: 11.h, left: 4.w, right: 4.w),
+                              child: Text(
+                                title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 13.sp,
+                                  fontWeight: FontWeight.w800,
+                                  color: isDark ? Colors.white : const Color(0xFF064E3B),
+                                  letterSpacing: -0.2,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-
-                      SizedBox(height: 7.h),
-
-                      // ==================================================
-                      // TITLE
-                      // ==================================================
-                      Text(
-                        title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 12.5.sp,
-                          fontWeight: FontWeight.w700,
-                          color: isDark
-                              ? AppColors.textPrimaryDark
-                              : AppColors.textPrimaryLight,
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
               );
-            },
+            }),
           ),
         ),
       ],
@@ -1062,37 +1030,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   // ========================================================================
-  // FOOD FILTER
-  // ========================================================================
-
-  List<FoodModel> _filterFoods(List<FoodModel> foods, bool isVegOnly) {
-    var result = foods;
-
-    if (_selectedCategory != 'All' && _selectedCategory != 'More') {
-      final query = _selectedCategory.toLowerCase().trim();
-
-      final singular = query.endsWith('s')
-          ? query.substring(0, query.length - 1)
-          : query;
-
-      result = result.where((food) {
-        final haystack =
-            '${food.name} '
-                    '${food.description}'
-                .toLowerCase();
-
-        return haystack.contains(query) || haystack.contains(singular);
-      }).toList();
-    }
-
-    if (isVegOnly) {
-      result = result.where((food) => food.isVeg).toList();
-    }
-
-    return result;
-  }
-
-  // ========================================================================
   // RESTAURANT FILTER
   // ========================================================================
 
@@ -1137,4 +1074,42 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       return haystack.contains(query) || haystack.contains(singular);
     }).toList();
   }
+}
+
+class _ExploreMoreSparklePainter extends CustomPainter {
+  final Color color;
+  const _ExploreMoreSparklePainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 2.2
+      ..strokeCap = StrokeCap.round;
+
+    final ox = size.width * 0.2;
+    final oy = size.height * 0.5;
+
+    // Top ray: pointing up-right
+    canvas.drawLine(
+      Offset(ox + 4, oy - 2),
+      Offset(ox + 12, oy - 7),
+      paint,
+    );
+    // Middle ray: pointing right
+    canvas.drawLine(
+      Offset(ox + 6, oy),
+      Offset(ox + 14, oy),
+      paint,
+    );
+    // Bottom ray: pointing down-right
+    canvas.drawLine(
+      Offset(ox + 4, oy + 2),
+      Offset(ox + 12, oy + 7),
+      paint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_ExploreMoreSparklePainter oldDelegate) => oldDelegate.color != color;
 }

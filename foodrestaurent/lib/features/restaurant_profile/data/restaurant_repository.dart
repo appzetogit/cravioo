@@ -58,8 +58,8 @@ class RestaurantRepository {
     return Map<String, dynamic>.from(data['outletTimings'] as Map);
   }
 
-  /// Pre-uploads a document image (PAN/GST/FSSAI/UPI-QR/etc.) and returns its
-  /// URL — the caller then folds that URL into an `updateProfile` patch.
+  /// Pre-uploads an image (menu photo/document/PAN/GST/FSSAI/etc.) and returns its
+  /// URL via the global upload service (/uploads/image).
   Future<String> uploadAttachment(
     XFile file, {
     String folder = 'others',
@@ -68,13 +68,33 @@ class RestaurantRepository {
       'folder': folder,
       'file': await xFileToMultipart(file),
     });
-    final response = await _dio.post(
-      '/food/restaurant/upload-attachment',
-      data: formData,
-    );
-    final data = Map<String, dynamic>.from(response.data as Map);
-    return (data['url'] ?? '').toString();
+    try {
+      final response = await _dio.post(
+        '/uploads/image',
+        data: formData,
+      );
+      if (response.data is Map) {
+        final data = response.data as Map;
+        final url = data['url'] ?? data['data']?['url'];
+        if (url != null && url.toString().isNotEmpty) {
+          return url.toString();
+        }
+      }
+      return '';
+    } on DioException catch (dioErr) {
+      // If /uploads/image returns 404, fallback to /food/restaurant/upload-attachment
+      if (dioErr.response?.statusCode == 404) {
+        final response = await _dio.post(
+          '/food/restaurant/upload-attachment',
+          data: formData,
+        );
+        final data = Map<String, dynamic>.from(response.data as Map);
+        return (data['url'] ?? '').toString();
+      }
+      rethrow;
+    }
   }
+
 
   /// Uploading a new logo resets the restaurant's approval status to
   /// `pending` server-side — callers must warn the owner before calling this

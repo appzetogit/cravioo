@@ -70,20 +70,20 @@ class _LiveOrderCardState extends ConsumerState<LiveOrderCard> {
     switch (widget.order.orderStatus) {
       case 'created':
       case 'confirmed':
-        pillColor = Colors.orange.shade50;
-        pillTextColor = Colors.orange.shade700;
+        pillColor = AppColors.successLight;
+        pillTextColor = AppColors.primaryDeep;
         pillIcon = Icons.check_circle;
         pillText = 'Accepted';
         break;
       case 'preparing':
-        pillColor = Colors.orange.shade50;
-        pillTextColor = Colors.orange.shade700;
+        pillColor = AppColors.primaryTint;
+        pillTextColor = AppColors.primaryDark;
         pillIcon = Icons.soup_kitchen;
         pillText = 'Preparing Food';
         break;
       case 'ready_for_pickup':
-        pillColor = Colors.green.shade50;
-        pillTextColor = Colors.green.shade700;
+        pillColor = AppColors.successLight;
+        pillTextColor = AppColors.primaryDeep;
         pillIcon = Icons.shopping_bag;
         pillText = 'Ready for Pickup';
         break;
@@ -104,8 +104,8 @@ class _LiveOrderCardState extends ConsumerState<LiveOrderCard> {
       // finished order showed the pill text "delivered" in lowercase.
       case 'delivered':
       case 'completed':
-        pillColor = Colors.green.shade50;
-        pillTextColor = Colors.green.shade700;
+        pillColor = AppColors.successLight;
+        pillTextColor = AppColors.primaryDeep;
         pillIcon = Icons.check_circle;
         pillText = 'Delivered';
         break;
@@ -409,12 +409,12 @@ class _LiveOrderCardState extends ConsumerState<LiveOrderCard> {
                 const SizedBox(height: 4),
                 Row(
                   children: [
-                    const Icon(Icons.phone, size: 12, color: Colors.orange),
+                    const Icon(Icons.phone, size: 12, color: AppColors.primaryDark),
                     const SizedBox(width: 4),
                     Expanded(
                       child: Text(
                         widget.order.customerPhone.isNotEmpty ? '+91 ${widget.order.customerPhone}' : 'No phone',
-                        style: const TextStyle(color: Colors.orange, fontSize: 12, fontWeight: FontWeight.w500),
+                        style: const TextStyle(color: AppColors.primaryDark, fontSize: 12, fontWeight: FontWeight.w500),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -434,7 +434,7 @@ class _LiveOrderCardState extends ConsumerState<LiveOrderCard> {
               children: [
                 Row(
                   children: [
-                    Icon(widget.order.hasRider ? Icons.circle : Icons.circle_outlined, size: 10, color: widget.order.hasRider ? Colors.green : Colors.grey.shade400),
+                    Icon(widget.order.hasRider ? Icons.circle : Icons.circle_outlined, size: 10, color: widget.order.hasRider ? AppColors.primary : Colors.grey.shade400),
                     const SizedBox(width: 4),
                     Text('Delivery Partner', style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
                   ],
@@ -469,7 +469,7 @@ class _LiveOrderCardState extends ConsumerState<LiveOrderCard> {
                                 ),
                                 if (widget.order.riderRating != null) ...[
                                   const SizedBox(width: 4),
-                                  const Icon(Icons.star, size: 12, color: Colors.orange),
+                                  const Icon(Icons.star, size: 12, color: AppColors.rating),
                                   Text(widget.order.riderRating!.toStringAsFixed(1), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
                                 ],
                               ],
@@ -477,12 +477,12 @@ class _LiveOrderCardState extends ConsumerState<LiveOrderCard> {
                             const SizedBox(height: 2),
                             Row(
                               children: [
-                                const Icon(Icons.phone, size: 10, color: Colors.orange),
+                                const Icon(Icons.phone, size: 10, color: AppColors.primaryDark),
                                 const SizedBox(width: 4),
                                 Expanded(
                                   child: Text(
                                     '+91 ${widget.order.riderPhone}',
-                                    style: const TextStyle(color: Colors.orange, fontSize: 11, fontWeight: FontWeight.w500),
+                                    style: const TextStyle(color: AppColors.primaryDark, fontSize: 11, fontWeight: FontWeight.w500),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                   ),
@@ -545,8 +545,8 @@ class _LiveOrderCardState extends ConsumerState<LiveOrderCard> {
             child: OutlinedButton(
               onPressed: widget.order.hasRider ? () {} : null,
               style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.orange.shade700,
-                side: BorderSide(color: Colors.orange.shade200),
+                foregroundColor: AppColors.primaryDark,
+                side: BorderSide(color: AppColors.primaryAlpha(0.35)),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 padding: const EdgeInsets.symmetric(vertical: 12),
               ),
@@ -558,8 +558,8 @@ class _LiveOrderCardState extends ConsumerState<LiveOrderCard> {
             child: OutlinedButton(
               onPressed: () {},
               style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.orange.shade700,
-                side: BorderSide(color: Colors.orange.shade200),
+                foregroundColor: AppColors.primaryDark,
+                side: BorderSide(color: AppColors.primaryAlpha(0.35)),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 padding: const EdgeInsets.symmetric(vertical: 12),
               ),
@@ -571,8 +571,8 @@ class _LiveOrderCardState extends ConsumerState<LiveOrderCard> {
             child: OutlinedButton(
               onPressed: () => context.push('/order-details/${widget.order.id}'),
               style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.orange.shade700,
-                side: BorderSide(color: Colors.orange.shade200),
+                foregroundColor: AppColors.primaryDark,
+                side: BorderSide(color: AppColors.primaryAlpha(0.35)),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 padding: const EdgeInsets.symmetric(vertical: 12),
               ),

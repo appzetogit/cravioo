@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:food_user_application/core/network/api_exception.dart';
 import 'package:food_user_application/core/network/dio_client.dart';
@@ -84,7 +85,15 @@ class AuthController extends Notifier<AuthState> {
     }
 
     if (result['needsRegistration'] == true) {
-      state = AuthNeedsRegistration(phone);
+      final regToken = result['registrationToken']?.toString();
+      debugPrint('🔑 [AUTH] needsRegistration=true, regToken: ${regToken != null ? "exists (${regToken.length} chars)" : "NULL"}');
+      if (regToken != null && regToken.isNotEmpty) {
+        await ref.read(tokenStorageProvider).saveRegistrationToken(regToken);
+        debugPrint('🔑 [AUTH] Registration token saved to dedicated key');
+      } else {
+        debugPrint('❌ [AUTH] No registrationToken in response! keys=${result.keys.toList()}');
+      }
+      state = AuthNeedsRegistration(phone, regToken);
       return;
     }
 

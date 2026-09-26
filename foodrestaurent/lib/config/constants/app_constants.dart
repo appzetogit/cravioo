@@ -2,25 +2,25 @@ import 'dart:io';
 import 'package:flutter/foundation.dart' show kIsWeb;
 
 class AppConstants {
-  static const String title = 'Fodron Restaurant';
+  static const String title = 'Cravioo Restaurant';
 
   /// Backend REST API base URL (all endpoints are mounted under `/api/v1`).
-  static const String baseUrl = 'https://suvio.appzeto.com/api/v1';
+  static const String baseUrl = 'https://cravioo.in/api/v1';
 
   /// Socket.IO server base (same host, root path — see `Backend/socket-server.js`).
-  static const String socketUrl = 'https://suvio.appzeto.com';
+  static const String socketUrl = 'https://cravioo.in';
 
   static String firbaseApiKey = (kIsWeb || Platform.isAndroid)
-      ? "AIzaSyC_twLhO7C21HdRBvoZvedceka0jdLCUjc"
+      ? "AIzaSyC-y1BzyqQ-LOEicca8cccWKJ4iws2EzAg"
       : "ios firebase api key";
   static String firebaseAppId = (kIsWeb || Platform.isAndroid)
-      ? "1:592916974677:android:3d0944149b8965b01518dc"
+      ? "1:43975359947:android:142fc3e4f64bc01610ca4e"
       : "ios firebase app id";
   static String firebasemessagingSenderId = (kIsWeb || Platform.isAndroid)
-      ? "592916974677"
+      ? "43975359947"
       : "ios firebase sender id";
   static String firebaseProjectId = (kIsWeb || Platform.isAndroid)
-      ? "flutterfoodapp-e6742"
+      ? "cravioo-dc6f2"
       : "ios firebase project id";
 
   /// Google Maps API key (Maps SDK for Android/iOS + Geocoding API enabled).
@@ -28,6 +28,6 @@ class AppConstants {
 
   static const String stripPublishKey = '';
 
-  static String packageName = 'com.foodrestaurant.app';
+  static String packageName = 'com.cravioo.restaurant';
   static String signKey = '';
 }

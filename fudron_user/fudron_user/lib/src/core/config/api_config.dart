@@ -52,6 +52,8 @@ class ApiPaths {
   static const String favorites = '/food/user/favorites';
   static const String favoriteRestaurants = '/food/user/favorites/restaurants';
   static const String favoriteFoods = '/food/user/favorites/foods';
+  static const String membersLeaderboard = '/food/members/leaderboard';
+  static const String userMembersLeaderboard = '/food/user/members/leaderboard';
 
   // ---- Chat ----
   static const String chatConversations = '/food/chat/conversations';
@@ -69,6 +71,15 @@ class ApiPaths {
   static String restaurantMenu(String id) => '$restaurants/$id/menu';
   static String restaurantAddons(String id) => '$restaurants/$id/addons';
   static String restaurantTimings(String id) => '$restaurants/$id/outlet-timings';
+
+  // ---- Dining ----
+  static const String diningCategories = '/food/dining/categories';
+  static const String diningBanners = '/food/dining/banners';
+  static const String diningRestaurants = '/food/dining/restaurants';
+  static String diningRestaurantDetail(String id) => '/food/dining/restaurants/$id';
+  static String diningAvailability(String id) => '/food/dining/restaurants/$id/availability';
+  static const String diningBookings = '/food/user/dining/bookings';
+  static String diningBookingById(String id) => '/food/user/dining/bookings/$id';
 
   // ---- Home / landing ----
   static const String heroBanners = '/food/hero-banners/public';

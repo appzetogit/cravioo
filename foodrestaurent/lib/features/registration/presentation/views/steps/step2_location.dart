@@ -7,6 +7,8 @@ import 'package:food_user_application/config/theme/app_colors.dart';
 import 'package:food_user_application/features/registration/presentation/controllers/registration_controller.dart';
 import 'package:food_user_application/features/registration/presentation/widgets/chip_multi_select.dart';
 import 'package:food_user_application/features/registration/presentation/widgets/labeled_text_field.dart';
+import 'package:food_user_application/features/zones/data/zone_repository.dart';
+import 'package:food_user_application/features/zones/domain/zone_model.dart';
 
 const _cuisineOptions = [
   'North Indian',
@@ -198,9 +200,125 @@ class _Step2LocationState extends ConsumerState<Step2Location> {
 
   @override
   Widget build(BuildContext context) {
+    final zonesAsync = ref.watch(activeZonesProvider);
+
+    zonesAsync.whenData((zones) {
+      if (form.zoneId.isEmpty && zones.isNotEmpty) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted || form.zoneId.isNotEmpty) return;
+          ZoneModel? match;
+          if (form.city.isNotEmpty) {
+            match = zones.cast<ZoneModel?>().firstWhere(
+              (z) =>
+                  z != null &&
+                  z.name.toLowerCase().contains(form.city.toLowerCase().trim()),
+              orElse: () => null,
+            );
+          }
+          final selected = match ?? zones.first;
+          setState(() {
+            form.zoneId = selected.id;
+            form.zoneName = selected.name;
+          });
+          _notify();
+        });
+      }
+    });
+
     return ListView(
       padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
       children: [
+        _sectionCard(
+          title: 'Delivery Zone',
+          subtitle: 'Select the operational zone where your restaurant delivers.',
+          children: [
+            zonesAsync.when(
+              data: (zones) {
+                if (zones.isEmpty) {
+                  return const Text(
+                    'No active delivery zones found. Please contact support.',
+                    style: TextStyle(color: AppColors.error, fontSize: 13),
+                  );
+                }
+                final selectedId =
+                    form.zoneId.isNotEmpty && zones.any((z) => z.id == form.zoneId)
+                        ? form.zoneId
+                        : (zones.isNotEmpty ? zones.first.id : null);
+                if (form.zoneId.isEmpty && selectedId != null) {
+                  form.zoneId = selectedId;
+                  form.zoneName = zones.firstWhere((z) => z.id == selectedId).name;
+                }
+                return DropdownButtonFormField<String>(
+                  value: selectedId,
+                  decoration: InputDecoration(
+                    labelText: 'Operational Zone',
+                    labelStyle: const TextStyle(fontSize: 14),
+                    prefixIcon: const Icon(Icons.location_city, color: AppColors.primary),
+                    filled: true,
+                    fillColor: Colors.white,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: Colors.black.withValues(alpha: 0.1)),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: Colors.black.withValues(alpha: 0.1)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+                    ),
+                  ),
+                  items: zones.map((zone) {
+                    return DropdownMenuItem<String>(
+                      value: zone.id,
+                      child: Text(
+                        zone.name,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                  onChanged: (newZoneId) {
+                    if (newZoneId == null) return;
+                    final zone = zones.firstWhere((z) => z.id == newZoneId);
+                    setState(() {
+                      form.zoneId = zone.id;
+                      form.zoneName = zone.name;
+                    });
+                    _notify();
+                  },
+                );
+              },
+              loading: () => const Padding(
+                padding: EdgeInsets.symmetric(vertical: 8),
+                child: Row(
+                  children: [
+                    SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+                    SizedBox(width: 12),
+                    Text('Loading available zones...', style: TextStyle(fontSize: 13, color: Colors.black54)),
+                  ],
+                ),
+              ),
+              error: (err, _) => Row(
+                children: [
+                  const Icon(Icons.error_outline, color: AppColors.error, size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Failed to load zones: $err',
+                      style: const TextStyle(color: AppColors.error, fontSize: 12),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 20),
         _sectionCard(
           title: 'Pin your location',
           subtitle:

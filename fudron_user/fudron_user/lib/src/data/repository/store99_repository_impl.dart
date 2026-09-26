@@ -56,7 +56,7 @@ class Store99RepositoryImpl implements Store99Repository {
   Future<ApiResponse<List<Store99Product>>> getTrendingDishes() {
     return _guard(() async {
       final foods = await _remote.getPublicFoods(zoneId: _zoneId(), promo: _promo, limit: 100);
-      return foods.where((f) => f.price <= 99.0).map(_toProduct).toList();
+      return foods.where((f) => f.price <= 150.0).map(_toProduct).toList();
     });
   }
 
@@ -74,9 +74,9 @@ class Store99RepositoryImpl implements Store99Repository {
         limit: 200,
       );
 
-      final eligibleFoods = foods.where((f) => f.price <= 99.0).toList();
+      final eligibleFoods = foods.where((f) => f.price <= 150.0).toList();
 
-      // Client-side pagination windowing applied on eligible (<= 99) products
+      // Client-side pagination windowing applied on eligible (<= 150) products
       final start = (page - 1) * limit;
       if (start >= eligibleFoods.length) return const <Store99Product>[];
       return eligibleFoods

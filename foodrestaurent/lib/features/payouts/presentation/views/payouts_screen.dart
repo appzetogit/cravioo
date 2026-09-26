@@ -192,14 +192,22 @@ class _PayoutsScreenState extends ConsumerState<PayoutsScreen> {
 
       actions: [
         Padding(
-          padding: const EdgeInsets.only(right: 10, left: 4),
-          child: Image.asset(
-            _isPayoutsTab
-                ? 'assets/image/wallet.webp'
-                : 'assets/image/calculater.webp',
-            width: 66,
-            height: 66,
-            fit: BoxFit.contain,
+          padding: const EdgeInsets.only(right: 14, left: 4),
+          child: Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: _primaryTint(dark),
+              shape: BoxShape.circle,
+              border: Border.all(color: _primary(dark).withValues(alpha: 0.2)),
+            ),
+            child: Icon(
+              _isPayoutsTab
+                  ? Icons.account_balance_wallet_rounded
+                  : Icons.calculate_rounded,
+              color: _primary(dark),
+              size: 22,
+            ),
           ),
         ),
       ],
@@ -1153,13 +1161,20 @@ class _PayoutsScreenState extends ConsumerState<PayoutsScreen> {
             ),
           ),
 
-          const SizedBox(width: 5),
+          const SizedBox(width: 8),
 
-          Image.asset(
-            'assets/image/calander.webp',
-            width: 50,
-            height: 50,
-            fit: BoxFit.contain,
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: _primaryTint(dark),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.calendar_month_rounded,
+              color: _primary(dark),
+              size: 24,
+            ),
           ),
         ],
       ),
@@ -1371,14 +1386,21 @@ class _PayoutsScreenState extends ConsumerState<PayoutsScreen> {
       decoration: _cardDecoration(dark),
       child: Column(
         children: [
-          Image.asset(
-            'assets/image/notification.webp',
-            width: 76,
-            height: 76,
-            fit: BoxFit.contain,
+          Container(
+            width: 64,
+            height: 64,
+            decoration: BoxDecoration(
+              color: _primaryTint(dark),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.account_balance_wallet_outlined,
+              size: 32,
+              color: _primary(dark),
+            ),
           ),
 
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
 
           Text(
             'No withdrawal requests yet.',

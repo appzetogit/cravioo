@@ -20,10 +20,9 @@ class PopularBrandsList extends StatelessWidget {
     if (restaurants.isEmpty) return const SizedBox.shrink();
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    // Sized to the avatar + two text lines actually rendered — was 88,
-    // leaving dead space below every chip before the section gap started.
+    // Sized to comfortably fit avatar + two text lines even on small screens or larger text scaling
     return SizedBox(
-      height: 82.h,
+      height: 98.h,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         padding: EdgeInsets.symmetric(horizontal: 16.w),
@@ -40,15 +39,16 @@ class PopularBrandsList extends StatelessWidget {
               context.push(RouteNames.restaurantDetail, extra: restaurant);
             },
             child: Container(
-              width: 72.w,
+              width: 76.w,
               margin: EdgeInsets.only(right: 12.w),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   // Circular Brand Logo Avatar Container
                   Container(
-                    width: 48.w,
-                    height: 48.h,
+                    width: 50.r,
+                    height: 50.r,
                     padding: EdgeInsets.all(7.r),
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
@@ -75,22 +75,23 @@ class PopularBrandsList extends StatelessWidget {
                       ),
                     ),
                   ),
-                  SizedBox(height: 4.h),
+                  SizedBox(height: 5.h),
 
                   // Brand Title
                   Text(
                     name,
                     style: TextStyle(
-                      fontSize: 10.5.sp,
+                      fontSize: 11.sp,
                       fontWeight: FontWeight.bold,
                       color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
+                      height: 1.15,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     textAlign: TextAlign.center,
                   ),
 
-                  SizedBox(height: 1.h),
+                  SizedBox(height: 2.h),
 
                   // Delivery Time
                   Text(
@@ -99,6 +100,7 @@ class PopularBrandsList extends StatelessWidget {
                       fontSize: 9.5.sp,
                       fontWeight: FontWeight.w500,
                       color: isDark ? AppColors.textSecondaryDark : const Color(0xFF757575),
+                      height: 1.1,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,

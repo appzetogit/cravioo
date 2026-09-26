@@ -11,7 +11,6 @@ class AppDrawer extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final restaurant = ref.watch(restaurantProfileControllerProvider).value;
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     return Drawer(
       child: Column(
@@ -65,6 +64,14 @@ class AppDrawer extends ConsumerWidget {
                   onTap: () {
                     Navigator.pop(context);
                     context.go('/payouts');
+                  },
+                ),
+                _DrawerItem(
+                  icon: Icons.table_restaurant,
+                  title: 'Dining Bookings',
+                  onTap: () {
+                    Navigator.pop(context);
+                    context.push('/dining-bookings');
                   },
                 ),
                 _DrawerItem(

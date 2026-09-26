@@ -201,14 +201,42 @@ class CatalogRemoteDataSource {
         .map((e) => FoodModel.fromApi(e.cast<String, dynamic>()))
         .toList();
 
-    final data = await _client.get<Map<String, dynamic>>(
-      ApiPaths.publicFoods,
-      query: {'limit': limit, 'zoneId': zoneId, 'categorySlug': categorySlug, 'promo': promo},
-      auth: false,
-      cacheTtl: _cacheTtl,
-      onCache: onCache == null ? null : (cached) => onCache(parse(cached)),
-    );
-    return parse(data);
+    try {
+      final data = await _client.get<Map<String, dynamic>>(
+        ApiPaths.publicFoods,
+        query: {'limit': limit, 'zoneId': zoneId, 'categorySlug': categorySlug, 'promo': promo},
+        auth: false,
+        cacheTtl: _cacheTtl,
+        onCache: onCache == null ? null : (cached) => onCache(parse(cached)),
+      );
+      final foods = parse(data);
+      if (foods.isNotEmpty) return foods;
+    } catch (_) {}
+
+    try {
+      final underData = await _client.get<Map<String, dynamic>>(
+        '/food/restaurant/restaurants/under-250',
+        query: {'zoneId': zoneId},
+        auth: false,
+        cacheTtl: _cacheTtl,
+      );
+      final restaurants = ((underData['restaurants'] as List?) ?? const []).whereType<Map>();
+      final fallbackFoods = <FoodModel>[];
+      for (final r in restaurants) {
+        final restId = r['id']?.toString() ?? r['restaurantId']?.toString() ?? '';
+        final restName = r['name']?.toString() ?? '';
+        final items = ((r['menuItems'] as List?) ?? const []).whereType<Map>();
+        for (final item in items) {
+          final itemMap = Map<String, dynamic>.from(item);
+          itemMap['restaurantId'] ??= restId;
+          itemMap['restaurantName'] ??= restName;
+          fallbackFoods.add(FoodModel.fromApi(itemMap));
+        }
+      }
+      return fallbackFoods;
+    } catch (_) {
+      return const [];
+    }
   }
 
   /// `GET /restaurants/:id/addons` → `{ addons }`.

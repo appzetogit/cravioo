@@ -16,6 +16,8 @@ class RouteNames {
   static const String addAddress = '/add-address';
   static const String allOffers = '/all-offers';
   static const String store99 = '/store-99';
+  static const String members = '/members';
+  static const String dining = '/dining';
   static const String notifications = '/notifications';
   static const String orderDetails = '/orders/details/:id';
   static const String orderTracking = '/orders/track/:id';

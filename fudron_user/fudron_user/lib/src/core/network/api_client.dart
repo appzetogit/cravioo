@@ -145,7 +145,7 @@ class ApiClient {
 
       if (status == 401 && !didRetry) {
         final refreshed = await _refreshOnce();
-        if (refreshed) return _send<T>(call, didRetry: true);
+        if (refreshed) return await _send<T>(call, didRetry: true);
         onSessionExpired?.call();
         throw AuthFailure(_messageOf(response) ?? 'Session expired. Please log in again.');
       }

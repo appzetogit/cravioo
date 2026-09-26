@@ -9,7 +9,7 @@ const router = express.Router();
 
 const PLAY_STORE_URL =
     process.env.ANDROID_PLAY_STORE_URL ||
-    'https://play.google.com/store/apps/details?id=com.appzeto.food';
+    'https://play.google.com/store/apps/details?id=com.cravioo.user';
 const APP_STORE_URL = process.env.IOS_APP_STORE_URL || '';
 
 const escapeHtml = (value) =>
@@ -153,7 +153,7 @@ router.get('/.well-known/assetlinks.json', (_req, res) => {
                 target: {
                     namespace: 'android_app',
                     package_name:
-                        process.env.ANDROID_PACKAGE_NAME || 'com.appzeto.food',
+                        process.env.ANDROID_PACKAGE_NAME || 'com.cravioo.user',
                     sha256_cert_fingerprints: fingerprints,
                 },
             },

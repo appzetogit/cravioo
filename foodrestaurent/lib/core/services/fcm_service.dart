@@ -17,6 +17,7 @@ import 'package:food_user_application/core/services/order_notification_action_ha
 import 'package:food_user_application/features/notifications/presentation/controllers/notifications_controller.dart';
 import 'package:food_user_application/features/orders/presentation/controllers/live_orders_controller.dart';
 import 'package:food_user_application/features/orders/presentation/views/incoming_order_dialog.dart';
+import 'package:food_user_application/features/dining/presentation/controllers/dining_controller.dart';
 
 const _kOrderNotificationTypes = {
   'new_order',
@@ -295,8 +296,12 @@ class FcmService {
     if (_foregroundHandlingWired) return;
     _foregroundHandlingWired = true;
 
+    // Request Android 13+ (POST_NOTIFICATIONS) and FCM permissions immediately
+    await requestPermission();
+
     await LocalNotificationService.instance.initialize(
       onResponse: _handleNotificationResponse,
+      requestPermission: true,
     );
 
     // The OS can rotate the FCM token at any time (rare, but it happens) —
@@ -348,6 +353,8 @@ class FcmService {
 
       if (_kOrderNotificationTypes.contains(type)) {
         _ref.read(liveOrdersControllerProvider.notifier).refresh();
+      } else if (type == 'dining_booking') {
+        _ref.read(diningControllerProvider.notifier).refresh();
       } else {
         _ref.read(notificationsControllerProvider.notifier).refresh();
       }
@@ -443,6 +450,8 @@ class FcmService {
       } else {
         GoRouter.of(context).go('/orders');
       }
+    } else if (type == 'dining_booking') {
+      GoRouter.of(context).push('/dining-bookings');
     } else {
       GoRouter.of(context).go('/notifications');
     }

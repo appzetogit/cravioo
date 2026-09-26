@@ -64,8 +64,20 @@ export const sellerProfileAuth = (req, res, next) => {
 };
 
 export const requireRestaurantRegistrationToken = (req, res, next) => {
-    const authHeader = req.headers.authorization || '';
-    const token = authHeader.startsWith('Bearer ') ? authHeader.substring(7) : null;
+    const authHeader = req.headers.authorization || req.headers.Authorization || '';
+    let token = '';
+    if (authHeader.startsWith('Bearer ') || authHeader.startsWith('bearer ')) {
+        token = authHeader.substring(7).trim();
+    } else if (authHeader && !authHeader.includes(' ')) {
+        token = authHeader.trim();
+    }
+
+    if (!token) {
+        token = req.headers['x-registration-token'] ||
+                req.query?.registrationToken ||
+                req.query?.token ||
+                req.body?.registrationToken;
+    }
 
     if (!token) {
         return sendError(res, 401, 'Registration token required. Please verify OTP again.');

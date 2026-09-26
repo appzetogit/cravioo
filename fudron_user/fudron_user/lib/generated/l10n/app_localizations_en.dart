@@ -119,7 +119,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get replaceCart => 'Replace Cart?';
 
   @override
-  String get store99 => '99 Store';
+  String get store99 => '150 Meals';
+
+  @override
+  String get dining => 'Dining';
 
   @override
   String get loginTitleNewUser => 'Complete your Profile';

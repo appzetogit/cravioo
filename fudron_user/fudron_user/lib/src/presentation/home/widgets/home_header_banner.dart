@@ -6,12 +6,14 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/utils/haptics.dart';
+import '../../address/viewmodels/address_viewmodel.dart';
 import '../../auth/viewmodels/auth_viewmodel.dart';
 import '../../branding/app_colors.dart';
 import '../../cart/viewmodels/cart_viewmodel.dart';
 import '../../common_widgets/smart_image.dart';
 import '../../navigation/route_names.dart';
 import '../viewmodels/banners_viewmodel.dart';
+import '../viewmodels/near_you_viewmodel.dart';
 
 class HomeHeaderBanner extends ConsumerStatefulWidget {
   const HomeHeaderBanner({super.key});
@@ -33,6 +35,11 @@ class _HomeHeaderBannerState extends ConsumerState<HomeHeaderBanner> {
   void initState() {
     super.initState();
     _startAutoRotation();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ref.read(nearYouViewModelProvider.notifier).loadNearbyRestaurants();
+      ref.read(addressViewModelProvider.notifier).load();
+    });
   }
 
   void _startAutoRotation() {
@@ -171,8 +178,55 @@ class _HomeHeaderBannerState extends ConsumerState<HomeHeaderBanner> {
 
   Widget _buildTopRow(BuildContext context) {
     final user = ref.watch(authViewModelProvider).value;
-
     final avatarUrl = user?.avatarUrl ?? '';
+    final nearYouState = ref.watch(nearYouViewModelProvider);
+
+    // Watch the STATE list (not notifier) so the header rebuilds whenever an
+    // address is added/changed. .notifier is stable and never triggers rebuilds.
+    final addresses = ref.watch(addressViewModelProvider);
+    final savedAddress = addresses.isEmpty
+        ? null
+        : (addresses.firstWhere((a) => a.isDefault, orElse: () => addresses.first));
+
+    // Resolve header title and subtitle
+    String titleText = 'Select Location';
+    String areaText = 'Tap to set delivery location';
+
+    if (savedAddress != null) {
+      final isHomeOrOffice = savedAddress.type.toLowerCase() == 'home' ||
+          savedAddress.type.toLowerCase() == 'office' ||
+          savedAddress.title.toLowerCase() == 'home' ||
+          savedAddress.title.toLowerCase() == 'office';
+
+      if (isHomeOrOffice) {
+        // Title = Home / Office, subtitle = address parts
+        titleText = savedAddress.type.isNotEmpty ? savedAddress.type : savedAddress.title;
+        final parts = [savedAddress.street, savedAddress.city].where((s) => s.isNotEmpty).toList();
+        areaText = parts.isNotEmpty
+            ? parts.join(', ')
+            : (savedAddress.fullAddress.isNotEmpty ? savedAddress.fullAddress : titleText);
+      } else {
+        // 'Other' or custom label — show the most meaningful name as title
+        titleText = savedAddress.street.isNotEmpty
+            ? savedAddress.street
+            : (savedAddress.title.isNotEmpty && savedAddress.title.toLowerCase() != 'other'
+                ? savedAddress.title
+                : (savedAddress.city.isNotEmpty ? savedAddress.city : savedAddress.fullAddress.isNotEmpty ? savedAddress.fullAddress : 'My Address'));
+        final parts = [savedAddress.city, savedAddress.state].where((s) => s.isNotEmpty).toList();
+        areaText = parts.isNotEmpty
+            ? parts.join(', ')
+            : (savedAddress.fullAddress.isNotEmpty ? savedAddress.fullAddress : '');
+      }
+    } else if (nearYouState.location != null && nearYouState.location!.isSuccess) {
+      final loc = nearYouState.location!;
+      titleText = loc.building.isNotEmpty ? loc.building : (loc.street.isNotEmpty ? loc.street : (loc.area.isNotEmpty ? loc.area : 'Current Location'));
+      final parts = [
+        if (loc.street.isNotEmpty && loc.building.isNotEmpty) loc.street,
+        if (loc.area.isNotEmpty && loc.area != loc.building) loc.area,
+        if (loc.city.isNotEmpty) loc.city,
+      ].where((s) => s.isNotEmpty).toSet().toList();
+      areaText = parts.isNotEmpty ? parts.join(', ') : (loc.fullAddress.isNotEmpty ? loc.fullAddress : 'Live GPS Detected');
+    }
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -185,10 +239,11 @@ class _HomeHeaderBannerState extends ConsumerState<HomeHeaderBanner> {
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,
 
-            onTap: () {
+            onTap: () async {
               Haptics.light();
-
-              context.push(RouteNames.addAddress);
+              await context.push(RouteNames.addAddress);
+              ref.read(nearYouViewModelProvider.notifier).loadNearbyRestaurants();
+              ref.read(addressViewModelProvider.notifier).load();
             },
 
             child: Row(
@@ -222,7 +277,7 @@ class _HomeHeaderBannerState extends ConsumerState<HomeHeaderBanner> {
                         children: [
                           Flexible(
                             child: Text(
-                              '17/C',
+                              titleText,
                               style: TextStyle(
                                 color: Colors.white,
                                 fontSize: 16.sp,
@@ -249,7 +304,7 @@ class _HomeHeaderBannerState extends ConsumerState<HomeHeaderBanner> {
                         children: [
                           Flexible(
                             child: Text(
-                              'New Palasia, Indore',
+                              areaText,
                               style: TextStyle(
                                 color: Colors.white.withValues(alpha: 0.85),
                                 fontSize: 11.5.sp,

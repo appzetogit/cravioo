@@ -17,6 +17,7 @@ import '../restaurant/screens/food_detail_screen.dart';
 import '../restaurant/screens/restaurant_detail_loader_screen.dart';
 import '../restaurant/screens/restaurant_screen.dart';
 import '../restaurant/screens/store99_screen.dart';
+import '../dining/screens/dining_screen.dart';
 import '../search/screens/search_screen.dart';
 import '../address/screens/add_address_screen.dart';
 import '../offers/screens/all_offers_screen.dart';
@@ -38,6 +39,7 @@ import '../profile/screens/help_support_screen.dart';
 import '../profile/screens/privacy_policy_screen.dart';
 import '../profile/screens/terms_conditions_screen.dart';
 import '../profile/screens/edit_profile_screen.dart';
+import '../members/screens/members_screen.dart';
 import '../../data/models/restaurant_model.dart';
 import '../../data/models/food_model.dart';
 import '../../data/models/cart_item_model.dart';
@@ -53,6 +55,12 @@ final shellNavigatorKeyCart = GlobalKey<NavigatorState>(
 );
 final shellNavigatorKeyStore99 = GlobalKey<NavigatorState>(
   debugLabel: 'shellStore99',
+);
+final shellNavigatorKeyMembers = GlobalKey<NavigatorState>(
+  debugLabel: 'shellMembers',
+);
+final shellNavigatorKeyDining = GlobalKey<NavigatorState>(
+  debugLabel: 'shellDining',
 );
 final shellNavigatorKeyProfile = GlobalKey<NavigatorState>(
   debugLabel: 'shellProfile',
@@ -371,6 +379,24 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: RouteNames.store99,
                 builder: (context, state) => const Store99Screen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            navigatorKey: shellNavigatorKeyMembers,
+            routes: [
+              GoRoute(
+                path: RouteNames.members,
+                builder: (context, state) => const MembersScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            navigatorKey: shellNavigatorKeyDining,
+            routes: [
+              GoRoute(
+                path: RouteNames.dining,
+                builder: (context, state) => const DiningScreen(),
               ),
             ],
           ),

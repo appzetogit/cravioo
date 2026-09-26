@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:go_router/go_router.dart';
 import '../../../../generated/l10n/app_localizations.dart';
 import '../../../core/utils/haptics.dart';
 import '../../branding/app_colors.dart';
-import '../../navigation/route_names.dart';
 
 class CustomBottomNav extends StatelessWidget {
   final int currentIndex;
@@ -57,30 +55,39 @@ class CustomBottomNav extends StatelessWidget {
                 isDark: isDark,
               ),
 
-              // 2. 99 Store (Branch 2)
+              // 2. 150 Meals (Branch 2)
               _buildNavItem(
                 context: context,
-                icon: Icons.shopping_bag_outlined,
-                label: l10n.store99,
+                icon: Icons.lunch_dining_rounded,
+                label: '150 Meals',
                 index: 2,
                 isDark: isDark,
               ),
 
-              // 3. Orders (Route /orders)
+              // 3. Members (Branch 3)
               _buildNavItem(
                 context: context,
-                icon: Icons.receipt_long_outlined,
-                label: l10n.orders,
-                index: 99,
+                icon: Icons.military_tech_rounded,
+                label: 'Members',
+                index: 3,
                 isDark: isDark,
               ),
 
-              // 4. Profile (Branch 3)
+              // 4. Dining (Branch 4)
+              _buildNavItem(
+                context: context,
+                icon: Icons.restaurant_rounded,
+                label: 'Dining',
+                index: 4,
+                isDark: isDark,
+              ),
+
+              // 5. Profile (Branch 5)
               _buildNavItem(
                 context: context,
                 icon: Icons.person_outline_rounded,
                 label: l10n.profile,
-                index: 3,
+                index: 5,
                 isDark: isDark,
               ),
             ],
@@ -104,15 +111,11 @@ class CustomBottomNav extends StatelessWidget {
     return GestureDetector(
       onTap: () {
         Haptics.light();
-        if (index == 99) {
-          context.push(RouteNames.orders);
-        } else {
-          onTap(index);
-        }
+        onTap(index);
       },
       behavior: HitTestBehavior.opaque,
       child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 14.0.w, vertical: 4.0.h),
+        padding: EdgeInsets.symmetric(horizontal: 6.0.w, vertical: 4.0.h),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [

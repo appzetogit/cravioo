@@ -35,41 +35,80 @@ class AddressModel {
   /// Maps `GET/POST /food/user/addresses`. The response carries every
   /// coordinate representation at once (latitude/longitude, lat/lng, location).
   factory AddressModel.fromApi(Map<String, dynamic> json) {
+    final customTitle = (json['additionalDetails'] ?? '').toString().trim();
+    final rawLabel = (json['label'] ?? 'Home').toString().trim();
+    final displayTitle = customTitle.isNotEmpty
+        ? customTitle
+        : (rawLabel.isNotEmpty ? rawLabel : 'Home');
+
+    final rawAddress = (json['address'] ?? json['formattedAddress'] ?? '').toString().trim();
+
     final parts = [
       json['street'],
-      json['additionalDetails'],
       json['city'],
       json['state'],
       json['zipCode'],
     ].whereType<String>().where((e) => e.trim().isNotEmpty).toList();
 
+    double? lat = (json['latitude'] as num?)?.toDouble();
+    double? lng = (json['longitude'] as num?)?.toDouble();
+    if (lat == null || lng == null) {
+      final loc = json['location'];
+      if (loc is Map) {
+        if (loc['coordinates'] is List && (loc['coordinates'] as List).length >= 2) {
+          final coords = loc['coordinates'] as List;
+          lng = (coords[0] as num?)?.toDouble();
+          lat = (coords[1] as num?)?.toDouble();
+        } else if (loc['lat'] != null && loc['lng'] != null) {
+          lat = (loc['lat'] as num?)?.toDouble();
+          lng = (loc['lng'] as num?)?.toDouble();
+        }
+      }
+    }
+
+    final computedFullAddress = rawAddress.isNotEmpty
+        ? rawAddress
+        : (parts.isNotEmpty ? parts.join(', ') : 'Delivery Address');
+
     return AddressModel(
       id: (json['_id'] ?? json['id'] ?? '').toString(),
-      title: (json['label'] ?? 'Home').toString(),
-      fullAddress: parts.join(', '),
-      type: (json['label'] ?? 'Home').toString(),
+      title: displayTitle,
+      fullAddress: computedFullAddress,
+      type: rawLabel.isNotEmpty ? rawLabel : 'Home',
       isDefault: json['isDefault'] as bool? ?? false,
       contactPhone: json['phone']?.toString(),
       street: (json['street'] ?? '').toString(),
       city: (json['city'] ?? '').toString(),
       state: (json['state'] ?? '').toString(),
       zipCode: (json['zipCode'] ?? '').toString(),
-      latitude: (json['latitude'] as num?)?.toDouble(),
-      longitude: (json['longitude'] as num?)?.toDouble(),
+      latitude: lat,
+      longitude: lng,
     );
   }
 
   /// Body for POST/PATCH /food/user/addresses (flat coordinates).
-  Map<String, dynamic> toApiPayload() => {
-        'label': type,
-        'street': street,
-        'city': city,
-        'state': state,
-        'zipCode': zipCode,
-        'phone': ?contactPhone,
-        'latitude': ?latitude,
-        'longitude': ?longitude,
-      };
+  Map<String, dynamic> toApiPayload() {
+    const validLabels = ['Home', 'Office', 'Other', 'Current Location'];
+    final normalizedLabel = validLabels.contains(type) ? type : 'Home';
+    final safeStreet = street.trim().isNotEmpty
+        ? street.trim()
+        : (fullAddress.trim().isNotEmpty ? fullAddress.trim() : 'Address');
+
+    return {
+      'label': normalizedLabel,
+      'street': safeStreet,
+      'additionalDetails': title,
+      'address': fullAddress,
+      'formattedAddress': fullAddress,
+      'city': city.trim(),
+      'state': state.trim(),
+      'zipCode': zipCode.trim(),
+      if (contactPhone != null && contactPhone!.trim().isNotEmpty)
+        'phone': contactPhone!.trim(),
+      'latitude': latitude ?? 0.0,
+      'longitude': longitude ?? 0.0,
+    };
+  }
 
   /// Body for the order payload's `address` (GeoJSON `[lng, lat]`).
   Map<String, dynamic> toOrderPayload({String? customerName}) => {
@@ -95,6 +134,12 @@ class AddressModel {
     bool? isDefault,
     String? contactName,
     String? contactPhone,
+    String? street,
+    String? city,
+    String? state,
+    String? zipCode,
+    double? latitude,
+    double? longitude,
   }) {
     return AddressModel(
       id: id ?? this.id,
@@ -104,6 +149,12 @@ class AddressModel {
       isDefault: isDefault ?? this.isDefault,
       contactName: contactName ?? this.contactName,
       contactPhone: contactPhone ?? this.contactPhone,
+      street: street ?? this.street,
+      city: city ?? this.city,
+      state: state ?? this.state,
+      zipCode: zipCode ?? this.zipCode,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
     );
   }
 }

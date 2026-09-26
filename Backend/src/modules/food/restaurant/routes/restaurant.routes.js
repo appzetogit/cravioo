@@ -6,6 +6,7 @@ import {
     getOnboardingDraftController,
     listApprovedRestaurantsController,
     listUnder250RestaurantsController,
+    listPublicFoodsController,
     getApprovedRestaurantController,
     listPublicOffersController,
     getCurrentRestaurantController,
@@ -64,7 +65,8 @@ import {
 } from '../controllers/restaurantAddon.controller.js';
 import * as orderController from '../../orders/controllers/order.controller.js';
 import { authMiddleware, optionalAuthMiddleware, requireRestaurantRegistrationToken } from '../../../../core/auth/auth.middleware.js';
-import { sendError } from '../../../../utils/response.js';
+import { sendError, sendResponse } from '../../../../utils/response.js';
+import { uploadImageBuffer } from '../../../../services/storage.service.js';
 import { getRestaurantFinanceController, getRestaurantSubscriptionWalletController } from '../controllers/restaurantFinance.controller.js';
 import { createTopupOrderController, verifyTopupController } from '../../subscriptions/controllers/subscription.controller.js';
 import { FoodRestaurant } from '../models/restaurant.model.js';
@@ -158,8 +160,8 @@ const uploadFields = upload.fields([
 // The dining request itself is raised here (never during onboarding).
 router.use('/dining', authMiddleware, requireRestaurant, requireApprovedRestaurant, diningRestaurantRoutes);
 
-router.post('/register', requireRestaurantRegistrationToken, uploadFields, registerRestaurantController);
-router.post('/onboarding/step/:step', requireRestaurantRegistrationToken, uploadFields, saveOnboardingStepController);
+router.post('/register', uploadFields, requireRestaurantRegistrationToken, registerRestaurantController);
+router.post('/onboarding/step/:step', uploadFields, requireRestaurantRegistrationToken, saveOnboardingStepController);
 router.get('/onboarding/draft', requireRestaurantRegistrationToken, getOnboardingDraftController);
 
 // Public: approved restaurants list (for user app)
@@ -174,6 +176,7 @@ router.get('/restaurants/under-250', (req, res, next) => {
     if (req.query?.lat != null && req.query?.lng != null) return next();
     return cacheResponse(300, 'restaurants_under_250')(req, res, next);
 }, listUnder250RestaurantsController);
+router.get('/public/foods', cacheResponse(300, 'public_foods'), listPublicFoodsController);
 router.get('/restaurants/:id', cacheResponse(600, 'restaurant_detail'), getApprovedRestaurantController);
 router.get('/restaurants/:id/menu', cacheResponse(600, 'restaurant_menu'), getPublicRestaurantMenuController);
 router.get('/restaurants/:id/outlet-timings', cacheResponse(600, 'restaurant_timings'), getOutletTimingsByRestaurantIdController);
@@ -237,6 +240,25 @@ router.post(
         next();
     },
     uploadRestaurantMenuImageController
+);
+router.post(
+    '/upload-attachment',
+    authMiddleware,
+    requireRestaurant,
+    upload.single('file'),
+    async (req, res, next) => {
+        try {
+            if (!req.file?.buffer) {
+                return sendError(res, 400, 'Image file is required');
+            }
+            const folderName = req.body?.folder ? String(req.body.folder).trim() : 'others';
+            const folder = `food/restaurants/${folderName}`;
+            const url = await uploadImageBuffer(req.file.buffer, folder);
+            return sendResponse(res, 200, 'Attachment uploaded successfully', { url });
+        } catch (error) {
+            next(error);
+        }
+    }
 );
 router.post(
     '/profile/cover-images',

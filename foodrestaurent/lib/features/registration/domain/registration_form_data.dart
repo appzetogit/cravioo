@@ -29,6 +29,8 @@ class RegistrationFormData {
   String formattedAddress = '';
   double? latitude;
   double? longitude;
+  String zoneId = '';
+  String zoneName = '';
   List<String> cuisines = [];
   List<String> openDays = [];
   String openingTime = '09:00';
@@ -70,7 +72,8 @@ class RegistrationFormData {
       latitude != null &&
       longitude != null &&
       cuisines.isNotEmpty &&
-      openDays.isNotEmpty;
+      openDays.isNotEmpty &&
+      zoneId.trim().isNotEmpty;
 
   bool get isStep3Valid =>
       profileImage != null &&
@@ -97,6 +100,7 @@ class RegistrationFormData {
         ];
       case 1:
         return [
+          if (zoneId.trim().isEmpty) 'Delivery zone (select your operational zone)',
           if (addressLine1.trim().isEmpty) 'Address line 1',
           if (city.trim().isEmpty) 'City',
           if (state.trim().isEmpty) 'State',
@@ -156,6 +160,7 @@ class RegistrationFormData {
       'formattedAddress': formattedAddress.trim(),
       'latitude': latitude?.toString() ?? '',
       'longitude': longitude?.toString() ?? '',
+      'zoneId': zoneId.trim(),
       'cuisines': cuisines.join(','),
       'openDays': openDays.join(','),
       'openingTime': openingTime,

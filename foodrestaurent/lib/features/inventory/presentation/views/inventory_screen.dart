@@ -1,3 +1,5 @@
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:food_user_application/config/theme/app_colors.dart';
@@ -603,7 +605,6 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
       ),
     );
   }
-
   Widget _buildItemCard(BuildContext context, FoodItemModel item) {
     final statusColor = switch (item.approvalStatus) {
       'approved' => AppColors.primary,
@@ -611,11 +612,44 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
       _ => Colors.orange,
     };
 
+    final displayImg = item.images.isNotEmpty ? item.images.first : item.image;
+
     return GestureDetector(
       onTap: () => showFoodItemFormSheet(context, existing: item),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Image thumbnail if exists
+          if (displayImg.isNotEmpty) ...[
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: CachedNetworkImage(
+                imageUrl: displayImg,
+                width: 76,
+                height: 76,
+                fit: BoxFit.cover,
+                placeholder: (context, _) => Container(
+                  width: 76,
+                  height: 76,
+                  color: Colors.grey.shade100,
+                  child: const Center(
+                    child: SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  ),
+                ),
+                errorWidget: (context, url, error) => Container(
+                  width: 76,
+                  height: 76,
+                  color: Colors.grey.shade100,
+                  child: const Icon(Icons.fastfood, color: Colors.grey, size: 28),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+          ],
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -631,7 +665,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 6),
                     Icon(
                       Icons.stop_circle_outlined,
                       color: item.isVeg ? Colors.green : Colors.red,
@@ -648,47 +682,143 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: statusColor.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    item.approvalStatus[0].toUpperCase() +
-                        item.approvalStatus.substring(1),
-                    style: TextStyle(
-                      color: statusColor,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 11,
+                const SizedBox(height: 6),
+
+                // Badges Row
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 4,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 7,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: statusColor.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        item.approvalStatus[0].toUpperCase() +
+                            item.approvalStatus.substring(1),
+                        style: TextStyle(
+                          color: statusColor,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 10,
+                        ),
+                      ),
                     ),
-                  ),
+                    if (item.isRecommended)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 7,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.amber.shade50,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: Colors.amber.shade300, width: 0.5),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.star, size: 10, color: Colors.amber.shade800),
+                            const SizedBox(width: 3),
+                            Text(
+                              'Recommended',
+                              style: TextStyle(
+                                color: Colors.amber.shade900,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 10,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    if (item.hasVariants)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 7,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.blue.shade50,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: Colors.blue.shade200, width: 0.5),
+                        ),
+                        child: Text(
+                          '${item.variants.length} Variants',
+                          style: TextStyle(
+                            color: Colors.blue.shade800,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 10,
+                          ),
+                        ),
+                      ),
+                    if (item.itemSlotTiming != null)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 7,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.purple.shade50,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: Colors.purple.shade200, width: 0.5),
+                        ),
+                        child: Text(
+                          item.itemSlotTiming!.name,
+                          style: TextStyle(
+                            color: Colors.purple.shade800,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 10,
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 6),
+
+                // Price display (supports variants and strike-through)
+                Row(
+                  children: [
+                    Text(
+                      item.hasVariants
+                          ? 'Starts at ₹${item.price.toStringAsFixed(0)}'
+                          : '₹${item.price.toStringAsFixed(0)}',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    if (item.otherPrice > item.price) ...[
+                      const SizedBox(width: 8),
+                      Text(
+                        '₹${item.otherPrice.toStringAsFixed(0)}',
+                        style: TextStyle(
+                          decoration: TextDecoration.lineThrough,
+                          color: Colors.grey.shade500,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+
+                const SizedBox(height: 4),
                 Text(
                   item.isAvailable ? 'In stock' : 'Out of stock',
                   style: TextStyle(
                     color: item.isAvailable
                         ? AppColors.primary
                         : AppColors.error,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Amount: ₹${item.price.toStringAsFixed(2)}',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 12,
                   ),
                 ),
                 if (item.isPending) ...[
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 2),
                   const Text(
                     'Pending admin approval',
                     style: TextStyle(color: Colors.orange, fontSize: 11),
@@ -934,9 +1064,25 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
   }
 
   void _showError(BuildContext context, Object error) {
-    final message = error is ApiException
-        ? error.message
-        : 'Something went wrong. Please try again.';
+    String message = 'Something went wrong. Please try again.';
+    if (error is ApiException) {
+      message = error.message;
+    } else if (error is DioException) {
+      if (error.error is ApiException) {
+        message = (error.error as ApiException).message;
+      } else if (error.response?.data is Map) {
+        final map = error.response!.data as Map;
+        final serverMsg = map['message'] ?? map['error'];
+        if (serverMsg != null && serverMsg.toString().isNotEmpty) {
+          message = serverMsg.toString();
+        }
+      } else if (error.message != null && error.message!.isNotEmpty) {
+        message = error.message!;
+      }
+    } else {
+      final str = error.toString();
+      message = str.startsWith('Exception: ') ? str.substring(11) : str;
+    }
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message), backgroundColor: AppColors.error),
     );

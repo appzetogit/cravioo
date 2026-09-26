@@ -107,6 +107,29 @@ export const listUnder250RestaurantsController = async (req, res, next) => {
     }
 };
 
+export const listPublicFoodsController = async (req, res, next) => {
+    try {
+        const { listUnder250Restaurants } = await import('../services/under250.service.js');
+        const data = await listUnder250Restaurants(req.query);
+        const foods = [];
+        for (const r of (data?.restaurants || [])) {
+            const restId = String(r.id || r.restaurantId || r._id || '');
+            for (const item of (r.menuItems || [])) {
+                foods.push({
+                    ...item,
+                    restaurantId: restId,
+                    restaurantName: r.name || '',
+                    restaurantRating: r.rating,
+                    restaurantTime: r.deliveryTime
+                });
+            }
+        }
+        return sendResponse(res, 200, 'Public foods fetched successfully', { foods });
+    } catch (error) {
+        next(error);
+    }
+};
+
 export const getApprovedRestaurantController = async (req, res, next) => {
     try {
         const restaurant = await getApprovedRestaurantByIdOrSlug(req.params.id);

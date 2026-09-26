@@ -317,8 +317,14 @@ abstract class AppLocalizations {
   /// No description provided for @store99.
   ///
   /// In en, this message translates to:
-  /// **'99 Store'**
+  /// **'150 Meals'**
   String get store99;
+
+  /// No description provided for @dining.
+  ///
+  /// In en, this message translates to:
+  /// **'Dining'**
+  String get dining;
 
   /// No description provided for @loginTitleNewUser.
   ///

@@ -4,7 +4,7 @@
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
-            android:name="com.appzeto.food.MainActivity"
+            android:name="com.cravioo.user.MainActivity"
             android:exported="true"
             android:launchMode="singleTop"
             android:taskAffinity=""
@@ -24,20 +24,21 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
-            <!-- Deep Linking Intent Filters for HTTP/HTTPS universal links and lagech:// scheme -->
+            <!-- Deep Linking Intent Filters for HTTP/HTTPS universal links and cravioo scheme -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="https" android:host="lagech.appzeto.com" android:pathPrefix="/food-detail" />
-                <data android:scheme="https" android:host="lagech.appzeto.com" android:pathPrefix="/restaurant-detail" />
-                <data android:scheme="http" android:host="lagech.appzeto.com" android:pathPrefix="/food-detail" />
-                <data android:scheme="http" android:host="lagech.appzeto.com" android:pathPrefix="/restaurant-detail" />
+                <data android:scheme="https" android:host="cravioo.in" android:pathPrefix="/food-detail" />
+                <data android:scheme="https" android:host="cravioo.in" android:pathPrefix="/restaurant-detail" />
+                <data android:scheme="http" android:host="cravioo.in" android:pathPrefix="/food-detail" />
+                <data android:scheme="http" android:host="cravioo.in" android:pathPrefix="/restaurant-detail" />
             </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="cravioo" />
                 <data android:scheme="lagech" />
             </intent-filter>
         </activity>

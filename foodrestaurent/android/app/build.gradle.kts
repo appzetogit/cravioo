@@ -16,7 +16,7 @@ plugins {
 }
 
 android {
-    namespace = "com.foodrestaurant.app"
+    namespace = "com.cravioo.restaurant"
     compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
@@ -26,13 +26,15 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_17.toString()
+    kotlin {
+        compilerOptions {
+            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+        }
     }
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.foodrestaurant.app"
+        applicationId = "com.cravioo.restaurant"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = if (flutter.minSdkVersion < 21) 21 else flutter.minSdkVersion
@@ -79,8 +81,9 @@ dependencies {
     //
     // The BOM pins the version to the one the plugin already resolved, so declaring it
     // here cannot drag a second, conflicting copy of Firebase into the APK.
-    implementation(platform("com.google.firebase:firebase-bom:33.7.0"))
+    implementation(platform("com.google.firebase:firebase-bom:34.15.0"))
     implementation("com.google.firebase:firebase-messaging")
+    implementation("com.google.firebase:firebase-analytics")
 
     // NotificationCompat, used for the alert and its Accept/Reject actions.
     implementation("androidx.core:core-ktx:1.13.1")

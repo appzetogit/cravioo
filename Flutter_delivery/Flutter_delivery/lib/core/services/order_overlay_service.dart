@@ -14,7 +14,7 @@ import 'package:food_user_application/core/constants/app_constants.dart';
 
 import 'sound_service.dart';
 
-const _applicationId = 'com.fooddelivery.app';
+const _applicationId = 'com.cravioo.delivery';
 const _pendingOrderPrefsKey = 'pending_overlay_order';
 
 /// SharedPreferences that reflect what is actually on disk right now.

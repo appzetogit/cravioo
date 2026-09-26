@@ -15,7 +15,6 @@ class _SplashScreenState extends State<SplashScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _progressAnimation;
-  late Animation<double> _bgFade;
 
   @override
   void initState() {
@@ -35,13 +34,6 @@ class _SplashScreenState extends State<SplashScreen>
       CurvedAnimation(
         parent: _animationController,
         curve: const Interval(0.0, 0.85, curve: Curves.easeInOut),
-      ),
-    );
-
-    _bgFade = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _animationController,
-        curve: const Interval(0.78, 0.95, curve: Curves.easeIn),
       ),
     );
 

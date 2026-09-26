@@ -24,8 +24,9 @@ class AuthOtpSent extends AuthState {
 
 /// The phone was OTP-verified but no restaurant exists for it yet.
 class AuthNeedsRegistration extends AuthState {
-  const AuthNeedsRegistration(this.phone);
+  const AuthNeedsRegistration(this.phone, [this.registrationToken]);
   final String phone;
+  final String? registrationToken;
 }
 
 /// A restaurant exists for this phone but isn't approved yet.

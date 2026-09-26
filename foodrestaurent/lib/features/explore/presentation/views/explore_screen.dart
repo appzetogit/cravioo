@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 
 import 'package:food_user_application/config/theme/app_colors.dart';
 import 'package:food_user_application/core/network/api_exception.dart';
@@ -9,6 +8,7 @@ import 'package:food_user_application/features/auth/presentation/controllers/aut
 import 'package:food_user_application/features/restaurant_profile/presentation/controllers/restaurant_profile_controller.dart';
 import 'package:food_user_application/config/theme/theme_mode_provider.dart';
 import 'package:food_user_application/core/widgets/app_drawer.dart';
+import 'package:food_user_application/features/dining/presentation/controllers/dining_profile_controller.dart';
 
 class ExploreScreen extends ConsumerWidget {
   const ExploreScreen({super.key});
@@ -78,7 +78,9 @@ class ExploreScreen extends ConsumerWidget {
                       context: context,
                       title: 'Menu categories',
                       subtitle: 'Add & manage\nmenu categories',
-                      imageAsset: 'assets/image/menu.webp',
+                      icon: Icons.restaurant_menu_rounded,
+                      iconBgColor: AppColors.primaryTint,
+                      iconColor: AppColors.primaryDark,
                       width: _getCardWidth(context, 3),
                       onTap: () => context.push('/menu-categories'),
                     ),
@@ -87,11 +89,29 @@ class ExploreScreen extends ConsumerWidget {
                       context: context,
                       title: 'Offers & Coupons',
                       subtitle: 'Create & manage offers\nand coupons',
-                      imageAsset: 'assets/image/offer.webp',
-                      iconBgColor: AppColors.errorLight,
-                      iconColor: AppColors.error,
-                      width: _getCardWidth(context, 3) * 1.6,
+                      icon: Icons.local_offer_rounded,
+                      iconBgColor: AppColors.primaryTint,
+                      iconColor: AppColors.primaryDark,
+                      width: _getCardWidth(context, 2),
                       onTap: () => context.push('/offers'),
+                    ),
+
+                    _buildVerticalCard(
+                      context: context,
+                      title: 'Dining',
+                      subtitle: 'Table reservations\n& dining setup',
+                      icon: Icons.table_restaurant_rounded,
+                      iconBgColor: AppColors.primaryTint,
+                      iconColor: AppColors.primaryDark,
+                      width: _getCardWidth(context, 2),
+                      onTap: () {
+                        final profile = ref.read(diningProfileControllerProvider).value?.profile;
+                        if (profile == null || !profile.isApproved) {
+                          context.push('/dining-request');
+                        } else {
+                          context.push('/dining-bookings');
+                        }
+                      },
                     ),
                   ],
                 ),
@@ -113,7 +133,7 @@ class ExploreScreen extends ConsumerWidget {
                       context: context,
                       title: 'Delivery settings',
                       subtitle: 'Manage delivery\npreferences',
-                      imageAsset: 'assets/image/deliverysetting.webp',
+                      icon: Icons.delivery_dining_rounded,
                       iconBgColor: AppColors.successLight,
                       iconColor: AppColors.success,
                       width: _getCardWidth(context, 3),
@@ -124,9 +144,9 @@ class ExploreScreen extends ConsumerWidget {
                       context: context,
                       title: 'Zone Setup',
                       subtitle: 'Manage delivery\nzones & areas',
-                      imageAsset: 'assets/image/zonesetup.webp',
-                      iconBgColor: AppColors.infoLight,
-                      iconColor: AppColors.info,
+                      icon: Icons.map_rounded,
+                      iconBgColor: AppColors.primaryTint,
+                      iconColor: AppColors.primaryDark,
                       width: _getCardWidth(context, 3),
                       onTap: () => context.push('/zone-setup'),
                     ),
@@ -173,8 +193,8 @@ class ExploreScreen extends ConsumerWidget {
                       title: 'Complaints',
                       subtitle: 'Manage issues',
                       icon: Icons.chat_bubble_outline_rounded,
-                      iconColor: AppColors.info,
-                      iconBgColor: AppColors.infoLight,
+                      iconColor: AppColors.primaryDark,
+                      iconBgColor: AppColors.primaryTint,
                       width: _getCardWidth(context, 3),
                       onTap: () => context.push('/complaints'),
                     ),
@@ -184,8 +204,8 @@ class ExploreScreen extends ConsumerWidget {
                       title: 'Reviews',
                       subtitle: 'Customer reviews',
                       icon: Icons.star_rounded,
-                      iconColor: AppColors.rating,
-                      iconBgColor: AppColors.warningLight,
+                      iconColor: AppColors.primaryDark,
+                      iconBgColor: AppColors.primaryTint,
                       width: _getCardWidth(context, 3),
                       onTap: () =>
                           context.push('/complaints', extra: 'reviews'),
@@ -606,51 +626,34 @@ class ExploreScreen extends ConsumerWidget {
           ],
         ),
 
-        child: Stack(
-          clipBehavior: Clip.none,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // ==================================================
-                // RESTAURANT IMAGE
-                // ==================================================
+            // ==================================================
+            // RESTAURANT IMAGE / ICON
+            // ==================================================
 
                 Container(
-                  width: 60,
-                  height: 60,
-
+                  width: 58,
+                  height: 58,
                   decoration: BoxDecoration(
                     color: AppColors.primary,
-                    borderRadius: BorderRadius.circular(17),
-
+                    borderRadius: BorderRadius.circular(18),
                     boxShadow: [
                       BoxShadow(
-                        color: AppColors.primaryAlpha(0.18),
-                        blurRadius: 8,
-                        offset: const Offset(0, 3),
+                        color: AppColors.primaryAlpha(0.25),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
                       ),
                     ],
                   ),
-
-                  clipBehavior: Clip.hardEdge,
-
-                  child: restaurantAsync.value?.profileImage.isNotEmpty == true
-                      ? CachedNetworkImage(
-                          imageUrl: restaurantAsync.value!.profileImage,
-                          fit: BoxFit.cover,
-
-                          errorWidget: (_, _, _) => const Icon(
-                            Icons.storefront_rounded,
-                            color: Colors.white,
-                            size: 31,
-                          ),
-                        )
-                      : const Icon(
-                          Icons.storefront_rounded,
-                          color: Colors.white,
-                          size: 31,
-                        ),
+                  child: const Center(
+                    child: Icon(
+                      Icons.storefront_rounded,
+                      color: Colors.white,
+                      size: 32,
+                    ),
+                  ),
                 ),
 
                 const SizedBox(width: 14),
@@ -792,62 +795,33 @@ class ExploreScreen extends ConsumerWidget {
                   ),
                 ),
 
-                const SizedBox(width: 55),
+                const SizedBox(width: 8),
+
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? AppColors.surfaceVariantDark
+                        : Colors.white.withValues(alpha: 0.95),
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.07),
+                        blurRadius: 6,
+                      ),
+                    ],
+                  ),
+                  child: Icon(
+                    Icons.chevron_right_rounded,
+                    size: 22,
+                    color: isDark
+                        ? AppColors.textPrimaryDark
+                        : AppColors.primaryDeep,
+                  ),
+                ),
               ],
             ),
-
-            // ======================================================
-            // SHOPMAN
-            // ======================================================
-            Positioned(
-              right: -20,
-              bottom: -22,
-
-              child: Image.asset(
-                'assets/image/shopman.webp',
-                width: 120,
-                height: 120,
-                fit: BoxFit.contain,
-              ),
-            ),
-
-            // ======================================================
-            // ARROW
-            // ======================================================
-            Positioned(
-              right: 0,
-              top: 0,
-
-              child: Container(
-                width: 34,
-                height: 34,
-
-                decoration: BoxDecoration(
-                  color: isDark
-                      ? AppColors.surfaceVariantDark
-                      : Colors.white.withValues(alpha: 0.95),
-                  shape: BoxShape.circle,
-
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.07),
-                      blurRadius: 6,
-                    ),
-                  ],
-                ),
-
-                child: Icon(
-                  Icons.chevron_right_rounded,
-                  size: 20,
-
-                  color: isDark
-                      ? AppColors.textPrimaryDark
-                      : AppColors.primaryDeep,
-                ),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -911,8 +885,7 @@ class ExploreScreen extends ConsumerWidget {
     required BuildContext context,
     required String title,
     required String subtitle,
-    IconData? icon,
-    String? imageAsset,
+    required IconData icon,
     required double width,
     Color? iconBgColor,
     Color? iconColor,
@@ -973,14 +946,7 @@ class ExploreScreen extends ConsumerWidget {
                 ),
 
                 child: Center(
-                  child: imageAsset != null
-                      ? Image.asset(
-                          imageAsset,
-                          width: 25,
-                          height: 25,
-                          fit: BoxFit.contain,
-                        )
-                      : Icon(icon, color: resolvedIconColor, size: 24),
+                  child: Icon(icon, color: resolvedIconColor, size: 24),
                 ),
               ),
 

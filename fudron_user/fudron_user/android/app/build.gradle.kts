@@ -19,13 +19,13 @@ plugins {
 }
 
 android {
-    namespace = "com.appzeto.food_user_application"
+    namespace = "com.cravioo.user"
     ndkVersion = "28.2.13676358"
 
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.appzeto.food"
+        applicationId = "com.cravioo.user"
 
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
@@ -53,28 +53,29 @@ android {
         }
     }
 
+    val hasReleaseKeystore = keystorePropertiesFile.exists() && keystoreProperties.getProperty("storeFile") != null
+
     signingConfigs {
-        create("release") {
-            keyAlias =
-                keystoreProperties["keyAlias"] as String?
-
-            keyPassword =
-                keystoreProperties["keyPassword"] as String?
-
-            storeFile =
-                keystoreProperties["storeFile"]?.let {
-                    rootProject.file(it)
+        if (hasReleaseKeystore) {
+            create("release") {
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+                storeFile = keystoreProperties.getProperty("storeFile")?.let { path ->
+                    val f = file(path)
+                    if (f.exists()) f else rootProject.file(path)
                 }
-
-            storePassword =
-                keystoreProperties["storePassword"] as String?
+                storePassword = keystoreProperties.getProperty("storePassword")
+            }
         }
     }
 
     buildTypes {
         release {
-            signingConfig =
+            signingConfig = if (hasReleaseKeystore) {
                 signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
         }
     }
 }
@@ -91,4 +92,7 @@ dependencies {
     implementation(
         "androidx.multidex:multidex:2.0.1"
     )
+
+    implementation(platform("com.google.firebase:firebase-bom:34.15.0"))
+    implementation("com.google.firebase:firebase-analytics")
 }

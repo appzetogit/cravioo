@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:food_user_application/features/menu_items/data/menu_repository.dart';
-import 'package:food_user_application/features/menu_items/domain/food_item_model.dart';
+import 'package:food_user_application/features/menu_items/domain/food_variant_model.dart';
 import 'package:food_user_application/features/menu_items/domain/menu_section_model.dart';
 
 class MenuController extends AsyncNotifier<List<MenuSectionModel>> {
@@ -23,10 +23,13 @@ class MenuController extends AsyncNotifier<List<MenuSectionModel>> {
     required double price,
     double otherPrice = 0,
     String image = '',
+    List<String> images = const [],
     String? categoryId,
     bool isAvailable = true,
     bool isRecommended = false,
     String preparationTime = '',
+    String? itemSlotTimingId,
+    List<FoodVariantModel> variants = const [],
   }) async {
     await ref
         .read(menuRepositoryProvider)
@@ -37,10 +40,13 @@ class MenuController extends AsyncNotifier<List<MenuSectionModel>> {
           price: price,
           otherPrice: otherPrice,
           image: image,
+          images: images,
           categoryId: categoryId,
           isAvailable: isAvailable,
           isRecommended: isRecommended,
           preparationTime: preparationTime,
+          itemSlotTimingId: itemSlotTimingId,
+          variants: variants,
         );
     await refresh();
   }
@@ -53,10 +59,13 @@ class MenuController extends AsyncNotifier<List<MenuSectionModel>> {
     double? price,
     double? otherPrice,
     String? image,
+    List<String>? images,
     String? categoryId,
     bool? isAvailable,
     bool? isRecommended,
     String? preparationTime,
+    String? itemSlotTimingId,
+    List<FoodVariantModel>? variants,
   }) async {
     await ref
         .read(menuRepositoryProvider)
@@ -68,10 +77,13 @@ class MenuController extends AsyncNotifier<List<MenuSectionModel>> {
           price: price,
           otherPrice: otherPrice,
           image: image,
+          images: images,
           categoryId: categoryId,
           isAvailable: isAvailable,
           isRecommended: isRecommended,
           preparationTime: preparationTime,
+          itemSlotTimingId: itemSlotTimingId,
+          variants: variants,
         );
     await refresh();
   }
@@ -91,22 +103,7 @@ class MenuController extends AsyncNotifier<List<MenuSectionModel>> {
             items: [
               for (final item in section.items)
                 if (item.id == id)
-                  FoodItemModel(
-                    id: item.id,
-                    categoryId: item.categoryId,
-                    categoryName: item.categoryName,
-                    name: item.name,
-                    description: item.description,
-                    price: item.price,
-                    otherPrice: item.otherPrice,
-                    image: item.image,
-                    foodType: item.foodType,
-                    isAvailable: isAvailable,
-                    isRecommended: item.isRecommended,
-                    approvalStatus: item.approvalStatus,
-                    rejectionReason: item.rejectionReason,
-                    preparationTime: item.preparationTime,
-                  )
+                  item.copyWith(isAvailable: isAvailable)
                 else
                   item,
             ],

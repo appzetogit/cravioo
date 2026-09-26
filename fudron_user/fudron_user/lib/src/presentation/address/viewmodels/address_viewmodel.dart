@@ -64,7 +64,12 @@ class AddressViewModel extends Notifier<List<AddressModel>> {
   Future<bool> addAddress(AddressModel address) async {
     try {
       final created = await _remote.addAddress(address);
-      state = [...state, created];
+      final exists = state.any((a) => a.id.isNotEmpty && a.id == created.id);
+      if (exists) {
+        state = [for (final a in state) a.id == created.id ? created : a];
+      } else {
+        state = [...state, created];
+      }
       return true;
     } catch (e) {
       error = _messageOf(e);

@@ -7,7 +7,7 @@ plugins {
 }
 
 android {
-    namespace = "com.appzetofood.delivery"
+    namespace = "com.cravioo.delivery"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -17,13 +17,15 @@ android {
         isCoreLibraryDesugaringEnabled = true
     }
 
-    kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_17.toString()
+    kotlin {
+        compilerOptions {
+            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+        }
     }
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.appzetofood.delivery"
+        applicationId = "com.cravioo.delivery"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
@@ -54,4 +56,7 @@ dependencies {
     // app does not silently stop compiling when a plugin changes its dependencies.
     implementation("androidx.core:core-ktx:1.13.1")
     implementation("com.google.firebase:firebase-messaging-ktx:24.0.0")
+
+    implementation(platform("com.google.firebase:firebase-bom:34.19.0"))
+    implementation("com.google.firebase:firebase-analytics")
 }

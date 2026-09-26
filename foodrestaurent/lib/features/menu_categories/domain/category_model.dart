@@ -22,7 +22,9 @@ class CategoryModel {
       type: (json['type'] ?? '').toString(),
       foodTypeScope: (json['foodTypeScope'] ?? 'Both').toString(),
       isActive: json['isActive'] != false,
-      approvalStatus: (json['approvalStatus'] ?? 'pending').toString(),
+      approvalStatus: (json['approvalStatus'] ??
+              (json['isApproved'] == true ? 'approved' : 'pending'))
+          .toString(),
       rejectionReason: (json['rejectionReason'] ?? '').toString(),
       itemCount: (json['itemCount'] is num)
           ? (json['itemCount'] as num).toInt()
