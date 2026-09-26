@@ -359,7 +359,11 @@ class _CartScreenState extends ConsumerState<CartScreen> {
     final itemTotal = pricing?.subtotal ?? cartState.subtotal;
     final savings = pricing?.discount ?? cartState.totalSavings;
     final toPay = pricing?.total ?? cartState.subtotal;
-    final packingCharges = pricing?.packagingFee ?? 0.0;
+    final localPackagingFee = cartState.items.fold<double>(
+      0.0,
+      (sum, item) => sum + ((item.food.packagingFee) * item.quantity),
+    );
+    final packingCharges = pricing?.packagingFee ?? localPackagingFee;
 
     return Scaffold(
       backgroundColor: isDark ? const Color(0xFF1B1B1B) : AppColors.primary,
