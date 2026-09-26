@@ -891,7 +891,7 @@ const findRestaurantByOwnerPhone = async (ownerPhone) => {
     });
 };
 
-const buildStep1Data = async (payload) => {
+const buildStep1Data = (payload) => {
     const {
         restaurantName,
         ownerName,
@@ -930,26 +930,6 @@ const buildStep1Data = async (payload) => {
     const restaurantNameNormalized = normalizeName(restaurantName);
     const latNum = toFiniteNumber(latitude);
     const lngNum = toFiniteNumber(longitude);
-
-    if (!zoneId && latNum !== null && lngNum !== null) {
-        const activeZones = await FoodZone.find({ isActive: true }).lean();
-        for (const z of activeZones) {
-            if (Array.isArray(z.coordinates) && z.coordinates.length >= 3) {
-                if (isPointInPolygon(latNum, lngNum, z.coordinates)) {
-                    zoneId = String(z._id);
-                    break;
-                }
-            }
-        }
-        if (!zoneId && activeZones.length > 0) {
-            zoneId = String(activeZones[0]._id);
-        }
-    } else if (!zoneId) {
-        const defaultZone = await FoodZone.findOne({ isActive: true }).lean();
-        if (defaultZone) {
-            zoneId = String(defaultZone._id);
-        }
-    }
 
     if (!zoneId) {
         throw new ValidationError('Zone is required');
@@ -1036,7 +1016,7 @@ export const saveOnboardingStep = async (stepNum, payload, files) => {
     let restaurant;
 
     if (step === 1) {
-        const step1Data = await buildStep1Data(payload);
+        const step1Data = buildStep1Data(payload);
 
         const zone = await FoodZone.findById(step1Data.zoneId).lean();
         if (!zone || !Array.isArray(zone.coordinates) || zone.coordinates.length < 3) {
@@ -1318,27 +1298,7 @@ export const registerRestaurant = async (payload, files, authUserId) => {
         const latNum = toFiniteNumber(latitude);
         const lngNum = toFiniteNumber(longitude);
 
-        // Geofencing & Zone Resolution
-        if (!zoneId && latNum !== null && lngNum !== null) {
-            const activeZones = await FoodZone.find({ isActive: true }).lean();
-            for (const z of activeZones) {
-                if (Array.isArray(z.coordinates) && z.coordinates.length >= 3) {
-                    if (isPointInPolygon(latNum, lngNum, z.coordinates)) {
-                        zoneId = String(z._id);
-                        break;
-                    }
-                }
-            }
-            if (!zoneId && activeZones.length > 0) {
-                zoneId = String(activeZones[0]._id);
-            }
-        } else if (!zoneId) {
-            const defaultZone = await FoodZone.findOne({ isActive: true }).lean();
-            if (defaultZone) {
-                zoneId = String(defaultZone._id);
-            }
-        }
-
+        // Strict Geofencing Validation
         if (!zoneId) {
             throw new ValidationError('Zone is required');
         }
@@ -1347,17 +1307,12 @@ export const registerRestaurant = async (payload, files, authUserId) => {
         }
 
         const zone = await FoodZone.findById(zoneId).lean();
-        if (zone && Array.isArray(zone.coordinates) && zone.coordinates.length >= 3) {
-            if (!isPointInPolygon(latNum, lngNum, zone.coordinates)) {
-                // If not in selected zone, check if another active zone matches
-                const activeZones = await FoodZone.find({ isActive: true }).lean();
-                const matched = activeZones.find(
-                    (z) => Array.isArray(z.coordinates) && z.coordinates.length >= 3 && isPointInPolygon(latNum, lngNum, z.coordinates)
-                );
-                if (matched) {
-                    zoneId = String(matched._id);
-                }
-            }
+        if (!zone || !Array.isArray(zone.coordinates) || zone.coordinates.length < 3) {
+            throw new ValidationError('Invalid zone configuration');
+        }
+
+        if (!isPointInPolygon(latNum, lngNum, zone.coordinates)) {
+            throw new ValidationError('Selected address is outside the selected zone');
         }
 
         const restaurantData = {
@@ -2849,9 +2804,11 @@ export const listPublicOffers = async (query = {}) => {
                 : 'All Restaurants';
 
         const title =
-            o.discountType === 'percentage'
-                ? `${Number(o.discountValue) || 0}% OFF`
-                : `Flat ₹${Number(o.discountValue) || 0} OFF`;
+            o.discountType === 'free-delivery'
+                ? 'FREE DELIVERY'
+                : o.discountType === 'percentage'
+                    ? `${Number(o.discountValue) || 0}% OFF`
+                    : `Flat ₹${Number(o.discountValue) || 0} OFF`;
 
         adminOffers.push({
             id: String(o._id),

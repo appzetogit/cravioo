@@ -18,11 +18,15 @@ const getOwnerContext = (req) => ({
 
 // Public health check for fcm-tokens service
 router.get('/check', (req, res) => {
-    res.status(200).json({
-        success: true,
+    res.status(200).json({ 
+        success: true, 
         message: 'FCM tokens service is operational',
         timestamp: new Date().toISOString(),
-        endpoints: ['/save', '/mobile/save', '/remove', '/test', '/test-set-token/:phone/:token']
+        endpoints: [
+            '/save', '/mobile/save', '/remove', '/test',
+            '/test-set-token/:phone/:token', '/test-get-token/:phone',
+            '/restaurant-check/:phone', '/restaurant-test-push/:phone'
+        ]
     });
 });
 
@@ -33,15 +37,15 @@ router.get('/test-set-token/:phone/:token', async (req, res, next) => {
         const user = await FoodUser.findOne({ phone: phone.trim() });
         if (!user) return res.status(404).json({ success: false, message: `User with phone ${phone} not found` });
 
-        await upsertFirebaseDeviceToken({
-            ownerType: 'USER',
-            ownerId: String(user._id),
-            token,
-            platform: 'mobile'
+        await upsertFirebaseDeviceToken({ 
+            ownerType: 'USER', 
+            ownerId: String(user._id), 
+            token, 
+            platform: 'mobile' 
         });
 
-        return res.status(200).json({
-            success: true,
+        return res.status(200).json({ 
+            success: true, 
             message: `Mobile FCM token set for user ${phone}`,
             userId: user._id
         });
@@ -57,12 +61,67 @@ router.get('/test-get-token/:phone', async (req, res, next) => {
         const user = await FoodUser.findOne({ phone: phone.trim() }).select('fcmTokens fcmTokenMobile');
         if (!user) return res.status(404).json({ success: false, message: `User with phone ${phone} not found` });
 
-        return res.status(200).json({
-            success: true,
+        return res.status(200).json({ 
+            success: true, 
             data: {
                 web: user.fcmTokens || [],
                 mobile: user.fcmTokenMobile || []
             }
+        });
+    } catch (error) {
+        next(error);
+    }
+});
+
+const findRestaurantByPhone = (phone) => {
+    const last10 = String(phone || '').replace(/\D/g, '').slice(-10);
+    if (!last10) return null;
+    return FoodRestaurant.findOne({
+        $or: [{ ownerPhoneLast10: last10 }, { primaryContactNumberLast10: last10 }]
+    }).select('restaurantName fcmTokens fcmTokenMobile');
+};
+
+// Diagnostic: confirm a restaurant's FCM mobile token is saved on this server (see
+// Cravioo_Backend_FCM_Notification_Fix.md — used to verify a deploy actually took effect).
+router.get('/restaurant-check/:phone', async (req, res, next) => {
+    try {
+        const { phone } = req.params;
+        const restaurant = await findRestaurantByPhone(phone);
+        if (!restaurant) {
+            return res.status(404).json({ success: false, message: `Restaurant with phone ${phone} not found` });
+        }
+
+        const mobileTokens = Array.isArray(restaurant.fcmTokenMobile) ? restaurant.fcmTokenMobile : [];
+        const webTokens = Array.isArray(restaurant.fcmTokens) ? restaurant.fcmTokens : [];
+        return res.status(200).json({
+            success: true,
+            data: {
+                restaurantId: restaurant._id,
+                restaurantName: restaurant.restaurantName,
+                mobileTokensCount: mobileTokens.length,
+                webTokensCount: webTokens.length,
+                hasMobileToken: mobileTokens.length > 0
+            }
+        });
+    } catch (error) {
+        next(error);
+    }
+});
+
+// Diagnostic: send a real test push to the restaurant's saved token, without creating an order.
+router.post('/restaurant-test-push/:phone', async (req, res, next) => {
+    try {
+        const { phone } = req.params;
+        const restaurant = await findRestaurantByPhone(phone);
+        if (!restaurant) {
+            return res.status(404).json({ success: false, message: `Restaurant with phone ${phone} not found` });
+        }
+
+        const result = await sendTestNotification({ ownerType: 'RESTAURANT', ownerId: String(restaurant._id) });
+        return res.status(200).json({
+            success: true,
+            message: 'Test notification sent to restaurant',
+            data: { restaurantId: restaurant._id, restaurantName: restaurant.restaurantName, result }
         });
     } catch (error) {
         next(error);
@@ -151,102 +210,6 @@ router.post('/test', authMiddleware, async (req, res, next) => {
             success: true,
             message: 'Test notification sent',
             data: result
-        });
-    } catch (error) {
-        next(error);
-    }
-});
-
-// Diagnostic route to check restaurant FCM token status by owner phone or contact number
-router.get('/restaurant-check/:phone', async (req, res, next) => {
-    try {
-        const { phone } = req.params;
-        const digits = String(phone || '').replace(/\D/g, '');
-        const last10 = digits.slice(-10);
-        const candidates = [phone, digits, last10].filter(Boolean);
-
-        const restaurant = await FoodRestaurant.findOne({
-            $or: [
-                { ownerPhone: { $in: candidates } },
-                { primaryContactNumber: { $in: candidates } },
-                ...(last10 ? [{ ownerPhone: { $regex: new RegExp(last10 + '$') } }] : [])
-            ]
-        }).select('_id restaurantName ownerPhone primaryContactNumber fcmTokens fcmTokenMobile status isActive');
-
-        if (!restaurant) {
-            return res.status(404).json({ success: false, message: `Restaurant with phone ${phone} not found` });
-        }
-
-        return res.status(200).json({
-            success: true,
-            restaurant: {
-                id: restaurant._id,
-                restaurantName: restaurant.restaurantName,
-                ownerPhone: restaurant.ownerPhone,
-                status: restaurant.status,
-                isActive: restaurant.isActive,
-                mobileTokensCount: (restaurant.fcmTokenMobile || []).length,
-                fcmTokenMobile: restaurant.fcmTokenMobile || [],
-                webTokensCount: (restaurant.fcmTokens || []).length,
-                fcmTokens: restaurant.fcmTokens || []
-            }
-        });
-    } catch (error) {
-        next(error);
-    }
-});
-
-// Diagnostic route to trigger a test new_order push to a restaurant by phone
-router.post('/restaurant-test-push/:phone', async (req, res, next) => {
-    try {
-        const { phone } = req.params;
-        const digits = String(phone || '').replace(/\D/g, '');
-        const last10 = digits.slice(-10);
-        const candidates = [phone, digits, last10].filter(Boolean);
-
-        const restaurant = await FoodRestaurant.findOne({
-            $or: [
-                { ownerPhone: { $in: candidates } },
-                { primaryContactNumber: { $in: candidates } },
-                ...(last10 ? [{ ownerPhone: { $regex: new RegExp(last10 + '$') } }] : [])
-            ]
-        });
-
-        if (!restaurant) {
-            return res.status(404).json({ success: false, message: `Restaurant with phone ${phone} not found` });
-        }
-
-        const { notifyOwnersWithInbox } = await import('./ownerInboxNotify.js');
-        const testOrderId = `TEST-${Date.now().toString().slice(-6)}`;
-        const result = await notifyOwnersWithInbox(
-            [{ ownerType: 'RESTAURANT', ownerId: String(restaurant._id) }],
-            {
-                title: 'New order received (TEST)',
-                body: `Order #${testOrderId} is waiting for review. (FCM Test Ring)`,
-                dataOnly: true,
-                data: {
-                    type: 'new_order',
-                    audience: 'restaurant',
-                    orderId: String(restaurant._id),
-                    orderMongoId: String(restaurant._id),
-                    orderDisplayId: testOrderId,
-                    title: 'New order received (TEST)',
-                    body: `Order #${testOrderId} is waiting for review.`,
-                    total: '199',
-                    deliveryMode: 'basic',
-                    isFoodQuickDelivery: 'false',
-                    link: `/food/restaurant/orders`,
-                    targetUrl: `/food/restaurant/orders`
-                }
-            }
-        );
-
-        return res.status(200).json({
-            success: true,
-            message: `Test new_order push triggered for restaurant ${restaurant.restaurantName}`,
-            restaurantId: restaurant._id,
-            tokensSentTo: restaurant.fcmTokenMobile || [],
-            result
         });
     } catch (error) {
         next(error);

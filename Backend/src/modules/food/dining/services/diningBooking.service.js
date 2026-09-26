@@ -6,8 +6,6 @@ import { FoodDiningProfile } from '../models/diningProfile.model.js';
 import { FoodDiningTable } from '../models/diningTable.model.js';
 import { FoodRestaurant } from '../../restaurant/models/restaurant.model.js';
 import { createInboxNotifications } from '../../../../core/notifications/notification.service.js';
-import { notifyOwnersSafely } from '../../../../core/notifications/firebase.service.js';
-import { getIO, rooms } from '../../../../config/socket.js';
 import {
     ValidationError,
     NotFoundError,
@@ -228,22 +226,6 @@ export const createDiningBooking = async (userId, payload) => {
         throw new ConflictError('This slot just got fully booked. Please pick another slot.');
     }
 
-    const bookingObj = serializeDiningBooking(booking.toObject(), { includeHistory: true });
-
-    // Emit live socket event to restaurant room
-    try {
-        const io = getIO();
-        if (io) {
-            io.to(rooms.restaurant(rid)).emit('new_dining_booking', bookingObj);
-            io.to(rooms.restaurant(rid)).emit('play_notification_sound', {
-                audience: 'restaurant',
-                type: 'dining_booking',
-                bookingId: String(booking._id),
-                bookingCode: booking.bookingCode
-            });
-        }
-    } catch (_) {}
-
     await Promise.all([
         FoodDiningProfile.updateOne({ restaurantId: rid }, { $inc: { totalBookings: 1 } }),
         notifySafely([
@@ -253,7 +235,7 @@ export const createDiningBooking = async (userId, payload) => {
                 title: 'New dining booking request',
                 message: `${payload.guestName} • ${payload.guests} guests • ${payload.date} ${slot.startTime}`,
                 category: 'dining',
-                link: '/dining-bookings'
+                link: '/restaurant/dining/bookings'
             },
             {
                 ownerType: 'USER',
@@ -263,30 +245,10 @@ export const createDiningBooking = async (userId, payload) => {
                 category: 'dining',
                 link: '/food/user/dining/bookings'
             }
-        ]),
-        notifyOwnersSafely(
-            [{ ownerType: 'RESTAURANT', ownerId: rid }],
-            {
-                title: 'New Table Booking Request!',
-                body: `${payload.guestName} booked for ${payload.guests} guests on ${payload.date} (${slot.startTime})`,
-                dataOnly: false,
-                data: {
-                    type: 'dining_booking',
-                    audience: 'restaurant',
-                    bookingId: String(booking._id),
-                    bookingCode: booking.bookingCode,
-                    guestName: payload.guestName,
-                    guests: String(payload.guests),
-                    date: payload.date,
-                    slot: slot.startTime,
-                    link: '/dining-bookings',
-                    targetUrl: '/dining-bookings'
-                }
-            }
-        )
+        ])
     ]);
 
-    return bookingObj;
+    return serializeDiningBooking(booking.toObject(), { includeHistory: true });
 };
 
 export const listUserDiningBookings = async (userId, query) => {

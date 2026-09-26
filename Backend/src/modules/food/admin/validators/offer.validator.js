@@ -4,8 +4,8 @@ import { ValidationError } from '../../../../core/auth/errors.js';
 
 const createOfferSchema = z.object({
     couponCode: z.string().min(1, 'Coupon code is required'),
-    discountType: z.enum(['percentage', 'flat-price']).default('percentage'),
-    discountValue: z.number().positive('Discount value must be greater than 0'),
+    discountType: z.enum(['percentage', 'flat-price', 'free-delivery']).default('percentage'),
+    discountValue: z.number().min(0),
     customerScope: z.enum(['all', 'first-time']).default('all'),
     restaurantScope: z.enum(['all', 'selected']).default('all'),
     restaurantId: z.string().optional(),
@@ -24,7 +24,8 @@ export const validateCreateOfferDto = (body) => {
         ...body,
         couponCode: typeof body?.couponCode === 'string' ? body.couponCode.trim() : body?.couponCode,
         discountType: body?.discountType,
-        discountValue: Number(body?.discountValue),
+        // Free-delivery coupons don't discount the subtotal — no admin-entered amount needed.
+        discountValue: body?.discountType === 'free-delivery' ? 0 : Number(body?.discountValue),
         customerScope: body?.customerScope,
         restaurantScope: body?.restaurantScope,
         restaurantId: body?.restaurantId ? String(body.restaurantId) : undefined,
@@ -41,6 +42,20 @@ export const validateCreateOfferDto = (body) => {
     const result = createOfferSchema.safeParse(normalized);
     if (!result.success) {
         throw new ValidationError(result.error.errors[0].message);
+    }
+
+    const isFreeDelivery = result.data.discountType === 'free-delivery';
+    if (!isFreeDelivery && result.data.discountValue <= 0) {
+        throw new ValidationError('Discount value must be greater than 0');
+    }
+
+    if (isFreeDelivery) {
+        // Always tied to one restaurant, and always one redemption per user — not admin-configurable.
+        result.data.restaurantScope = 'selected';
+        result.data.perUserLimit = 1;
+        if (!result.data.startDate || !result.data.endDate) {
+            throw new ValidationError('Start date and end date are required for a free delivery coupon');
+        }
     }
 
     if (result.data.restaurantScope === 'selected') {

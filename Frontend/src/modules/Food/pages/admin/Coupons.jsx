@@ -27,6 +27,9 @@ const formatDateCell = (value) => {
 }
 
 const formatDiscount = (offer) => {
+  if (offer.discountType === "free-delivery") {
+    return "FREE DELIVERY"
+  }
   if (offer.discountType === "flat-price") {
     return `₹${Number(offer.discountValue || offer.originalPrice || 0)} OFF`
   }
@@ -124,19 +127,23 @@ export default function Coupons() {
   const validateForm = (draft) => {
     const e = {}
     const f = draft || formData
+    const isFreeDelivery = f.discountType === "free-delivery"
     const pct = f.discountType === "percentage"
     const value = Number(f.discountValue)
     if (!String(f.couponCode || "").trim()) e.couponCode = "Coupon code is required"
-    if (!Number.isFinite(value) || value <= 0) e.discountValue = "Discount must be greater than 0"
+    if (!isFreeDelivery && (!Number.isFinite(value) || value <= 0)) e.discountValue = "Discount must be greater than 0"
     if (pct && (f.maxDiscount === "" || f.maxDiscount === null || f.maxDiscount === undefined)) {
       e.maxDiscount = "Max discount is required for percentage coupons"
     }
     if (f.minOrderValue !== "" && Number(f.minOrderValue) < 0) e.minOrderValue = "Min order cannot be negative"
     if (f.usageLimit !== "" && Number(f.usageLimit) < 1) e.usageLimit = "Usage limit must be at least 1"
-    if (f.perUserLimit !== "" && Number(f.perUserLimit) < 1) e.perUserLimit = "Per user limit must be at least 1"
+    if (!isFreeDelivery && f.perUserLimit !== "" && Number(f.perUserLimit) < 1) e.perUserLimit = "Per user limit must be at least 1"
+    if (isFreeDelivery && !f.restaurantId) e.restaurantId = "Please select a restaurant"
     const start = f.startDate ? new Date(`${f.startDate}T00:00:00`) : null
     const end = f.endDate ? new Date(`${f.endDate}T00:00:00`) : null
     const now = new Date()
+    if (isFreeDelivery && !f.startDate) e.startDate = "Start date is required for a free delivery coupon"
+    if (isFreeDelivery && !f.endDate) e.endDate = "End date is required for a free delivery coupon"
     if (end && end < new Date(now.getFullYear(), now.getMonth(), now.getDate())) {
       e.endDate = "End date cannot be in the past"
     }
@@ -158,6 +165,24 @@ export default function Coupons() {
       if (value === "flat-price") {
         setFormData((prev) => {
           const next = { ...prev, discountType: value, maxDiscount: "" }
+          validateForm(next)
+          return next
+        })
+        if (submitError) setSubmitError("")
+        if (submitSuccess) setSubmitSuccess("")
+        return
+      }
+      // Free delivery: no discount amount, always tied to one restaurant, one use per user.
+      if (value === "free-delivery") {
+        setFormData((prev) => {
+          const next = {
+            ...prev,
+            discountType: value,
+            discountValue: "0",
+            maxDiscount: "",
+            restaurantScope: "selected",
+            perUserLimit: "1",
+          }
           validateForm(next)
           return next
         })
@@ -263,8 +288,9 @@ export default function Coupons() {
       return
     }
 
-    const parsedDiscountValue = Number(formData.discountValue)
-    if (!Number.isFinite(parsedDiscountValue) || parsedDiscountValue <= 0) {
+    const isFreeDelivery = formData.discountType === "free-delivery"
+    const parsedDiscountValue = isFreeDelivery ? 0 : Number(formData.discountValue)
+    if (!isFreeDelivery && (!Number.isFinite(parsedDiscountValue) || parsedDiscountValue <= 0)) {
       setSubmitError("Discount value must be greater than 0")
       return
     }
@@ -428,24 +454,32 @@ export default function Coupons() {
                   >
                     <option value="percentage">Percentage</option>
                     <option value="flat-price">Flat Amount</option>
+                    <option value="free-delivery">Free Delivery</option>
                   </select>
                 </div>
 
-                <div title={formData.discountType === "flat-price" ? "Max discount is not applicable for flat coupons" : ""}>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">
-                    {formData.discountType === "percentage" ? "Discount (%)" : "Discount Amount"}
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    step="0.01"
-                    value={formData.discountValue}
-                    onChange={(e) => handleFormChange("discountValue", e.target.value)}
-                    placeholder={formData.discountType === "percentage" ? "e.g. 20" : "e.g. 100"}
-                    className={`w-full px-3 py-2.5 text-sm rounded-lg border ${errors.discountValue ? "border-red-500" : "border-slate-300"} bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500`}
-                  />
-                  {errors.discountValue && <p className="mt-1 text-xs text-red-600">{errors.discountValue}</p>}
-                </div>
+                {formData.discountType === "free-delivery" ? (
+                  <div className="md:col-span-2 lg:col-span-1 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-xs text-emerald-800">
+                    Customer pays ₹0 delivery and the delivery boy earns ₹0 for this order — always tied to one
+                    restaurant, one use per user.
+                  </div>
+                ) : (
+                  <div title={formData.discountType === "flat-price" ? "Max discount is not applicable for flat coupons" : ""}>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1">
+                      {formData.discountType === "percentage" ? "Discount (%)" : "Discount Amount"}
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      step="0.01"
+                      value={formData.discountValue}
+                      onChange={(e) => handleFormChange("discountValue", e.target.value)}
+                      placeholder={formData.discountType === "percentage" ? "e.g. 20" : "e.g. 100"}
+                      className={`w-full px-3 py-2.5 text-sm rounded-lg border ${errors.discountValue ? "border-red-500" : "border-slate-300"} bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500`}
+                    />
+                    {errors.discountValue && <p className="mt-1 text-xs text-red-600">{errors.discountValue}</p>}
+                  </div>
+                )}
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-600 mb-1">Customer Scope</label>
@@ -464,15 +498,21 @@ export default function Coupons() {
                   <select
                     value={formData.restaurantScope}
                     onChange={(e) => handleFormChange("restaurantScope", e.target.value)}
-                    className="w-full px-3 py-2.5 text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    disabled={formData.discountType === "free-delivery"}
+                    className="w-full px-3 py-2.5 text-sm rounded-lg border border-slate-300 bg-white disabled:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   >
                     <option value="all">All Restaurants</option>
                     <option value="selected">Selected Restaurant</option>
                   </select>
+                  {formData.discountType === "free-delivery" && (
+                    <p className="mt-1 text-xs text-slate-500">Free delivery coupons always target one restaurant</p>
+                  )}
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-600 mb-1">Expiry Date (Optional)</label>
+                  <label className="block text-xs font-semibold text-slate-600 mb-1">
+                    Expiry Date{formData.discountType === "free-delivery" ? "" : " (Optional)"}
+                  </label>
                   <input
                     type="date"
                     value={formData.endDate}
@@ -484,7 +524,9 @@ export default function Coupons() {
                 </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">Start Date (Optional)</label>
+                <label className="block text-xs font-semibold text-slate-600 mb-1">
+                  Start Date{formData.discountType === "free-delivery" ? "" : " (Optional)"}
+                </label>
                 <input
                   type="date"
                   value={formData.startDate}
@@ -509,20 +551,22 @@ export default function Coupons() {
                 {errors.minOrderValue && <p className="mt-1 text-xs text-red-600">{errors.minOrderValue}</p>}
               </div>
 
-                <div title={formData.discountType === "flat-price" ? "Max discount is not applicable for flat coupons" : ""}>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">Max Discount (₹, optional)</label>
-                <input
-                  type="number"
-                  min="0"
-                  step="1"
-                    value={formData.maxDiscount}
-                    onChange={(e) => handleFormChange("maxDiscount", e.target.value)}
-                  placeholder="e.g. 100"
-                    disabled={formData.discountType === "flat-price"}
-                    className={`w-full px-3 py-2.5 text-sm rounded-lg border ${errors.maxDiscount ? "border-red-500" : "border-slate-300"} bg-white disabled:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500`}
-                />
-                  {formData.discountType === "percentage" && errors.maxDiscount && <p className="mt-1 text-xs text-red-600">{errors.maxDiscount}</p>}
-              </div>
+                {formData.discountType !== "free-delivery" && (
+                  <div title={formData.discountType === "flat-price" ? "Max discount is not applicable for flat coupons" : ""}>
+                    <label className="block text-xs font-semibold text-slate-600 mb-1">Max Discount (₹, optional)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={formData.maxDiscount}
+                      onChange={(e) => handleFormChange("maxDiscount", e.target.value)}
+                      placeholder="e.g. 100"
+                      disabled={formData.discountType === "flat-price"}
+                      className={`w-full px-3 py-2.5 text-sm rounded-lg border ${errors.maxDiscount ? "border-red-500" : "border-slate-300"} bg-white disabled:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500`}
+                    />
+                    {formData.discountType === "percentage" && errors.maxDiscount && <p className="mt-1 text-xs text-red-600">{errors.maxDiscount}</p>}
+                  </div>
+                )}
 
               <div>
                 <label className="block text-xs font-semibold text-slate-600 mb-1">Usage Limit (global)</label>
@@ -544,12 +588,17 @@ export default function Coupons() {
                   type="number"
                   min="0"
                   step="1"
-                  value={formData.perUserLimit}
+                  value={formData.discountType === "free-delivery" ? "1" : formData.perUserLimit}
                   onChange={(e) => handleFormChange("perUserLimit", e.target.value)}
                   placeholder="e.g. 1"
-                  className={`w-full px-3 py-2.5 text-sm rounded-lg border ${errors.perUserLimit ? "border-red-500" : "border-slate-300"} bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500`}
+                  disabled={formData.discountType === "free-delivery"}
+                  className={`w-full px-3 py-2.5 text-sm rounded-lg border ${errors.perUserLimit ? "border-red-500" : "border-slate-300"} bg-white disabled:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500`}
                 />
-                {errors.perUserLimit && <p className="mt-1 text-xs text-red-600">{errors.perUserLimit}</p>}
+                {formData.discountType === "free-delivery" ? (
+                  <p className="mt-1 text-xs text-slate-500">Always 1 use per user for free delivery coupons</p>
+                ) : (
+                  errors.perUserLimit && <p className="mt-1 text-xs text-red-600">{errors.perUserLimit}</p>
+                )}
               </div>
 
               <div className="flex items-center gap-2">
@@ -582,7 +631,7 @@ export default function Coupons() {
                     <select
                       value={formData.restaurantId}
                       onChange={(e) => handleFormChange("restaurantId", e.target.value)}
-                      className="w-full px-3 py-2.5 text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className={`w-full px-3 py-2.5 text-sm rounded-lg border ${errors.restaurantId ? "border-red-500" : "border-slate-300"} bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500`}
                     >
                       <option value="">Choose a restaurant</option>
                       {restaurants.map((restaurant) => (
@@ -591,6 +640,7 @@ export default function Coupons() {
                         </option>
                       ))}
                     </select>
+                    {errors.restaurantId && <p className="mt-1 text-xs text-red-600">{errors.restaurantId}</p>}
                   </div>
                 )}
               </div>

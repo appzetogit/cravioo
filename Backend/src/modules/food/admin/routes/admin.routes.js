@@ -7,6 +7,7 @@ import roleRoutes from './role.routes.js';
 import diningAdminRoutes from '../../dining/routes/adminDining.routes.js';
 import { getCustomerContactsAdminController } from '../../user/controllers/userContact.controller.js';
 import * as foodApprovalController from '../controllers/foodApproval.controller.js';
+import * as foodPackagingController from '../controllers/foodPackaging.controller.js';
 import * as addonsApprovalController from '../controllers/addonsApproval.controller.js';
 import * as subscriptionPlanController from '../controllers/subscriptionPlan.controller.js';
 
@@ -130,6 +131,11 @@ router.patch('/addons/:id/reject', checkPermission('food::food_management::foods
 // ----- Foods -----
 router.get('/foods', checkPermission('food::food_management::foods::list', 'view'), adminController.getFoods);
 router.get('/foods/pending-approvals', checkPermission('food::food_management::food_approval', 'view'), foodApprovalController.getPendingFoodApprovals);
+// Packaging Fee (per food item) — literal paths must come before the "/foods/:id" catch-all below,
+// otherwise Express matches "packaging" as :id and these are never reached.
+router.get('/foods/packaging', checkPermission('food::deliveryman_management::fee_settings', 'view'), foodPackagingController.listFoodsForPackagingController);
+router.patch('/foods/packaging/bulk', checkPermission('food::deliveryman_management::fee_settings', 'edit'), foodPackagingController.bulkSetFoodPackagingController);
+router.patch('/foods/:id/packaging', checkPermission('food::deliveryman_management::fee_settings', 'edit'), foodPackagingController.setFoodPackagingController);
 router.get('/foods/:id', checkPermission('food::food_management::foods::list', 'view'), adminController.getFoodById);
 router.post('/foods', checkPermission('food::food_management::foods::list', 'create'), adminController.createFood);
 router.patch('/foods/:id', checkPermission('food::food_management::foods::list', 'edit'), adminController.updateFood);

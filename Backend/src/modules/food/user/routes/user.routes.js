@@ -88,14 +88,9 @@ router.patch('/addresses/:addressId', updateAddressController);
 router.delete('/addresses/:addressId', deleteAddressController);
 router.patch('/addresses/:addressId/default', setDefaultAddressController);
 
-import { getMembersLeaderboardController } from '../controllers/userLeaderboard.controller.js';
-
 // Contacts Sync & Permission Status routes (Bearer USER)
 router.post('/contacts/import', importContactsController);
 router.patch('/contacts/permission-status', updatePermissionStatusController);
 router.get('/contacts/mutual', getMutualUsersController);
-
-// Members leaderboard (Bearer USER)
-router.get('/members/leaderboard', getMembersLeaderboardController);
 
 export default router;

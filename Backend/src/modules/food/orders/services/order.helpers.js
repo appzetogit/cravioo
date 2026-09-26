@@ -7,7 +7,6 @@ import { FoodFeeSettings } from '../../admin/models/feeSettings.model.js';
 import { splitQuickDeliveryCharge } from './quick-eligibility.service.js';
 import { normalizeQuickDeliverySettings } from '../utils/quickDeliveryConstants.js';
 import { resolveRestaurantPhone } from '../../shared/restaurantContact.js';
-import { notifyOwnersSafely } from '../../../../core/notifications/firebase.service.js';
 
 /** Actions that must be processed by the payment worker (wallet credits / refunds). */
 export const PAYMENT_QUEUE_ACTIONS = [
@@ -569,7 +568,7 @@ export function canExposeOrderToRestaurant(orderLike) {
   if (String(orderLike?.orderStatus || '').toLowerCase() === 'scheduled') return false;
   const method = String(orderLike?.payment?.method || "").toLowerCase();
   const status = String(orderLike?.payment?.status || "").toLowerCase();
-  if (["cash", "wallet", "cod", "cash_on_delivery"].includes(method)) return true;
+  if (["cash", "wallet"].includes(method)) return true;
   return ["paid", "authorized", "captured", "settled"].includes(status);
 }
 
@@ -739,36 +738,28 @@ export async function notifyRestaurantNewOrder(orderDoc) {
 
     const isFoodQuick =
       String(orderDoc.deliveryMode || "").toLowerCase() === "quick";
-    const orderTitle = isFoodQuick ? "New Quick Delivery order" : "New order received";
-    const orderBody = isFoodQuick
-      ? `PRIORITY: Quick order #${orderDoc.orderId || orderDoc.order_id || orderDoc._id} — prep ASAP.`
-      : `Order #${orderDoc.order_id || orderDoc._id} is waiting for review.`;
-
     await notifyOwnersSafely(
       [{ ownerType: "RESTAURANT", ownerId: orderDoc.restaurantId }],
       {
-        title: orderTitle,
-        body: orderBody,
-        dataOnly: true,
+        title: isFoodQuick ? "New Quick Delivery order" : "New order received",
+        body: isFoodQuick
+          ? `PRIORITY: Quick order #${orderDoc.orderId || orderDoc.order_id || orderDoc._id} — prep ASAP.`
+          : `Order #${orderDoc.order_id || orderDoc._id} is waiting for review.`,
         data: {
           type: "new_order",
           audience: "restaurant",
           orderId: orderDoc._id.toString(),
           orderMongoId: orderDoc._id?.toString?.() || "",
-          orderDisplayId: String(orderDoc.orderId || orderDoc.order_id || orderDoc._id || ""),
-          title: orderTitle,
-          body: orderBody,
-          total: String(orderDoc.pricing?.total || orderDoc.total || ""),
           deliveryMode: String(orderDoc.deliveryMode || "basic"),
-          isFoodQuickDelivery: isFoodQuick ? "true" : "false",
+          isFoodQuickDelivery: isFoodQuick,
           link: `/food/restaurant/orders/${orderDoc._id?.toString?.() || ""}`,
           targetUrl: `/food/restaurant/orders/${orderDoc._id?.toString?.() || ""}`,
         },
       },
     );
 
-  } catch (err) {
-    logger.error(`[RestaurantOrders] notifyRestaurantNewOrder failed: ${err?.message || err}`);
+  } catch {
+    // Do not block order/payment flow if notification fails.
   }
 }
 

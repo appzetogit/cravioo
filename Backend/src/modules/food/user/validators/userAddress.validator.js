@@ -15,15 +15,15 @@ const createAddressSchema = z.object({
     formattedAddress: z.string().max(1000).optional().or(z.literal('')).transform((s) => String(s || '').trim()),
     placeId: z.string().max(255).optional().or(z.literal('')).transform((s) => String(s || '').trim()),
     place_id: z.string().max(255).optional().or(z.literal('')).transform((s) => String(s || '').trim()),
-    street: z.string().max(200).optional().or(z.literal('')).transform((s) => s ? s.trim() : 'Address'),
+    street: z.string().min(1, 'Street is required').max(200).transform((s) => s.trim()),
     additionalDetails: z.string().max(500).optional().or(z.literal('')).transform((s) => String(s || '').trim()),
     city: z.string().min(1, 'City is required').max(100).transform((s) => s.trim()),
     state: z.string().min(1, 'State is required').max(100).transform((s) => s.trim()),
     zipCode: z.string().max(20).optional().or(z.literal('')).transform((s) => String(s || '').trim()),
     pincode: z.string().max(20).optional().or(z.literal('')).transform((s) => String(s || '').trim()),
     phone: z.string().max(20).optional().or(z.literal('')).transform((s) => String(s || '').trim()),
-    latitude: z.number().finite().min(-90).max(90).optional().default(0),
-    longitude: coordSchema.optional().default(0)
+    latitude: z.number().finite().min(-90).max(90),
+    longitude: coordSchema
 });
 
 const updateAddressSchema = createAddressSchema.partial();

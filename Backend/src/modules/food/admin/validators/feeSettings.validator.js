@@ -66,6 +66,7 @@ const feeSettingsUpsertSchema = z.object({
     gstRate: z.number().min(0).max(100).nullable().optional(),
     platformFeeGstRate: z.number().min(0).max(100).nullable().optional(),
     packagingFeeGstRate: z.number().min(0).max(100).nullable().optional(),
+    deliveryCommissionPct: z.number().min(0).max(100).nullable().optional(),
     mixedOrderDistanceLimit: z.number().min(0).nullable().optional(),
     mixedOrderAngleLimit: z.number().min(0).nullable().optional(),
     quickDelivery: quickDeliverySchema.optional(),
@@ -139,6 +140,8 @@ export const validateFeeSettingsUpsertDto = (body) => {
             body?.platformFeeGstRate === null ? null : body?.platformFeeGstRate !== undefined ? Number(body.platformFeeGstRate) : undefined,
         packagingFeeGstRate:
             body?.packagingFeeGstRate === null ? null : body?.packagingFeeGstRate !== undefined ? Number(body.packagingFeeGstRate) : undefined,
+        deliveryCommissionPct:
+            body?.deliveryCommissionPct === null ? null : body?.deliveryCommissionPct !== undefined ? Number(body.deliveryCommissionPct) : undefined,
         mixedOrderDistanceLimit:
             body?.mixedOrderDistanceLimit === null ? null : body?.mixedOrderDistanceLimit !== undefined ? Number(body.mixedOrderDistanceLimit) : undefined,
         mixedOrderAngleLimit:
@@ -198,6 +201,11 @@ export const validateFeeSettingsUpsertDto = (body) => {
 
     const ranges = Array.isArray(result.data.deliveryFeeRanges) ? result.data.deliveryFeeRanges : undefined;
     if (ranges) {
+        // Exactly two: slab 1's fee is the flat base charge, slab 2's fee is the per-km
+        // rate beyond it (see calculateTwoSlabCumulativeAmount) — no room for a third.
+        if (ranges.length > 2) {
+            throw new ValidationError('At most 2 delivery fee ranges are allowed: a base slab and a per-km slab');
+        }
         const sorted = [...ranges].sort((a, b) => a.min - b.min);
         for (const r of sorted) {
             if (r.min >= r.max) {

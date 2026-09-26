@@ -543,6 +543,14 @@ export default function FoodsList() {
           </div>
 
           <div className="flex items-center gap-3 flex-wrap">
+            <button
+              type="button"
+              onClick={() => navigate("/admin/food/packaging-fee")}
+              className="px-4 py-2.5 rounded-lg border border-slate-300 text-slate-700 text-sm font-medium hover:bg-slate-50 inline-flex items-center gap-2"
+              title="Set packaging fee per food item"
+            >
+              <span>Packaging Fee</span>
+            </button>
             {canCreate && (
               <button
                 type="button"
