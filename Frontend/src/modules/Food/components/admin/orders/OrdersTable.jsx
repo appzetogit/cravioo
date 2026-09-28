@@ -421,13 +421,27 @@ export default function OrdersTable({
                       >
                         <Eye className="w-4 h-4" />
                       </button>
-                      <button 
+                      <button
                         onClick={() => onPrintOrder(order)}
                         className="p-1.5 rounded text-blue-600 hover:bg-blue-50 transition-colors"
                         title="Print Order"
                       >
                         <Printer className="w-4 h-4" />
                       </button>
+                      {onDeleteOrder && (
+                        <button
+                          onClick={() => onDeleteOrder(order)}
+                          disabled={deletingOrderId === (order.id || order.orderId)}
+                          className="p-1.5 rounded text-rose-600 hover:bg-rose-50 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+                          title="Delete Order"
+                        >
+                          {deletingOrderId === (order.id || order.orderId) ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="w-4 h-4" />
+                          )}
+                        </button>
+                      )}
 
                       {/* Show Refund button or Refunded status for cancelled orders with Online/Wallet payment (restaurant or user cancelled) */}
                       {(() => {

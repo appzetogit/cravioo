@@ -163,6 +163,10 @@ export default function SignupStep1() {
   })
 
   const handleAddVehicle = () => {
+    if (formData.vehicles.length > 0) {
+      toast.error("Only one vehicle is allowed. Remove it first to add a different one.");
+      return;
+    }
     if (!newVehicle.vehicleId) {
       toast.error("Please select a vehicle category");
       return;
@@ -657,13 +661,13 @@ export default function SignupStep1() {
                   <Truck className="w-4 h-4 text-[#32C45A]" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-gray-900">My Vehicles</h3>
+                  <h3 className="text-sm font-bold text-gray-900">My Vehicle</h3>
                 </div>
               </div>
-              
+
               {formData.vehicles.length === 0 ? (
                 <div className="text-center py-6 bg-gray-50 rounded-xl border border-dashed border-gray-200">
-                  <p className="text-sm font-medium text-gray-500">No vehicles added yet.</p>
+                  <p className="text-sm font-medium text-gray-500">No vehicle added yet.</p>
                   {errors.vehicles && <p className="text-red-500 text-xs mt-2">{errors.vehicles}</p>}
                 </div>
               ) : (
@@ -724,13 +728,14 @@ export default function SignupStep1() {
                 </div>
               )}
 
-              {!showAddVehicle ? (
+              {/* Only one vehicle is allowed — remove it above to pick a different one. */}
+              {formData.vehicles.length > 0 ? null : !showAddVehicle ? (
                 <button
                   type="button"
                   onClick={() => setShowAddVehicle(true)}
                   className="mt-4 w-full py-3.5 rounded-xl border-2 border-dashed border-[#32C45A] text-[#32C45A] font-bold hover:bg-green-50 transition-colors flex items-center justify-center gap-2 text-[13px]"
                 >
-                  <span>+ Add Another Vehicle</span>
+                  <span>+ Add Vehicle</span>
                 </button>
               ) : (
                 <div className="mt-4 bg-gray-50 p-4 rounded-xl border border-gray-200">

@@ -48,6 +48,13 @@ const deliveryRegisterSchema = z.object({
         try {
             const parsed = JSON.parse(data.vehicles);
             if (Array.isArray(parsed) && parsed.length > 0) {
+                if (parsed.length > 1) {
+                    ctx.addIssue({
+                        code: z.ZodIssueCode.custom,
+                        message: 'Only one vehicle is allowed',
+                        path: ['vehicles']
+                    });
+                }
                 hasVehicles = true;
                 vehiclesRequireDl = parsed.some((v) => {
                     const cat = String(v?.category || '').toLowerCase();
