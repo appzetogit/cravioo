@@ -895,18 +895,32 @@ export default function OrdersPage({ statusKey = "all" }) {
 
     if (!shouldDelete) return
 
+    // Drop it from the visible list right away so the row can't be clicked (and deleted) a
+    // second time while the background refresh below is still in flight.
+    const removeFromList = () => {
+      setOrders((prev) => prev.filter((o) => (o.orderId || o.id || o._id) !== order.orderId))
+    }
+
     try {
       setDeletingOrderId(order.id || order.orderId)
       const response = await adminAPI.deleteOrder(orderIdToUse)
       if (response.data?.success) {
         toast.success(response.data?.message || `Order ${order.orderId} deleted`)
+        removeFromList()
         await fetchOrders({ silent: true, withRingCheck: false })
       } else {
         toast.error(response.data?.message || "Failed to delete order")
       }
     } catch (error) {
       debugError("Error deleting order:", error)
-      toast.error(error.response?.data?.message || "Failed to delete order")
+      const message = error.response?.data?.message || ""
+      if (error?.response?.status === 404 || /not found/i.test(message)) {
+        // Already deleted — most likely a second click before the list caught up. Not a real failure.
+        toast.info(`Order ${order.orderId} was already deleted`)
+        removeFromList()
+      } else {
+        toast.error(message || "Failed to delete order")
+      }
     } finally {
       setDeletingOrderId(null)
     }
