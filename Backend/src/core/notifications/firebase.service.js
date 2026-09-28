@@ -187,12 +187,21 @@ const buildMessagePayload = (payload = {}, token) => {
             default_vibrate_timings: true,
             default_light_settings: true,
             click_action: 'FLUTTER_NOTIFICATION_CLICK',
-            actions: []
         }
     };
     if (image) {
         message.android.notification.image = image;
     }
+
+    message.apns = {
+        payload: {
+            aps: {
+                sound: 'default',
+                badge: 1,
+                'content-available': 1,
+            }
+        }
+    };
 
     message.webpush = {
         headers: {
@@ -230,7 +239,8 @@ const parseFirebaseError = async (response) => {
 const shouldRemoveTokenFromError = (errorJson, response) => {
     const status = response?.status;
     const message = String(errorJson?.error?.message || '').toUpperCase();
-    return status === 404 || message.includes('UNREGISTERED') || message.includes('INVALID_ARGUMENT');
+    const errorCode = String(errorJson?.error?.details?.[0]?.errorCode || errorJson?.error?.status || '').toUpperCase();
+    return status === 404 || message.includes('UNREGISTERED') || errorCode.includes('UNREGISTERED') || message.includes('NOT_FOUND');
 };
 
 const getOwnerModel = (ownerType) => OWNER_MODELS[String(ownerType || '').toUpperCase()] || null;

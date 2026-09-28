@@ -11,3 +11,12 @@ Frontend/dist/
 branch_structure.json
 temp_auto_push.bat
 temp_interactive_push.bat
+
+# Ignore 3 Flutter Apps & compiled APKs from repository
+Flutter_delivery/
+foodrestaurent/
+fudron_user/
+*.apk
+*.aab
+**/build/
+

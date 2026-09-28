@@ -227,7 +227,7 @@ export default function AdminRouter() {
             <Route path="point-of-sale" element={<PointOfSale />} />
             <Route path="profile" element={<AdminProfile />} />
             <Route path="settings" element={<AdminSettings />} />
-            
+
             {/* ORDER MANAGEMENT */}
             <Route path="orders/all" element={<OrdersPage statusKey="all" />} />
             <Route path="orders/scheduled" element={<OrdersPage statusKey="scheduled" />} />
@@ -293,11 +293,11 @@ export default function AdminRouter() {
             <Route path="advertisement" element={<AdsList />} />
             <Route path="advertisement/new" element={<NewAdvertisement />} />
             <Route path="advertisement/requests" element={<AdRequests />} />
-            
+
             <Route path="chattings" element={<Chattings />} />
             <Route path="contact-messages" element={<ContactMessages />} />
             <Route path="safety-emergency-reports" element={<SafetyEmergencyReports />} />
-            
+
             <Route path="customers" element={<Customers />} />
             <Route path="customer-role-requests" element={<CustomerRoleRequests />} />
             <Route path="support-tickets" element={<SupportTickets />} />
@@ -332,13 +332,13 @@ export default function AdminRouter() {
             <Route path="customer-report/feedback-experience" element={<FeedbackExperienceReport />} />
             <Route path="tax-report" element={<TaxReport />} />
             <Route path="restaurant-vat-report" element={<RestaurantVATReport />} />
-            
+
             <Route path="restaurant-withdraws" element={<RestaurantWithdraws />} />
             <Route path="restaurant-withdrawal-limit" element={<RestaurantWithdrawalLimit />} />
             <Route path="withdraw-method" element={<WithdrawMethod />} />
             <Route path="onboarding-fee-management" element={<OnboardingFeeManagement />} />
             <Route path="onboarding-payments" element={<OnboardingPayments />} />
-            
+
             <Route path="employee-role" element={<RoleList />} />
             <Route path="employee-role/create" element={<CreateRole />} />
             <Route path="employee-role/edit/:id" element={<CreateRole />} />
@@ -361,7 +361,7 @@ export default function AdminRouter() {
             <Route path="pages-social-media/shipping" element={<ShippingPolicy />} />
             <Route path="pages-social-media/cancellation" element={<CancellationPolicy />} />
             <Route path="pages-social-media/react-registration" element={<ReactRegistration />} />
-            
+
             <Route path="3rd-party-configurations/party" element={<ThirdParty />} />
             <Route path="3rd-party-configurations/firebase" element={<FirebaseNotification />} />
             <Route path="3rd-party-configurations/offline-payment" element={<OfflinePaymentSetup />} />
