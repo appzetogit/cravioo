@@ -194,8 +194,20 @@ const buildMessagePayload = (payload = {}, token) => {
     }
 
     message.apns = {
+        // apns-priority 10 only delivers immediately when the payload carries a real alert
+        // (Apple silently downgrades/queues priority-10 pushes that lack one) — mirror
+        // android.notification above so restaurant/delivery/rider alerts (and everything
+        // else) actually wake the device instead of waiting for a low-priority window.
+        headers: {
+            'apns-priority': '10',
+            'apns-push-type': 'alert'
+        },
         payload: {
             aps: {
+                alert: {
+                    title: notification.title,
+                    body: notification.body
+                },
                 sound: 'default',
                 badge: 1,
                 'content-available': 1,
