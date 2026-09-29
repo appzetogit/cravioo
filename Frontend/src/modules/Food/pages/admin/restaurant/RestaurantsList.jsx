@@ -344,6 +344,7 @@ export default function RestaurantsList() {
             approvalStatus: normalizeApprovalStatus(restaurant),
             isActive: restaurant.isActive !== false,
             isListed: restaurant.isListed || false,
+            displayPosition: restaurant.displayPosition ?? null,
             productCount: restaurant.productCount || 0,
             rating: restaurant.ratings?.average || restaurant.rating || 0,
             logo: getPrimaryRestaurantImage(restaurant, PLACEHOLDER_40),
@@ -1507,6 +1508,32 @@ export default function RestaurantsList() {
     }
   }
 
+  const handlePositionChange = async (restaurant, rawValue) => {
+    if (!canEdit) {
+      toast.error("Permission denied")
+      return
+    }
+    const trimmed = String(rawValue ?? "").trim()
+    const nextPosition = trimmed === "" ? null : Number(trimmed)
+    if (nextPosition !== null && !Number.isFinite(nextPosition)) return
+    if (nextPosition === restaurant.displayPosition) return
+    try {
+      const restaurantId = restaurant._id || restaurant.id;
+      await adminAPI.updateRestaurantPosition(restaurantId, nextPosition);
+      setRestaurants(prev =>
+        prev.map(r =>
+          (r.id === restaurant.id || r._id === restaurant._id)
+            ? { ...r, displayPosition: nextPosition }
+            : r
+        )
+      );
+      toast.success("Display position updated");
+    } catch (err) {
+      debugError("Error updating position:", err);
+      toast.error(err.response?.data?.message || "Failed to update position");
+    }
+  }
+
   // Handle export functionality
   const handleExport = () => {
     const dataToExport = filteredRestaurants.length > 0 ? filteredRestaurants : restaurants
@@ -1687,6 +1714,7 @@ export default function RestaurantsList() {
                       </div>
                     </th>
                     <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">Dates</th>
+                    <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider" title="Lower number shows first in the user app. Leave blank for default order.">Position</th>
                     <th className="px-6 py-4 text-center text-[10px] font-bold text-slate-700 uppercase tracking-wider">Action</th>
                   </tr>
                 </thead>
@@ -1803,6 +1831,17 @@ export default function RestaurantsList() {
                             <span className="text-[11px] text-slate-500">Created: <span className="text-slate-700 font-medium">{restaurant.originalData?.createdAt ? new Date(restaurant.originalData.createdAt).toLocaleDateString() : "N/A"}</span></span>
                             <span className="text-[11px] text-slate-500">Updated: <span className="text-slate-700 font-medium">{restaurant.originalData?.updatedAt ? new Date(restaurant.originalData.updatedAt).toLocaleDateString() : "N/A"}</span></span>
                           </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <input
+                            type="number"
+                            defaultValue={restaurant.displayPosition ?? ""}
+                            key={restaurant.displayPosition}
+                            placeholder="Default"
+                            disabled={!canEdit}
+                            onBlur={(e) => handlePositionChange(restaurant, e.target.value)}
+                            className="w-20 rounded-md border border-slate-200 px-2 py-1 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                          />
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-center">
                           <div className="flex items-center justify-center gap-2">

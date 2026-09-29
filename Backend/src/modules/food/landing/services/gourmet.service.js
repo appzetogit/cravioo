@@ -1,8 +1,14 @@
 import { FoodGourmetRestaurant } from '../models/gourmetRestaurant.model.js';
 import { FoodRestaurant } from '../../restaurant/models/restaurant.model.js';
 
-export const getPublicGourmetRestaurants = async () => {
-    const docs = await FoodGourmetRestaurant.find({ isActive: true })
+export const getPublicGourmetRestaurants = async (type = 'top10', zoneId = null) => {
+    const filter = { isActive: true, type };
+    if (zoneId) {
+        // Entries with no zone set are global (shown everywhere); otherwise the
+        // requesting zone must match exactly - same convention as hero banners.
+        filter.$or = [{ zoneId: null }, { zoneId }];
+    }
+    const docs = await FoodGourmetRestaurant.find(filter)
         .sort({ priority: 1, createdAt: -1 })
         .lean();
 

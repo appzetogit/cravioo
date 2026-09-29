@@ -645,6 +645,13 @@ export const adminAPI = {
       { showWithoutMenu: Boolean(showWithoutMenu) },
       { contextModule: "admin" },
     ),
+  /** Set (or clear with null) manual display position controlling user-app listing order. */
+  updateRestaurantPosition: (id, position) =>
+    apiClient.patch(
+      `/food/admin/restaurants/${String(id)}/position`,
+      { position: position === "" || position === undefined ? null : position },
+      { contextModule: "admin" },
+    ),
   /** Update restaurant location (admin). Body includes lat/lng + address fields. */
   updateRestaurantLocation: (id, body) =>
     apiClient.patch(
@@ -711,6 +718,9 @@ export const adminAPI = {
   /** Customers (admin) */
   getCustomers: (params = {}) =>
     apiClient.get("/food/admin/customers", { params, contextModule: "admin" }),
+  /** User Activity & Churn dashboard (admin) */
+  getUserActivity: (params = {}) =>
+    apiClient.get("/food/admin/customers/activity", { params, contextModule: "admin" }),
   getCustomerById: (id) =>
     apiClient.get(`/food/admin/customers/${String(id)}`, {
       contextModule: "admin",

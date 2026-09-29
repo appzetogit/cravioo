@@ -107,9 +107,16 @@ export const authMiddleware = (req, res, next) => {
         };
         if (decoded.role === 'USER') {
             // Enforce active status in real-time - deactivated users are logged out on next request.
-            FoodUser.findById(decoded.userId).select('isActive').lean().then((doc) => {
+            FoodUser.findById(decoded.userId).select('isActive lastActiveAt').lean().then((doc) => {
                 if (!doc || doc.isActive === false) {
                     return sendError(res, 401, 'User account is deactivated');
+                }
+                // Throttled last-active tracking for the Customer Management activity dashboard -
+                // one write per ~15min per user instead of one per request. Fire-and-forget: must
+                // never block or fail the actual request.
+                const staleMs = 15 * 60 * 1000;
+                if (!doc.lastActiveAt || Date.now() - new Date(doc.lastActiveAt).getTime() > staleMs) {
+                    FoodUser.updateOne({ _id: decoded.userId }, { lastActiveAt: new Date() }).catch(() => {});
                 }
                 next();
             }).catch(() => sendError(res, 401, 'Authentication failed'));

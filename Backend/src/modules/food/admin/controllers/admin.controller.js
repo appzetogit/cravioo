@@ -23,6 +23,15 @@ export async function getCustomers(req, res, next) {
     }
 }
 
+export async function getUserActivity(req, res, next) {
+    try {
+        const data = await adminService.getUserActivity(req.query || {});
+        res.status(200).json({ success: true, message: 'User activity fetched successfully', data });
+    } catch (error) {
+        next(error);
+    }
+}
+
 export async function getCustomerById(req, res, next) {
     try {
         const { id } = req.params;
@@ -528,6 +537,31 @@ export async function toggleRestaurantListing(req, res, next) {
             invalidateCache(`restaurant_detail*`),
         ]).catch(console.error);
         res.status(200).json({ success: true, message: 'Restaurant listing updated successfully', data: { restaurant: updated } });
+    } catch (error) {
+        next(error);
+    }
+}
+
+export async function updateRestaurantPosition(req, res, next) {
+    try {
+        const { id } = req.params;
+        const { position } = req.body;
+        if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ success: false, message: 'Invalid restaurant id' });
+        }
+        const normalized = position === null || position === '' || position === undefined
+            ? null
+            : Number(position);
+        if (normalized !== null && !Number.isFinite(normalized)) {
+            return res.status(400).json({ success: false, message: 'position must be a number or null' });
+        }
+        const updated = await adminService.updateRestaurantPosition(id, normalized);
+        await Promise.all([
+            invalidateCache('restaurants*'),
+            invalidateCache('food_search*'),
+            invalidateCache(`restaurant_detail*`),
+        ]).catch(console.error);
+        res.status(200).json({ success: true, message: 'Restaurant position updated successfully', data: { restaurant: updated } });
     } catch (error) {
         next(error);
     }

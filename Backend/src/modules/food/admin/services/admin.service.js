@@ -447,7 +447,7 @@ export async function getRestaurants(query) {
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(limit)
-            .select('restaurantId restaurantName location area city profileImage coverImages menuImages status ownerName ownerPhone zoneId commissionPercentage isListed productCount pureVegRestaurant createdAt updatedAt showWithoutMenu')
+            .select('restaurantId restaurantName location area city profileImage coverImages menuImages status ownerName ownerPhone zoneId commissionPercentage isListed productCount pureVegRestaurant createdAt updatedAt showWithoutMenu displayPosition')
             .populate('zoneId', 'name zoneName')
             .lean(),
         FoodRestaurant.countDocuments(filter)
@@ -2358,6 +2358,195 @@ export async function getCustomerById(id) {
     };
 }
 
+const USER_ACTIVITY_STATUSES = ['active', 'inactive', 'no_order_30d', 'no_order_60d', 'no_order_90d', 'deleted'];
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * User Activity & Churn dashboard (Customer Management). Status is derived on read from
+ * lastActiveAt/order history rather than stored - it's a pure function of those dates, so
+ * this stays accurate without a background job that could drift out of sync.
+ *   deleted        - isDeleted/accountStatus=deleted
+ *   inactive       - no authenticated app activity for 30+ days
+ *   no_order_30d/60d/90d - otherwise active in-app, but no order for that long (or ever, judged from signup date)
+ *   active         - everyone else
+ */
+export async function getUserActivity(query = {}) {
+    const limit = Math.min(Math.max(parseInt(query.limit, 10) || 50, 1), 1000);
+    const page = Math.max(parseInt(query.page, 10) || 1, 1);
+    const skip = (page - 1) * limit;
+    const now = new Date();
+
+    const match = { $or: [{ role: 'USER' }, { role: { $exists: false } }, { role: null }] };
+    if (query.search && String(query.search).trim()) {
+        const term = escapeRegex(String(query.search).trim().slice(0, 80));
+        match.$and = [{
+            $or: [
+                { name: { $regex: term, $options: 'i' } },
+                { email: { $regex: term, $options: 'i' } },
+                { phone: { $regex: term, $options: 'i' } }
+            ]
+        }];
+    }
+
+    const sortField = {
+        lastActive: 'lastActiveDate',
+        lastOrder: 'lastOrderDateSort',
+        totalOrders: 'totalOrders',
+        joined: 'createdAt'
+    }[String(query.sortBy || '').replace(/-(asc|desc)$/, '')] || 'lastActiveDate';
+    const sortDir = String(query.sortBy || '').endsWith('-asc') ? 1 : -1;
+
+    const pipeline = [
+        { $match: match },
+        {
+            $lookup: {
+                from: 'food_orders',
+                let: { uid: '$_id' },
+                pipeline: [
+                    {
+                        $match: {
+                            $expr: {
+                                $and: [
+                                    { $eq: ['$userId', '$$uid'] },
+                                    { $in: ['$orderType', FOOD_CUSTOMER_ORDER_TYPES] }
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        $group: {
+                            _id: null,
+                            totalOrders: { $sum: 1 },
+                            firstOrderDate: { $min: '$createdAt' },
+                            lastOrderDate: { $max: '$createdAt' }
+                        }
+                    }
+                ],
+                as: 'orderStats'
+            }
+        },
+        {
+            $addFields: {
+                totalOrders: { $ifNull: [{ $arrayElemAt: ['$orderStats.totalOrders', 0] }, 0] },
+                firstOrderDate: { $arrayElemAt: ['$orderStats.firstOrderDate', 0] },
+                lastOrderDate: { $arrayElemAt: ['$orderStats.lastOrderDate', 0] },
+                lastActiveDate: { $ifNull: ['$lastActiveAt', '$createdAt'] }
+            }
+        },
+        {
+            $addFields: {
+                // Sort key that always has a value (unordered users sort after ordered ones, oldest last).
+                lastOrderDateSort: { $ifNull: ['$lastOrderDate', new Date(0)] },
+                daysSinceActive: { $divide: [{ $subtract: [now, '$lastActiveDate'] }, DAY_MS] },
+                daysSinceOrder: {
+                    $cond: [
+                        { $ifNull: ['$lastOrderDate', false] },
+                        { $divide: [{ $subtract: [now, '$lastOrderDate'] }, DAY_MS] },
+                        null
+                    ]
+                },
+                daysSinceSignup: { $divide: [{ $subtract: [now, '$createdAt'] }, DAY_MS] }
+            }
+        },
+        {
+            $addFields: {
+                activityStatus: {
+                    $switch: {
+                        branches: [
+                            {
+                                case: { $or: [{ $eq: ['$isDeleted', true] }, { $eq: ['$accountStatus', 'deleted'] }] },
+                                then: 'deleted'
+                            },
+                            { case: { $gte: ['$daysSinceActive', 30] }, then: 'inactive' },
+                            {
+                                case: { $eq: ['$lastOrderDate', null] },
+                                then: {
+                                    $switch: {
+                                        branches: [
+                                            { case: { $gte: ['$daysSinceSignup', 90] }, then: 'no_order_90d' },
+                                            { case: { $gte: ['$daysSinceSignup', 60] }, then: 'no_order_60d' },
+                                            { case: { $gte: ['$daysSinceSignup', 30] }, then: 'no_order_30d' }
+                                        ],
+                                        default: 'active'
+                                    }
+                                }
+                            },
+                            { case: { $gte: ['$daysSinceOrder', 90] }, then: 'no_order_90d' },
+                            { case: { $gte: ['$daysSinceOrder', 60] }, then: 'no_order_60d' },
+                            { case: { $gte: ['$daysSinceOrder', 30] }, then: 'no_order_30d' }
+                        ],
+                        default: 'active'
+                    }
+                }
+            }
+        },
+        (() => {
+            // statusCounts must reflect the FULL breakdown (all statuses) regardless of the
+            // currently applied status filter, so the dashboard's summary tiles stay stable
+            // while a filter is active - so the filter is scoped to data/totalCount only.
+            const statusFilterStage = query.status && USER_ACTIVITY_STATUSES.includes(query.status)
+                ? [{ $match: { activityStatus: query.status } }]
+                : [];
+            return {
+                $facet: {
+                    data: [
+                        ...statusFilterStage,
+                        { $sort: { [sortField]: sortDir, _id: 1 } },
+                        { $skip: skip },
+                        { $limit: limit },
+                        {
+                            $project: {
+                                name: 1,
+                                email: 1,
+                                phone: 1,
+                                countryCode: 1,
+                                profileImage: 1,
+                                createdAt: 1,
+                                isDeleted: 1,
+                                accountStatus: 1,
+                                lastActiveDate: 1,
+                                lastOrderDate: 1,
+                                firstOrderDate: 1,
+                                totalOrders: 1,
+                                activityStatus: 1
+                            }
+                        }
+                    ],
+                    totalCount: [...statusFilterStage, { $count: 'count' }],
+                    statusCounts: [{ $group: { _id: '$activityStatus', count: { $sum: 1 } } }]
+                }
+            };
+        })()
+    ];
+
+    const [result] = await FoodUser.aggregate(pipeline);
+    const customers = (result?.data || []).map((u) => ({
+        id: u._id,
+        _id: u._id,
+        name: u.name || 'Unnamed',
+        email: u.email || '',
+        phone: u.phone || '',
+        countryCode: u.countryCode || '+91',
+        profileImage: sanitizeProfileImageUrl(u.profileImage || ''),
+        joiningDate: u.createdAt,
+        firstOrderDate: u.firstOrderDate || null,
+        lastOrderDate: u.lastOrderDate || null,
+        lastActiveDate: u.lastActiveDate,
+        totalOrders: Number(u.totalOrders || 0),
+        status: u.activityStatus
+    }));
+    const total = result?.totalCount?.[0]?.count || 0;
+    const statusCounts = USER_ACTIVITY_STATUSES.reduce((acc, key) => {
+        acc[key] = 0;
+        return acc;
+    }, {});
+    (result?.statusCounts || []).forEach((row) => {
+        if (row._id in statusCounts) statusCounts[row._id] = row.count;
+    });
+
+    return { customers, total, page, limit, statusCounts };
+}
+
 export async function updateCustomerStatus(id, isActive) {
     if (!id || !mongoose.Types.ObjectId.isValid(id)) return null;
 
@@ -4222,6 +4411,26 @@ export async function toggleRestaurantListing(id, isListed) {
 
     restaurant.isListed = Boolean(isListed);
     await restaurant.save();
+    return restaurant.toObject();
+}
+
+/** Sets (or clears with null) the manual display position used to order the user-app restaurant listing. */
+export async function updateRestaurantPosition(id, position) {
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+        throw new ValidationError('Invalid restaurant ID');
+    }
+    if (position !== null && !Number.isFinite(position)) {
+        throw new ValidationError('position must be a number or null');
+    }
+    const { FoodRestaurant } = await import('../../restaurant/models/restaurant.model.js');
+    const restaurant = await FoodRestaurant.findByIdAndUpdate(
+        id,
+        { displayPosition: position },
+        { new: true }
+    );
+    if (!restaurant) {
+        throw new ValidationError('Restaurant not found');
+    }
     return restaurant.toObject();
 }
 

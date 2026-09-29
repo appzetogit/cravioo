@@ -201,6 +201,13 @@ export const adminSidebarMenu = [
       },
       {
         type: "link",
+        label: "User Activity",
+        permissionKey: "user_activity",
+        path: "/admin/food/customers/activity",
+        icon: "Zap",
+      },
+      {
+        type: "link",
         label: "Customer Role Requests",
         permissionKey: "customers",
         path: "/admin/food/customer-role-requests",

@@ -2661,16 +2661,28 @@ export const listApprovedRestaurants = async (query = {}) => {
         if (sortBy === 'price-low') return { featuredPrice: 1, createdAt: -1 };
         if (sortBy === 'price-high') return { featuredPrice: -1, createdAt: -1 };
         if (sortBy === 'deliveryTime') return { estimatedDeliveryTimeMinutes: 1, createdAt: -1 };
-        return { createdAt: -1 };
+        return null; // default browsing order: admin-set displayPosition first, see below
     })();
 
+    // No explicit sortBy: let admin-curated `displayPosition` (lower = shown first)
+    // take priority over the default newest-first order. Restaurants without a
+    // position (null/unset) sort after every positioned one, then fall back to createdAt.
     const [restaurantsRaw, total] = await Promise.all([
-        FoodRestaurant.find(filter)
-            .select(Object.keys(projection).join(' '))
-            .sort(sort)
-            .skip(skip)
-            .limit(limit)
-            .lean(),
+        sort
+            ? FoodRestaurant.find(filter)
+                .select(Object.keys(projection).join(' '))
+                .sort(sort)
+                .skip(skip)
+                .limit(limit)
+                .lean()
+            : FoodRestaurant.aggregate([
+                { $match: filter },
+                { $addFields: { _positionSort: { $ifNull: ['$displayPosition', 999999999] } } },
+                { $sort: { _positionSort: 1, createdAt: -1 } },
+                { $skip: skip },
+                { $limit: limit },
+                { $project: projection }
+            ]),
         FoodRestaurant.countDocuments(filter)
     ]);
 

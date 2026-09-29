@@ -154,9 +154,13 @@ apiClient.interceptors.request.use(
       }
     }
 
-    const token = getAccessToken(config);
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    // Don't clobber a caller-supplied Authorization header (e.g. admin pages that
+    // pass an explicit admin token) with the wrong module's token from URL guessing.
+    if (!config.headers.Authorization) {
+      const token = getAccessToken(config);
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
     }
 
     // Attach context module as header for backend scoping (e.g. notifications)

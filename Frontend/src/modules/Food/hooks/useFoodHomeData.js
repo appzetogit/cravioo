@@ -179,6 +179,7 @@ export const useFoodHomeData = ({
 
           if (type === 'offers') href = "/user/offers";
           else if (type === 'gourmet') href = "/user/gourmet";
+          else if (type === 'trending') href = "/user/trending";
           else if (type === 'collections') href = "/user/collections";
           else if (target) href = target;
 
@@ -440,7 +441,10 @@ export const useFoodHomeData = ({
       return { ...r, _isOpen: status.isOpen };
     });
 
-    // Apply sorting: Open restaurants first, then by rating
+    // Apply sorting: Open restaurants first, then the explicit sort (if any).
+    // With no explicit sortBy, keep the backend's own order (admin displayPosition,
+    // then newest-first) instead of forcing a rating sort here - forcing one silently
+    // discarded any admin-set display position.
     filtered.sort((a, b) => {
       if (a._isOpen !== b._isOpen) {
         return a._isOpen ? -1 : 1;
@@ -455,8 +459,7 @@ export const useFoodHomeData = ({
         const bMin = bMatch ? Math.min(...bMatch.map(Number)) : 999;
         return aMin - bMin;
       }
-      // Default: Rating
-      return b.rating - a.rating;
+      return 0;
     });
     return filtered;
   }, [deferredRestaurants, vegMode, sortBy, availabilityTick, activeFilters]);

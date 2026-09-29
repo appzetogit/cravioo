@@ -59,13 +59,28 @@ export const getPublicExploreIconsController = async (req, res, next) => {
 
 export const getPublicGourmetController = async (req, res, next) => {
     try {
-        const docs = await getPublicGourmetRestaurants();
+        const docs = await getPublicGourmetRestaurants('top10', req.query?.zoneId || null);
         const restaurants = (docs || []).map((d) => ({
             ...(d.restaurant || {}),
             _id: d.restaurant?._id || d.restaurantId,
             priority: d.priority
         })).filter((r) => r && r._id);
         return sendResponse(res, 200, 'Gourmet restaurants fetched', { restaurants });
+    } catch (error) {
+        next(error);
+    }
+};
+
+/** GET /hero-banners/trending/public?zoneId= - Trending Now rail for user app (zone-filtered). */
+export const getPublicTrendingController = async (req, res, next) => {
+    try {
+        const docs = await getPublicGourmetRestaurants('trending', req.query?.zoneId || null);
+        const restaurants = (docs || []).map((d) => ({
+            ...(d.restaurant || {}),
+            _id: d.restaurant?._id || d.restaurantId,
+            priority: d.priority
+        })).filter((r) => r && r._id);
+        return sendResponse(res, 200, 'Trending restaurants fetched', { restaurants });
     } catch (error) {
         next(error);
     }

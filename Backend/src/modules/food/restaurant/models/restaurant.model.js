@@ -294,6 +294,12 @@ const restaurantSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    /** Manual admin ordering for the user-app restaurant listing. Lower shows first; unset = no override. */
+    displayPosition: {
+      type: Number,
+      default: null,
+      index: true,
+    },
     productCount: {
       type: Number,
       default: 0,

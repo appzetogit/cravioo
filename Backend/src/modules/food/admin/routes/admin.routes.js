@@ -57,6 +57,7 @@ router.put(
 
 // ----- Customers -----
 router.get('/customers', checkPermission('food::customer_management::customers', 'view'), adminController.getCustomers);
+router.get('/customers/activity', checkPermission('food::customer_management::user_activity', 'view'), adminController.getUserActivity);
 router.get('/customers/:id', checkPermission('food::customer_management::customers', 'view'), adminController.getCustomerById);
 router.get('/customers/:id/contacts', checkPermission('food::customer_management::customers', 'view'), getCustomerContactsAdminController);
 router.patch('/customers/:id/status', checkPermission('food::customer_management::customers', 'edit'), adminController.updateCustomerStatus);
@@ -102,6 +103,7 @@ router.patch('/restaurants/:id', checkPermission('food::restaurant_management::r
 router.patch('/restaurants/:id/status', checkPermission('food::restaurant_management::restaurants::list', 'edit'), adminController.updateRestaurantStatus);
 router.patch('/restaurants/:id/visibility', checkPermission('food::restaurant_management::restaurants::list', 'edit'), adminController.toggleRestaurantListing);
 router.patch('/restaurants/:id/show-without-menu', checkPermission('food::restaurant_management::restaurants::list', 'edit'), adminController.toggleShowWithoutMenu);
+router.patch('/restaurants/:id/position', checkPermission('food::restaurant_management::restaurants::list', 'edit'), adminController.updateRestaurantPosition);
 router.patch('/restaurants/:id/location', checkPermission('food::restaurant_management::restaurants::list', 'edit'), adminController.updateRestaurantLocation);
 router.patch('/restaurants/:id/menu', checkPermission('food::restaurant_management::restaurants::list', 'edit'), adminController.updateRestaurantMenuById);
 router.patch('/restaurants/:id/approve', checkPermission('food::restaurant_management::restaurants::joining_request', 'edit'), adminController.approveRestaurant);

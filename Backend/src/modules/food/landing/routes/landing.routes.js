@@ -32,6 +32,7 @@ import {
     getPublicUnder250BannersController,
     getPublicExploreIconsController,
     getPublicGourmetController,
+    getPublicTrendingController,
     getPublicLandingSettingsController,
     getPublicAdvertisementsController
 } from '../controllers/publicLanding.controller.js';
@@ -43,6 +44,7 @@ import {
     createGourmetAdmin,
     deleteGourmetAdmin,
     updateGourmetOrderAdmin,
+    updateGourmetZoneAdmin,
     toggleGourmetStatusAdmin
 } from '../controllers/top10GourmetAdmin.controller.js';
 import { getPublicPageController } from '../../admin/controllers/pageContent.controller.js';
@@ -163,30 +165,36 @@ router.patch(
     updateExploreMoreController
 );
 
-// Admin Gourmet (hero-banners)
+// Admin Gourmet / Trending Now (both rails share this collection, split by ?type=/body.type)
 router.get('/hero-banners/gourmet', ...adminLanding('view'), listGourmetAdmin);
 router.post(
     '/hero-banners/gourmet',
     ...adminLanding('create'),
-    invalidateLandingCacheOnSuccess('landing_gourmet'),
+    invalidateLandingCacheOnSuccess('landing_gourmet', 'landing_trending'),
     createGourmetAdmin
 );
 router.delete(
     '/hero-banners/gourmet/:id',
     ...adminLanding('delete'),
-    invalidateLandingCacheOnSuccess('landing_gourmet'),
+    invalidateLandingCacheOnSuccess('landing_gourmet', 'landing_trending'),
     deleteGourmetAdmin
 );
 router.patch(
     '/hero-banners/gourmet/:id/order',
     ...adminLanding('edit'),
-    invalidateLandingCacheOnSuccess('landing_gourmet'),
+    invalidateLandingCacheOnSuccess('landing_gourmet', 'landing_trending'),
     updateGourmetOrderAdmin
+);
+router.patch(
+    '/hero-banners/gourmet/:id/zone',
+    ...adminLanding('edit'),
+    invalidateLandingCacheOnSuccess('landing_gourmet', 'landing_trending'),
+    updateGourmetZoneAdmin
 );
 router.patch(
     '/hero-banners/gourmet/:id/status',
     ...adminLanding('edit'),
-    invalidateLandingCacheOnSuccess('landing_gourmet'),
+    invalidateLandingCacheOnSuccess('landing_gourmet', 'landing_trending'),
     toggleGourmetStatusAdmin
 );
 
@@ -195,6 +203,7 @@ router.get('/hero-banners/public', cacheResponse(300, 'landing_hero'), getPublic
 router.get('/hero-banners/under-250/public', cacheResponse(300, 'landing_under250'), getPublicUnder250BannersController);
 router.get('/explore-icons/public', cacheResponse(300, 'landing_explore'), getPublicExploreIconsController);
 router.get('/hero-banners/gourmet/public', cacheResponse(300, 'landing_gourmet'), getPublicGourmetController);
+router.get('/hero-banners/trending/public', cacheResponse(300, 'landing_trending'), getPublicTrendingController);
 router.get('/landing/settings/public', cacheResponse(300, 'landing_settings'), getPublicLandingSettingsController);
 router.get('/advertisements/public', cacheResponse(300, 'landing_advertisements'), getPublicAdvertisementsController);
 router.get('/zones/detect', detectZonePublicController);

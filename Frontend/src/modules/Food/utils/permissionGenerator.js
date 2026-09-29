@@ -54,6 +54,7 @@ const ACTION_MAPPING = {
   'processed': ["view", "edit"],
   'returned': ["view", "edit"],
   'locations': ["view"],
+  'user_activity': ["view"],
 };
 
 export function generatePermissionTree(enabledModules = null) {

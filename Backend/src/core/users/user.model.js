@@ -152,6 +152,12 @@ const userSchema = new mongoose.Schema(
             default: true,
             index: true
         },
+        /** Last time this user made an authenticated request (throttled updates, see auth.middleware.js). */
+        lastActiveAt: {
+            type: Date,
+            default: null,
+            index: true
+        },
         isCodAllowed: {
             type: Boolean,
             default: true,

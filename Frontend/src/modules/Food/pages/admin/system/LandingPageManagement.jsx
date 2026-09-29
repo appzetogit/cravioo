@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from "react"
-import { Upload, Trash2, Image as ImageIcon, Loader2, AlertCircle, CheckCircle2, ArrowUp, ArrowDown, Layout, Tag, ChefHat, Megaphone, Search } from "lucide-react"
+import { Upload, Trash2, Image as ImageIcon, Loader2, AlertCircle, CheckCircle2, ArrowUp, ArrowDown, Layout, Tag, ChefHat, Megaphone, Search, TrendingUp } from "lucide-react"
 import api from "@food/api"
 import { adminAPI } from "@food/api"
 import { getModuleToken } from "@food/utils/auth"
@@ -116,11 +116,19 @@ export default function LandingPageManagement() {
   const [allRestaurants, setAllRestaurants] = useState([])
   const [restaurantsLoading, setRestaurantsLoading] = useState(false)
 
-  // Gourmet Restaurants
+  // Gourmet Restaurants (Top 10 rail)
   const [gourmetRestaurants, setGourmetRestaurants] = useState([])
   const [gourmetLoading, setGourmetLoading] = useState(true)
   const [gourmetDeleting, setGourmetDeleting] = useState(null)
   const [selectedRestaurantGourmet, setSelectedRestaurantGourmet] = useState("")
+  const [selectedZoneGourmet, setSelectedZoneGourmet] = useState("")
+
+  // Trending Now Restaurants (same collection as Gourmet, type=trending)
+  const [trendingRestaurants, setTrendingRestaurants] = useState([])
+  const [trendingLoading, setTrendingLoading] = useState(true)
+  const [trendingDeleting, setTrendingDeleting] = useState(null)
+  const [selectedRestaurantTrending, setSelectedRestaurantTrending] = useState("")
+  const [selectedZoneTrending, setSelectedZoneTrending] = useState("")
 
   // Common
   const [error, setError] = useState(null)
@@ -193,6 +201,8 @@ export default function LandingPageManagement() {
       }
       if (exploreMoreSubTab === 'gourmet') {
         fetchGourmetRestaurants()
+      } else if (exploreMoreSubTab === 'trending') {
+        fetchTrendingRestaurants()
       } else if (exploreMoreSubTab === 'icons') {
         fetchExploreMore()
       }
@@ -1089,7 +1099,7 @@ export default function LandingPageManagement() {
     try {
       setGourmetLoading(true)
       setError(null)
-      const response = await api.get('/food/hero-banners/gourmet', getAuthConfig())
+      const response = await api.get('/food/hero-banners/gourmet', getAuthConfig({ params: { type: 'top10' } }))
       if (response.data.success) {
         setGourmetRestaurants(response.data.data.restaurants || [])
       }
@@ -1116,16 +1126,28 @@ export default function LandingPageManagement() {
       setError(null)
       setSuccess(null)
       const response = await api.post('/food/hero-banners/gourmet', {
-        restaurantId: selectedRestaurantGourmet
+        restaurantId: selectedRestaurantGourmet,
+        zoneId: selectedZoneGourmet || null
       }, getAuthConfig())
       if (response.data.success) {
         setSuccess('Restaurant added to Gourmet successfully!')
         setSelectedRestaurantGourmet("")
+        setSelectedZoneGourmet("")
         await fetchGourmetRestaurants()
         setTimeout(() => setSuccess(null), 3000)
       }
     } catch (err) {
       setErrorSafely(err.response?.data?.message || 'Failed to add restaurant to Gourmet.')
+    }
+  }
+
+  const handleGourmetZoneChange = async (id, zoneId) => {
+    try {
+      setError(null)
+      await api.patch(`/food/hero-banners/gourmet/${id}/zone`, { zoneId: zoneId || null }, getAuthConfig())
+      await fetchGourmetRestaurants()
+    } catch (err) {
+      setErrorSafely(err.response?.data?.message || 'Failed to update visibility zone.')
     }
   }
   const handleDeleteGourmetRestaurant = async (id) => {
@@ -1179,6 +1201,113 @@ export default function LandingPageManagement() {
     }
   }
 
+  // ==================== TRENDING NOW (same collection as Gourmet, type=trending) ====================
+  const fetchTrendingRestaurants = async () => {
+    try {
+      setTrendingLoading(true)
+      setError(null)
+      const response = await api.get('/food/hero-banners/gourmet', getAuthConfig({ params: { type: 'trending' } }))
+      if (response.data.success) {
+        setTrendingRestaurants(response.data.data.restaurants || [])
+      }
+    } catch (err) {
+      if (err.response?.status === 401 || err.response?.status === 404) {
+        setTrendingRestaurants([])
+        setError(null)
+      } else {
+        setErrorSafely(err.response?.data?.message || 'Failed to load Trending restaurants')
+      }
+    } finally {
+      setTrendingLoading(false)
+    }
+  }
+
+  const handleAddTrendingRestaurant = async () => {
+    if (!selectedRestaurantTrending) {
+      setError('Please select a restaurant')
+      return
+    }
+    try {
+      setError(null)
+      setSuccess(null)
+      const response = await api.post('/food/hero-banners/gourmet', {
+        restaurantId: selectedRestaurantTrending,
+        type: 'trending',
+        zoneId: selectedZoneTrending || null
+      }, getAuthConfig())
+      if (response.data.success) {
+        setSuccess('Restaurant added to Trending Now successfully!')
+        setSelectedRestaurantTrending("")
+        setSelectedZoneTrending("")
+        await fetchTrendingRestaurants()
+        setTimeout(() => setSuccess(null), 3000)
+      }
+    } catch (err) {
+      setErrorSafely(err.response?.data?.message || 'Failed to add restaurant to Trending Now.')
+    }
+  }
+
+  const handleDeleteTrendingRestaurant = async (id) => {
+    try {
+      setTrendingDeleting(id)
+      setError(null)
+      setSuccess(null)
+      const response = await api.delete(`/food/hero-banners/gourmet/${id}`, getAuthConfig())
+      if (response.data.success) {
+        setSuccess('Restaurant removed from Trending Now successfully!')
+        await fetchTrendingRestaurants()
+        setTimeout(() => setSuccess(null), 3000)
+      }
+    } catch (err) {
+      setErrorSafely(err.response?.data?.message || 'Failed to remove restaurant.')
+    } finally {
+      setTrendingDeleting(null)
+    }
+  }
+
+  const handleTrendingOrderChange = async (id, direction) => {
+    const restaurant = trendingRestaurants.find(r => r._id === id)
+    if (!restaurant) return
+    const newOrder = direction === 'up' ? restaurant.order - 1 : restaurant.order + 1
+    const otherRestaurant = trendingRestaurants.find(r => r.order === newOrder && r._id !== id)
+    if (!otherRestaurant && newOrder < 0) return
+    try {
+      setError(null)
+      await api.patch(`/food/hero-banners/gourmet/${id}/order`, { order: newOrder }, getAuthConfig())
+      if (otherRestaurant) {
+        await api.patch(`/food/hero-banners/gourmet/${otherRestaurant._id}/order`, { order: restaurant.order }, getAuthConfig())
+      }
+      await fetchTrendingRestaurants()
+    } catch (err) {
+      setErrorSafely('Failed to update Trending restaurant order.')
+    }
+  }
+
+  const handleToggleTrendingStatus = async (id, currentStatus) => {
+    try {
+      setError(null)
+      setSuccess(null)
+      const response = await api.patch(`/food/hero-banners/gourmet/${id}/status`, {}, getAuthConfig())
+      if (response.data.success) {
+        setSuccess(`Restaurant ${currentStatus ? 'deactivated' : 'activated'} successfully!`)
+        await fetchTrendingRestaurants()
+        setTimeout(() => setSuccess(null), 3000)
+      }
+    } catch (err) {
+      setErrorSafely(err.response?.data?.message || 'Failed to update restaurant status.')
+    }
+  }
+
+  const handleTrendingZoneChange = async (id, zoneId) => {
+    try {
+      setError(null)
+      await api.patch(`/food/hero-banners/gourmet/${id}/zone`, { zoneId: zoneId || null }, getAuthConfig())
+      await fetchTrendingRestaurants()
+    } catch (err) {
+      setErrorSafely(err.response?.data?.message || 'Failed to update visibility zone.')
+    }
+  }
+
   // ==================== RENDER ====================
   const tabs = [
     { id: 'banners', label: 'Hero Banners', icon: ImageIcon },
@@ -1188,7 +1317,8 @@ export default function LandingPageManagement() {
 
   const exploreMoreTabs = [
     { id: 'icons', label: 'Icons', icon: ImageIcon },
-    { id: 'gourmet', label: 'Gourmet', icon: ChefHat },
+    { id: 'gourmet', label: 'Gourmet (Top 10)', icon: ChefHat },
+    { id: 'trending', label: 'Trending Now', icon: TrendingUp },
   ]
 
   return (
@@ -1770,6 +1900,20 @@ export default function LandingPageManagement() {
                           ))}
                       </select>
                     </div>
+                    <div>
+                      <Label htmlFor="zone-gourmet">Show in Zone (optional)</Label>
+                      <select
+                        id="zone-gourmet"
+                        value={selectedZoneGourmet}
+                        onChange={(e) => setSelectedZoneGourmet(e.target.value)}
+                        className="mt-1 w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="">All zones (show everywhere)</option>
+                        {zones.map((zone) => (
+                          <option key={zone._id || zone.id} value={zone._id || zone.id}>{getZoneName(zone)}</option>
+                        ))}
+                      </select>
+                    </div>
                     <Button
                       onClick={handleAddGourmetRestaurant}
                       disabled={!selectedRestaurantGourmet}
@@ -1825,6 +1969,17 @@ export default function LandingPageManagement() {
                               <div className="p-2">
                                 <h3 className="font-semibold text-slate-900 mb-0.5 text-sm line-clamp-1">{item.restaurant?.name || 'N/A'}</h3>
                                 <p className="text-[10px] text-slate-500 mb-2">Rating: {item.restaurant?.rating || 0}?</p>
+                                <select
+                                  value={item.zoneId || ''}
+                                  onChange={(e) => handleGourmetZoneChange(item._id, e.target.value)}
+                                  className="w-full mb-2 px-1.5 py-1 border border-slate-200 rounded text-[10px] focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                  title="Which zone this shows in"
+                                >
+                                  <option value="">All zones</option>
+                                  {zones.map((zone) => (
+                                    <option key={zone._id || zone.id} value={zone._id || zone.id}>{getZoneName(zone)}</option>
+                                  ))}
+                                </select>
                                 <div className="flex items-center justify-between gap-1">
                                   <div className="flex items-center gap-0.5">
                                     <button onClick={() => handleGourmetOrderChange(item._id, 'up')} disabled={index === 0} className="p-1 rounded hover:bg-slate-100 disabled:opacity-50">
@@ -1839,6 +1994,136 @@ export default function LandingPageManagement() {
                                   </button>
                                   <button onClick={() => handleDeleteGourmetRestaurant(item._id)} disabled={gourmetDeleting === item._id} className="p-1 rounded hover:bg-red-100 text-red-600 disabled:opacity-50">
                                     {gourmetDeleting === item._id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          )
+                        })}
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+
+            {/* Trending Now Tab Content */}
+            {exploreMoreSubTab === 'trending' && (
+              <>
+                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
+                  <h2 className="text-lg font-bold text-slate-900 mb-4">Add Restaurant to Trending Now</h2>
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="restaurant-trending">Select Restaurant</Label>
+                      <select
+                        id="restaurant-trending"
+                        value={selectedRestaurantTrending}
+                        onChange={(e) => setSelectedRestaurantTrending(e.target.value)}
+                        className="mt-1 w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        disabled={restaurantsLoading}
+                      >
+                        <option value="">Select a restaurant...</option>
+                        {allRestaurants
+                          .filter(r => !trendingRestaurants.some(tr => tr.restaurant?._id === r._id))
+                          .map((restaurant) => (
+                            <option key={restaurant._id} value={restaurant._id}>
+                              {restaurant.name}
+                            </option>
+                          ))}
+                      </select>
+                    </div>
+                    <div>
+                      <Label htmlFor="zone-trending">Show in Zone (optional)</Label>
+                      <select
+                        id="zone-trending"
+                        value={selectedZoneTrending}
+                        onChange={(e) => setSelectedZoneTrending(e.target.value)}
+                        className="mt-1 w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="">All zones (show everywhere)</option>
+                        {zones.map((zone) => (
+                          <option key={zone._id || zone.id} value={zone._id || zone.id}>{getZoneName(zone)}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <Button
+                      onClick={handleAddTrendingRestaurant}
+                      disabled={!selectedRestaurantTrending}
+                      className="bg-blue-500 hover:bg-blue-600 text-white"
+                    >
+                      Add to Trending Now
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                  <h2 className="text-lg font-bold text-slate-900 mb-4">Trending Restaurants ({trendingRestaurants.length})</h2>
+                  {trendingLoading ? (
+                    <div className="flex items-center justify-center py-12">
+                      <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+                    </div>
+                  ) : trendingRestaurants.length === 0 ? (
+                    <div className="text-center py-12 text-slate-500">
+                      <TrendingUp className="w-12 h-12 mx-auto mb-3 text-slate-400" />
+                      <p>No restaurants added to Trending Now yet.</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                      {trendingRestaurants
+                        .slice()
+                        .sort((a, b) => a.order - b.order)
+                        .map((item, index) => {
+                          const coverImages = item.restaurant?.coverImages && item.restaurant.coverImages.length > 0
+                            ? item.restaurant.coverImages.map(img => img.url || img).filter(Boolean)
+                            : []
+
+                          const menuImages = item.restaurant?.menuImages && item.restaurant.menuImages.length > 0
+                            ? item.restaurant.menuImages.map(img => img.url || img).filter(Boolean)
+                            : []
+
+                          const restaurantImage = coverImages.length > 0
+                            ? coverImages[0]
+                            : (menuImages.length > 0
+                              ? menuImages[0]
+                              : (item.restaurant?.profileImage?.url || "https://via.placeholder.com/400"))
+
+                          return (
+                            <div key={item._id} className="border border-slate-200 rounded-lg overflow-hidden">
+                              <div className="relative h-32 bg-slate-100">
+                                <img src={restaurantImage} alt={item.restaurant?.name} className="w-full h-full object-cover" />
+                                <div className="absolute top-1 right-1">
+                                  <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${item.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
+                                    {item.isActive ? 'Active' : 'Inactive'}
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="p-2">
+                                <h3 className="font-semibold text-slate-900 mb-0.5 text-sm line-clamp-1">{item.restaurant?.name || 'N/A'}</h3>
+                                <p className="text-[10px] text-slate-500 mb-2">Rating: {item.restaurant?.rating || 0}?</p>
+                                <select
+                                  value={item.zoneId || ''}
+                                  onChange={(e) => handleTrendingZoneChange(item._id, e.target.value)}
+                                  className="w-full mb-2 px-1.5 py-1 border border-slate-200 rounded text-[10px] focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                  title="Which zone this shows in"
+                                >
+                                  <option value="">All zones</option>
+                                  {zones.map((zone) => (
+                                    <option key={zone._id || zone.id} value={zone._id || zone.id}>{getZoneName(zone)}</option>
+                                  ))}
+                                </select>
+                                <div className="flex items-center justify-between gap-1">
+                                  <div className="flex items-center gap-0.5">
+                                    <button onClick={() => handleTrendingOrderChange(item._id, 'up')} disabled={index === 0} className="p-1 rounded hover:bg-slate-100 disabled:opacity-50">
+                                      <ArrowUp className="w-3 h-3 text-slate-600" />
+                                    </button>
+                                    <button onClick={() => handleTrendingOrderChange(item._id, 'down')} disabled={index === trendingRestaurants.length - 1} className="p-1 rounded hover:bg-slate-100 disabled:opacity-50">
+                                      <ArrowDown className="w-3 h-3 text-slate-600" />
+                                    </button>
+                                  </div>
+                                  <button onClick={() => handleToggleTrendingStatus(item._id, item.isActive)} className={`px-2 py-1 rounded text-[10px] font-medium ${item.isActive ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'}`}>
+                                    {item.isActive ? 'Deactivate' : 'Activate'}
+                                  </button>
+                                  <button onClick={() => handleDeleteTrendingRestaurant(item._id)} disabled={trendingDeleting === item._id} className="p-1 rounded hover:bg-red-100 text-red-600 disabled:opacity-50">
+                                    {trendingDeleting === item._id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
                                   </button>
                                 </div>
                               </div>

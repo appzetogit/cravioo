@@ -39,6 +39,9 @@ const Offers = lazy(() => import("@food/pages/user/Offers"))
 // Gourmet
 const Gourmet = lazy(() => import("@food/pages/user/Gourmet"))
 
+// Trending Now
+const Trending = lazy(() => import("@food/pages/user/Trending"))
+
 
 // Collections
 const Collections = lazy(() => import("@food/pages/user/Collections"))
@@ -158,6 +161,9 @@ export default function UserRouter() {
 
           {/* Gourmet */}
           <Route path="gourmet" element={<Gourmet />} />
+
+          {/* Trending Now */}
+          <Route path="trending" element={<Trending />} />
 
 
           {/* Collections */}
