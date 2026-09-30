@@ -798,6 +798,23 @@ export const adminAPI = {
       params: { page: 1, limit: 1000, ...params },
       contextModule: "admin",
     }),
+  /** Per-order taxes report for one restaurant (admin view). Params: { restaurantId, startDate, endDate }. */
+  getRestaurantTaxesReport: (params = {}) =>
+    apiClient.get("/food/admin/reports/restaurant-taxes", {
+      params,
+      contextModule: "admin",
+    }),
+  /** Admin's own cross-restaurant taxes report. Params: { startDate, endDate, restaurantId? }. */
+  getAdminTaxesReport: (params = {}) =>
+    apiClient.get("/food/admin/reports/admin-taxes", {
+      params,
+      contextModule: "admin",
+    }),
+  /** Share a Restaurant Taxes Report period with a restaurant - it then shows up in their own panel. */
+  shareRestaurantTaxesReport: (body) =>
+    apiClient.post("/food/admin/reports/restaurant-taxes/share", body, {
+      contextModule: "admin",
+    }),
 
   // Subscription Management
   getSubscriptionPlans: (params) =>
@@ -1288,6 +1305,17 @@ export const restaurantAPI = {
     apiClient.get("/food/restaurant/finance", {
       contextModule: "restaurant",
       params: params || {},
+    }),
+  /** My taxes report (own orders only). Params: { startDate, endDate }. */
+  getMyTaxesReport: (params = {}) =>
+    apiClient.get("/food/restaurant/orders/tax-report", {
+      contextModule: "restaurant",
+      params: params || {},
+    }),
+  /** Taxes report periods admin has shared with this restaurant. */
+  getMySharedTaxesReports: () =>
+    apiClient.get("/food/restaurant/orders/tax-report/shared", {
+      contextModule: "restaurant",
     }),
   /**
    * Subscription daily-pass wallet (canonical — food_restaurant_wallets.subscriptionBalance).

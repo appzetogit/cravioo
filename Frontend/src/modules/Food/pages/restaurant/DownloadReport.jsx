@@ -1,7 +1,12 @@
 import { useState, useMemo, useEffect } from "react"
-import { ArrowLeft, CheckCircle, Mail } from "lucide-react"
+import { ArrowLeft, CheckCircle, Mail, Download, Loader2, Receipt } from "lucide-react"
 import { useNavigate } from "react-router-dom"
+import { toast } from "sonner"
 import useRestaurantBackNavigation from "@food/hooks/useRestaurantBackNavigation"
+import { restaurantAPI } from "@food/api"
+import { exportRestaurantTaxesReport } from "@food/utils/taxesReportExport"
+// Reports admin has shared with this restaurant are shown on the Payout > Invoices & Taxes
+// tab instead (@food/pages/restaurant/HubFinance), not here.
 
 const REPORT_VIEWS = [
   { id: "detailed", label: "Detailed report" },
@@ -43,6 +48,34 @@ export default function DownloadReport() {
   const [duration, setDuration] = useState("7")
   const [showSuccess, setShowSuccess] = useState(false)
 
+  // Taxes Report (real Excel download, shared format with the admin panel)
+  const [taxesStartDate, setTaxesStartDate] = useState("")
+  const [taxesEndDate, setTaxesEndDate] = useState("")
+  const [downloadingTaxes, setDownloadingTaxes] = useState(false)
+
+  const downloadTaxesReportFor = async (params, busySetter) => {
+    try {
+      busySetter(true)
+      const response = await restaurantAPI.getMyTaxesReport(params)
+      if (response?.data?.success) {
+        exportRestaurantTaxesReport(response.data.data)
+      } else {
+        toast.error(response?.data?.message || "Failed to fetch taxes report")
+      }
+    } catch (err) {
+      toast.error(err?.response?.data?.message || "Failed to fetch taxes report")
+    } finally {
+      busySetter(false)
+    }
+  }
+
+  const handleDownloadTaxesReport = () => {
+    const params = {}
+    if (taxesStartDate) params.startDate = taxesStartDate
+    if (taxesEndDate) params.endDate = taxesEndDate
+    downloadTaxesReportFor(params, setDownloadingTaxes)
+  }
+
   useEffect(() => {
     if (durations.length > 0 && !durations.find((d) => d.id === duration)) {
       setDuration(durations[0].id)
@@ -72,6 +105,44 @@ export default function DownloadReport() {
       </div>
 
       <div className="flex-1 px-4 py-5 space-y-6">
+        <div className="border border-gray-200 rounded-xl p-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <Receipt className="w-5 h-5 text-gray-900" />
+            <p className="text-sm font-bold text-gray-900">Taxes Report</p>
+          </div>
+          <p className="text-xs text-gray-500">
+            Download an Excel of your orders for a period: item subtotal, commission deducted, packing fee earned, and order total per order.
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">From Date</label>
+              <input
+                type="date"
+                value={taxesStartDate}
+                onChange={(e) => setTaxesStartDate(e.target.value)}
+                className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-black"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">To Date</label>
+              <input
+                type="date"
+                value={taxesEndDate}
+                onChange={(e) => setTaxesEndDate(e.target.value)}
+                className="w-full px-3 py-2 text-sm rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-black"
+              />
+            </div>
+          </div>
+          <button
+            onClick={handleDownloadTaxesReport}
+            disabled={downloadingTaxes}
+            className="w-full bg-black text-white py-3 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {downloadingTaxes ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+            Download Taxes Report (Excel)
+          </button>
+        </div>
+
         <div className="space-y-3">
           <p className="text-sm font-semibold text-gray-900">Select the report view:</p>
           <div className="space-y-3">

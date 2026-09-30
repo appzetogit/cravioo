@@ -1,8 +1,9 @@
 import { useState, useMemo, useEffect } from "react"
-import { Search, Download, ChevronDown, Filter, Briefcase, RefreshCw, Settings, ArrowUpDown, FileText, FileSpreadsheet, Code, Loader2, Star } from "lucide-react"
+import { Search, Download, ChevronDown, Filter, Briefcase, RefreshCw, Settings, ArrowUpDown, FileText, FileSpreadsheet, Code, Loader2, Star, Receipt } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@food/components/ui/dropdown-menu"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@food/components/ui/dialog"
 import { exportReportsToCSV, exportReportsToExcel, exportReportsToPDF, exportReportsToJSON } from "@food/components/admin/reports/reportsExportUtils"
+import { exportRestaurantTaxesReport, exportAdminTaxesReport } from "@food/utils/taxesReportExport"
 import { adminAPI } from "@food/api"
 import { toast } from "sonner"
 const debugLog = (...args) => {}
@@ -22,6 +23,15 @@ export default function RestaurantReport() {
   })
   const [zones, setZones] = useState([])
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+
+  // Taxes Reports (per-order Excel exports)
+  const [isTaxesDialogOpen, setIsTaxesDialogOpen] = useState(false)
+  const [taxesRestaurantId, setTaxesRestaurantId] = useState("")
+  const [taxesStartDate, setTaxesStartDate] = useState("")
+  const [taxesEndDate, setTaxesEndDate] = useState("")
+  const [downloadingRestaurantTaxes, setDownloadingRestaurantTaxes] = useState(false)
+  const [downloadingAdminTaxes, setDownloadingAdminTaxes] = useState(false)
+  const [sharingRestaurantTaxes, setSharingRestaurantTaxes] = useState(false)
 
   // Fetch zones for filter dropdown
   useEffect(() => {
@@ -128,6 +138,75 @@ export default function RestaurantReport() {
       case "excel": exportReportsToExcel(exportRows, headers, "restaurant_report"); break
       case "pdf": await exportReportsToPDF(exportRows, headers, "restaurant_report", "Restaurant Report"); break
       case "json": exportReportsToJSON(exportRows, "restaurant_report"); break
+    }
+  }
+
+  const handleDownloadRestaurantTaxes = async () => {
+    if (!taxesRestaurantId) {
+      toast.error("Please select a restaurant")
+      return
+    }
+    try {
+      setDownloadingRestaurantTaxes(true)
+      const params = { restaurantId: taxesRestaurantId }
+      if (taxesStartDate) params.startDate = taxesStartDate
+      if (taxesEndDate) params.endDate = taxesEndDate
+      const response = await adminAPI.getRestaurantTaxesReport(params)
+      if (response?.data?.success) {
+        exportRestaurantTaxesReport(response.data.data)
+      } else {
+        toast.error(response?.data?.message || "Failed to fetch taxes report")
+      }
+    } catch (err) {
+      debugError("Error fetching restaurant taxes report:", err)
+      toast.error(err?.response?.data?.message || "Failed to fetch taxes report")
+    } finally {
+      setDownloadingRestaurantTaxes(false)
+    }
+  }
+
+  const handleShareRestaurantTaxes = async () => {
+    if (!taxesRestaurantId) {
+      toast.error("Please select a restaurant")
+      return
+    }
+    try {
+      setSharingRestaurantTaxes(true)
+      const body = { restaurantId: taxesRestaurantId }
+      if (taxesStartDate) body.startDate = taxesStartDate
+      if (taxesEndDate) body.endDate = taxesEndDate
+      const response = await adminAPI.shareRestaurantTaxesReport(body)
+      if (response?.data?.success) {
+        toast.success("Shared! The restaurant can now see and download this report from their own panel.")
+      } else {
+        toast.error(response?.data?.message || "Failed to share taxes report")
+      }
+    } catch (err) {
+      debugError("Error sharing restaurant taxes report:", err)
+      toast.error(err?.response?.data?.message || "Failed to share taxes report")
+    } finally {
+      setSharingRestaurantTaxes(false)
+    }
+  }
+
+  const handleDownloadAdminTaxes = async () => {
+    try {
+      setDownloadingAdminTaxes(true)
+      const params = {}
+      if (taxesRestaurantId) params.restaurantId = taxesRestaurantId
+      if (taxesStartDate) params.startDate = taxesStartDate
+      if (taxesEndDate) params.endDate = taxesEndDate
+      const response = await adminAPI.getAdminTaxesReport(params)
+      if (response?.data?.success) {
+        exportAdminTaxesReport(response.data.data)
+      } else {
+        toast.error(response?.data?.message || "Failed to fetch admin taxes report")
+      }
+    } catch (err) {
+      debugError("Error fetching admin taxes report:", err)
+      toast.error(err?.response?.data?.message || "Failed to fetch admin taxes report")
+    } finally {
+      setDownloadingAdminTaxes(false)
     }
   }
 
@@ -315,7 +394,14 @@ export default function RestaurantReport() {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-              <button 
+              <button
+                onClick={() => setIsTaxesDialogOpen(true)}
+                className="px-4 py-2.5 text-sm font-medium rounded-lg bg-slate-800 text-white hover:bg-slate-900 flex items-center gap-2 transition-all"
+              >
+                <Receipt className="w-4 h-4" />
+                Taxes Reports
+              </button>
+              <button
                 onClick={() => setIsSettingsOpen(true)}
                 className="p-2.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 transition-all"
               >
@@ -503,6 +589,102 @@ export default function RestaurantReport() {
             <button
               onClick={() => setIsSettingsOpen(false)}
               className="px-4 py-2 text-sm font-medium rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 transition-all shadow-md"
+            >
+              Close
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Taxes Reports Dialog */}
+      <Dialog open={isTaxesDialogOpen} onOpenChange={setIsTaxesDialogOpen}>
+        <DialogContent className="max-w-lg bg-white p-0 opacity-0 data-[state=open]:opacity-100 data-[state=closed]:opacity-0 transition-opacity duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:scale-100 data-[state=closed]:scale-100">
+          <DialogHeader className="px-6 pt-6 pb-4">
+            <DialogTitle className="flex items-center gap-2">
+              <Receipt className="w-5 h-5" />
+              Taxes Reports
+            </DialogTitle>
+          </DialogHeader>
+          <div className="px-6 pb-6 space-y-6">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">From Date</label>
+                <input
+                  type="date"
+                  value={taxesStartDate}
+                  onChange={(e) => setTaxesStartDate(e.target.value)}
+                  className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">To Date</label>
+                <input
+                  type="date"
+                  value={taxesEndDate}
+                  onChange={(e) => setTaxesEndDate(e.target.value)}
+                  className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+            <p className="text-xs text-slate-500 -mt-4">Leave blank for all-time. Only delivered orders are included.</p>
+
+            {/* Restaurant Taxes Report (per-order, also downloadable by the restaurant from their own panel) */}
+            <div className="border border-slate-200 rounded-lg p-4 space-y-3">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">Restaurant Taxes Report</h3>
+                <p className="text-xs text-slate-500 mt-0.5">Per-order breakdown for one restaurant (item subtotal, commission, packing fee, total). This restaurant can also download this same report from their own panel.</p>
+              </div>
+              <select
+                value={taxesRestaurantId}
+                onChange={(e) => setTaxesRestaurantId(e.target.value)}
+                className="w-full px-3 py-2 text-sm rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Select a restaurant...</option>
+                {filteredRestaurants.map((r) => (
+                  <option key={r._id} value={r._id}>{r.restaurantName}</option>
+                ))}
+              </select>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleDownloadRestaurantTaxes}
+                  disabled={!taxesRestaurantId || downloadingRestaurantTaxes}
+                  className="flex-1 px-4 py-2 text-sm font-medium rounded-lg bg-blue-500 text-white hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all"
+                >
+                  {downloadingRestaurantTaxes ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                  Download
+                </button>
+                <button
+                  onClick={handleShareRestaurantTaxes}
+                  disabled={!taxesRestaurantId || sharingRestaurantTaxes}
+                  title="Makes this period visible in the restaurant's own panel to download"
+                  className="flex-1 px-4 py-2 text-sm font-medium rounded-lg bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all"
+                >
+                  {sharingRestaurantTaxes ? <Loader2 className="w-4 h-4 animate-spin" /> : <Receipt className="w-4 h-4" />}
+                  Share with Restaurant
+                </button>
+              </div>
+            </div>
+
+            {/* Admin Taxes Report (cross-restaurant, admin-only) */}
+            <div className="border border-slate-200 rounded-lg p-4 space-y-3">
+              <div>
+                <h3 className="text-sm font-bold text-slate-900">Admin Taxes Report</h3>
+                <p className="text-xs text-slate-500 mt-0.5">Your own breakdown with commission revenue and platform fee revenue - only the restaurant selected above, or every restaurant if none is selected. Not shared with restaurants.</p>
+              </div>
+              <button
+                onClick={handleDownloadAdminTaxes}
+                disabled={downloadingAdminTaxes}
+                className="w-full px-4 py-2 text-sm font-medium rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-all"
+              >
+                {downloadingAdminTaxes ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                Download Admin Taxes Report
+              </button>
+            </div>
+          </div>
+          <div className="px-6 pb-6 flex items-center justify-end">
+            <button
+              onClick={() => setIsTaxesDialogOpen(false)}
+              className="px-4 py-2 text-sm font-medium rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 transition-all"
             >
               Close
             </button>

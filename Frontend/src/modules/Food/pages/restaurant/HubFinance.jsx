@@ -14,10 +14,13 @@ import {
   Gift,
   AlertCircle,
   RefreshCw,
+  Loader2,
+  Receipt,
 } from "lucide-react"
 import { toast } from "sonner"
 import BottomNavOrders from "@food/components/restaurant/BottomNavOrders"
 import { restaurantAPI } from "@food/api"
+import { exportRestaurantTaxesReport } from "@food/utils/taxesReportExport"
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
@@ -56,6 +59,11 @@ export default function HubFinance() {
   const [loadingWithdrawals, setLoadingWithdrawals] = useState(false)
   const [withdrawalsError, setWithdrawalsError] = useState(null)
   const [referralStats, setReferralStats] = useState(null)
+
+  // Taxes report periods admin has explicitly shared with this restaurant
+  const [sharedReports, setSharedReports] = useState([])
+  const [loadingShared, setLoadingShared] = useState(true)
+  const [downloadingSharedId, setDownloadingSharedId] = useState(null)
 
   const minWithdrawalLimit = Number(financeData?.withdrawalLimits?.min) || 1
   const rawMaxWithdrawal = financeData?.withdrawalLimits?.max
@@ -147,6 +155,47 @@ export default function HubFinance() {
   useEffect(() => {
     fetchWithdrawals()
   }, [fetchWithdrawals])
+
+  // Taxes report periods admin has explicitly shared with this restaurant
+  useEffect(() => {
+    const fetchShared = async () => {
+      try {
+        const response = await restaurantAPI.getMySharedTaxesReports()
+        setSharedReports(response?.data?.data || [])
+      } catch (error) {
+        setSharedReports([])
+      } finally {
+        setLoadingShared(false)
+      }
+    }
+    fetchShared()
+  }, [])
+
+  const handleDownloadSharedReport = async (share) => {
+    try {
+      setDownloadingSharedId(share.id)
+      const params = {}
+      if (share.startDate) params.startDate = share.startDate
+      if (share.endDate) params.endDate = share.endDate
+      const response = await restaurantAPI.getMyTaxesReport(params)
+      if (response?.data?.success) {
+        exportRestaurantTaxesReport(response.data.data)
+      } else {
+        toast.error(response?.data?.message || "Failed to fetch taxes report")
+      }
+    } catch (error) {
+      toast.error(getApiErrorMessage(error, "Failed to fetch taxes report"))
+    } finally {
+      setDownloadingSharedId(null)
+    }
+  }
+
+  const formatShareDate = (value) => {
+    if (!value) return "All time"
+    const d = new Date(value)
+    if (Number.isNaN(d.getTime())) return "-"
+    return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
+  }
 
   // Fetch restaurant data for header display
   useEffect(() => {
@@ -1396,6 +1445,35 @@ export default function HubFinance() {
 
         {activeTab === "invoices" && (
           <div className="space-y-4 md:rounded-2xl md:border md:border-gray-200 md:bg-white md:p-6 md:shadow-sm">
+            {!loadingShared && sharedReports.length > 0 && (
+              <div className="bg-white rounded-lg p-4 border border-gray-200 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Receipt className="w-4 h-4 text-gray-900" />
+                  <h3 className="text-sm font-semibold text-gray-900">Reports Shared by Admin</h3>
+                </div>
+                <div className="space-y-2">
+                  {sharedReports.map((share) => (
+                    <div key={share.id} className="flex items-center justify-between gap-3 border border-gray-100 rounded-md px-3 py-2">
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">
+                          {formatShareDate(share.startDate)} - {formatShareDate(share.endDate)}
+                        </p>
+                        <p className="text-xs text-gray-500">Shared {formatShareDate(share.sharedAt)}</p>
+                      </div>
+                      <button
+                        onClick={() => handleDownloadSharedReport(share)}
+                        disabled={downloadingSharedId === share.id}
+                        className="p-2 rounded-lg bg-black text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                        aria-label="Download"
+                      >
+                        {downloadingSharedId === share.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="bg-white rounded-lg p-4 border border-gray-200">
               <h3 className="text-sm font-semibold text-gray-900 mb-3">Invoices & Taxes Summary</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

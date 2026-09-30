@@ -2559,7 +2559,7 @@ export async function updateCustomerStatus(id, isActive) {
     }
 
     const updatedDoc = await FoodUser.findOneAndUpdate(
-        { _id: id, role: 'USER' },
+        { _id: id, $or: [{ role: 'USER' }, { role: { $exists: false } }, { role: null }] },
         { $set: updateFields },
         { new: true }
     );
@@ -2576,7 +2576,7 @@ export async function updateCustomerCodAccess(id, isCodAllowed) {
     if (!id || !mongoose.Types.ObjectId.isValid(id)) return null;
 
     const updatedDoc = await FoodUser.findOneAndUpdate(
-        { _id: id, role: 'USER' },
+        { _id: id, $or: [{ role: 'USER' }, { role: { $exists: false } }, { role: null }] },
         { $set: { isCodAllowed: Boolean(isCodAllowed) } },
         { new: true }
     );
@@ -2601,7 +2601,7 @@ export async function bulkUpdateCustomersCodAccess(ids = [], isCodAllowed) {
     const objectIds = normalizedIds.map((id) => new mongoose.Types.ObjectId(id));
 
     const result = await FoodUser.updateMany(
-        { _id: { $in: objectIds }, role: 'USER' },
+        { _id: { $in: objectIds }, $or: [{ role: 'USER' }, { role: { $exists: false } }, { role: null }] },
         { $set: { isCodAllowed: Boolean(isCodAllowed) } }
     );
 

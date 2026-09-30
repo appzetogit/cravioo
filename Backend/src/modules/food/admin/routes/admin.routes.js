@@ -20,6 +20,7 @@ import * as employeeController from '../controllers/employee.controller.js';
 import { upload } from '../../../../middleware/upload.js';
 import * as membershipController from '../../membership/controllers/membership.controller.js';
 import { checkPermission } from '../../../../core/auth/auth.middleware.js';
+import * as taxesReportController from '../controllers/taxesReport.controller.js';
 
 const router = express.Router();
 
@@ -86,6 +87,9 @@ router.patch('/restaurants/complaints/:id', checkPermission('food::restaurant_ma
 router.get('/restaurants', checkPermission('food::restaurant_management::restaurants::list', 'view'), adminController.getRestaurants);
 router.get('/dashboard-stats', checkPermission('food::dashboard', 'view'), adminController.getDashboardStats);
 router.get('/reports/restaurants', checkPermission('food::report_management::restaurant_report::view', 'view'), adminController.getRestaurantReport);
+router.get('/reports/restaurant-taxes', checkPermission('food::report_management::restaurant_report::view', 'view'), taxesReportController.getRestaurantTaxesReportAdmin);
+router.get('/reports/admin-taxes', checkPermission('food::report_management::restaurant_report::view', 'view'), taxesReportController.getAdminTaxesReportController);
+router.post('/reports/restaurant-taxes/share', checkPermission('food::report_management::restaurant_report::view', 'view'), taxesReportController.shareRestaurantTaxesReportController);
 router.get('/reports/transactions', checkPermission('food::report_management::transactions', 'view'), adminController.getTransactionReport);
 router.get('/reports/tax', checkPermission('food::report_management::tax', 'view'), adminController.getTaxReport);
 router.get('/reports/tax/:id', checkPermission('food::report_management::tax', 'view'), adminController.getTaxReportDetail);
