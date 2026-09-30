@@ -11,7 +11,7 @@ import { ValidationError } from '../../../../core/auth/errors.js';
 export const listUnder250BannersController = async (req, res, next) => {
     try {
         const data = await listUnder250Banners();
-        return sendResponse(res, 200, 'Under 250 banners fetched successfully', { banners: data });
+        return sendResponse(res, 200, 'Under 150 banners fetched successfully', { banners: data });
     } catch (error) {
         next(error);
     }
@@ -31,7 +31,7 @@ export const uploadUnder250BannersController = async (req, res, next) => {
         };
 
         const results = await createUnder250BannersFromFiles(req.files, meta);
-        return sendResponse(res, 201, 'Under 250 banners uploaded', { banners: results });
+        return sendResponse(res, 201, 'Under 150 banners uploaded', { banners: results });
     } catch (error) {
         next(error);
     }
@@ -44,7 +44,7 @@ export const deleteUnder250BannerController = async (req, res, next) => {
             throw new ValidationError('Banner id is required');
         }
         const result = await deleteUnder250Banner(id);
-        return sendResponse(res, 200, result.deleted ? 'Under 250 banner deleted' : 'Under 250 banner not found', result);
+        return sendResponse(res, 200, result.deleted ? 'Under 150 banner deleted' : 'Under 150 banner not found', result);
     } catch (error) {
         next(error);
     }
@@ -59,7 +59,7 @@ export const updateUnder250BannerOrderController = async (req, res, next) => {
             throw new ValidationError('id and numeric order are required');
         }
         const updated = await updateUnder250BannerOrder(id, sortOrder);
-        return sendResponse(res, 200, 'Under 250 banner order updated', updated);
+        return sendResponse(res, 200, 'Under 150 banner order updated', updated);
     } catch (error) {
         next(error);
     }
@@ -74,10 +74,10 @@ export const toggleUnder250BannerStatusController = async (req, res, next) => {
         // Frontend sends empty body, so toggle based on current
         const banner = await listUnder250Banners().then(list => list.find(b => b._id.toString() === id));
         if (!banner) {
-            throw new ValidationError('Under 250 banner not found');
+            throw new ValidationError('Under 150 banner not found');
         }
         const updated = await toggleUnder250BannerStatus(id, !banner.isActive);
-        return sendResponse(res, 200, 'Under 250 banner status updated', updated);
+        return sendResponse(res, 200, 'Under 150 banner status updated', updated);
     } catch (error) {
         next(error);
     }

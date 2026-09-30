@@ -1625,7 +1625,7 @@ function RestaurantDetailsContent() {
     return null
   }
 
-  // Helper function to check if a section has any items under Rs 250
+  // Helper function to check if a section has any items under Rs 150
   const sectionHasItemsUnder250 = (section) => {
     if (!showOnlyUnder250) return true; // If not filtering, show all sections
 

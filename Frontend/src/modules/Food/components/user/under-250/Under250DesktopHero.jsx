@@ -38,7 +38,7 @@ export default function Under250DesktopHero({
               ) : activeBanner ? (
                 <OptimizedImage
                   src={activeBanner}
-                  alt="Under 250 banner"
+                  alt="Under 150 banner"
                   className="h-full w-full"
                   objectFit="cover"
                   priority
