@@ -40,7 +40,7 @@ export const getPublicHeroBannersController = async (req, res, next) => {
 export const getPublicUnder250BannersController = async (req, res, next) => {
     try {
         const docs = await FoodUnder250Banner.find({ isActive: true }).sort({ sortOrder: 1, createdAt: -1 }).lean();
-        return sendResponse(res, 200, 'Under 150 banners fetched', { banners: docs });
+        return sendResponse(res, 200, 'Under 149 banners fetched', { banners: docs });
     } catch (error) {
         next(error);
     }

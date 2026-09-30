@@ -120,7 +120,7 @@ export default function Under250() {
 
   useEffect(() => {
     if (isVijayNagar) {
-      toast.error("Under 150 is not available in Vijay Nagar")
+      toast.error("Under 149 is not available in Vijay Nagar")
       navigate('/food/user')
     }
   }, [isVijayNagar, navigate])
@@ -437,7 +437,7 @@ export default function Under250() {
     isBannerSwipingRef.current = false
   }, [bannerImages.length, resetBannerAutoSlide])
 
-  // Fetch restaurants with dishes under ₹150 (single batched API call)
+  // Fetch restaurants with dishes under ₹149 (single batched API call)
   useEffect(() => {
     let cancelled = false
 
@@ -630,7 +630,7 @@ export default function Under250() {
     }))
 
     // Find restaurant name from the item or use provided parameter
-    const restaurant = restaurantName || item.restaurant || "Under 150"
+    const restaurant = restaurantName || item.restaurant || "Under 149"
 
     // Prepare cart item with all required properties
     const cartItem = {
@@ -760,7 +760,7 @@ export default function Under250() {
       if (navigator.share) {
         await navigator.share({
           title: item.name || "Dish",
-          text: `Check out ${item.name || "this dish"} from ${item.restaurant || "Under 150"}`,
+          text: `Check out ${item.name || "this dish"} from ${item.restaurant || "Under 149"}`,
           url: shareUrl,
         })
         return
@@ -780,7 +780,7 @@ export default function Under250() {
     const shareUrl = restaurantSlug
       ? `${window.location.origin}/user/restaurants/${restaurantSlug}${itemId ? `?dish=${encodeURIComponent(itemId)}` : ""}`
       : window.location.href
-    const shareText = `Check out ${selectedItem.name || "this dish"} from ${selectedItem.restaurant || "Under 150"}`
+    const shareText = `Check out ${selectedItem.name || "this dish"} from ${selectedItem.restaurant || "Under 149"}`
     const encodedUrl = encodeURIComponent(shareUrl)
     const encodedText = encodeURIComponent(`${shareText} ${shareUrl}`)
 
@@ -873,7 +873,7 @@ export default function Under250() {
                 <div key={`${bannerImage}-${index}`} className="relative h-full w-full shrink-0">
                   <OptimizedImage
                     src={bannerImage}
-                    alt={`Under 150 Banner ${index + 1}`}
+                    alt={`Under 149 Banner ${index + 1}`}
                     className="w-full h-full"
                     objectFit="cover"
                     priority={index === 0}
@@ -1024,7 +1024,7 @@ export default function Under250() {
           <div className="flex justify-center items-center py-12">
             <div className="text-gray-500 dark:text-gray-400">
               {under250RestaurantsWithDistance.length === 0
-                ? `No restaurants with dishes under ${RUPEE_SYMBOL}150 found.`
+                ? `No restaurants with dishes under ${RUPEE_SYMBOL}149 found.`
                 : "No restaurants match the selected filters."}
             </div>
           </div>
@@ -1403,7 +1403,7 @@ export default function Under250() {
 
                 {/* Description */}
                 <p className="text-sm md:text-base lg:text-lg text-gray-600 dark:text-gray-400 mb-4 md:mb-6 lg:mb-8 leading-relaxed">
-                  {selectedItem.description || `${selectedItem.name} from ${selectedItem.restaurant || 'Under 150'}`}
+                  {selectedItem.description || `${selectedItem.name} from ${selectedItem.restaurant || 'Under 149'}`}
                 </p>
 
                 {/* Highly Recommended Progress Bar */}

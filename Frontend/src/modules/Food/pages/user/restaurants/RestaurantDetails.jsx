@@ -1553,7 +1553,7 @@ function RestaurantDetailsContent() {
       // Under 250 filter (when coming from Under 250 page)
       if (showOnlyUnder250) {
         const finalPrice = getFinalPrice(item);
-        if (finalPrice > 150) return false;
+        if (finalPrice > 149) return false;
       }
 
       // Search filter
@@ -1625,7 +1625,7 @@ function RestaurantDetailsContent() {
     return null
   }
 
-  // Helper function to check if a section has any items under Rs 150
+  // Helper function to check if a section has any items under Rs 149
   const sectionHasItemsUnder250 = (section) => {
     if (!showOnlyUnder250) return true; // If not filtering, show all sections
 
@@ -1634,7 +1634,7 @@ function RestaurantDetailsContent() {
       const hasUnder250Items = section.items.some(item => {
         if (item.isAvailable === false) return false;
         const finalPrice = getFinalPrice(item);
-        return finalPrice <= 150;
+        return finalPrice <= 149;
       });
       if (hasUnder250Items) return true;
     }
@@ -1646,7 +1646,7 @@ function RestaurantDetailsContent() {
           const hasUnder250Items = subsection.items.some(item => {
             if (item.isAvailable === false) return false;
             const finalPrice = getFinalPrice(item);
-            return finalPrice <= 150;
+            return finalPrice <= 149;
           });
           if (hasUnder250Items) return true;
         }
