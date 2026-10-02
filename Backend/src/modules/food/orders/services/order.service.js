@@ -3525,20 +3525,10 @@ export async function createOrder(userId, dto) {
     }
   }
 
-  if (
-    (orderType === "food" || (orderType === "mixed" && dispatchStrategy === "single")) &&
-    dispatchMode === "auto" &&
-    (isCash ||
-      order.payment.status === "paid" ||
-      order.payment.status === "cod_pending") &&
-    !shouldHoldDispatchForScheduled(order)
-  ) {
-    try {
-      await tryAutoAssign(order._id);
-    } catch {
-      // leave unassigned
-    }
-  }
+  // Delivery partner dispatch intentionally does NOT happen here. A delivery partner
+  // must only be found/notified once the restaurant marks the order "ready_for_pickup"
+  // (see updateOrderStatusRestaurant) - dispatching at creation notified riders before
+  // the restaurant had even seen the order.
 
   const saved = order.toObject();
   // Omit bulky history from create response — clients refetch detail when needed.
@@ -4555,10 +4545,12 @@ export async function updateOrderStatusRestaurant(
   try {
     const io = getIO();
     if (io) {
-      // On accept (confirmed or preparing) -> request delivery partners.
+      // Delivery dispatch is gated on "ready_for_pickup", not on accept/preparing -
+      // a rider should only be found/notified once the food is actually ready
+      // (see restaurant_delivery_notification_flow_fix.md).
       if (
-        (String(orderStatus) === "preparing" || String(orderStatus) === "confirmed") && 
-        (String(from) !== "preparing" && String(from) !== "confirmed")
+        String(orderStatus) === "ready_for_pickup" &&
+        String(from) !== "ready_for_pickup"
       ) {
         console.log(
           `[DEBUG] Order ${order.orderId} status changed to '${orderStatus}'. Triggering delivery dispatch.`,
