@@ -301,7 +301,7 @@ export async function updateOrderStatusRestaurantController(req, res, next) {
             },
         );
         return sendResponse(res, 200, 'Order status updated', {
-            order: toOrderMutationAck(order),
+            order: toOrderDetailDto(order, { role: 'RESTAURANT' }),
         });
     } catch (err) {
         next(err);

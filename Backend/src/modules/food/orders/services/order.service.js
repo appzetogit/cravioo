@@ -4270,9 +4270,21 @@ export async function updateOrderStatusRestaurant(
     isTerminalCancelStatus(requestedStatus) ||
     requestedStatus.includes("cancel");
 
+  // Helper to safely populate relations before returning
+  const populateOrder = async (doc) => {
+    try {
+      await doc.populate([
+        { path: "userId", select: "name phone email profileImage" },
+        { path: "dispatch.deliveryPartnerId", select: "name phone rating" },
+        { path: "dispatchPlan.legs.deliveryPartnerId", select: "name phone rating" },
+      ]);
+    } catch (_) {}
+    return doc.toObject();
+  };
+
   // Idempotent: duplicate cancel/reject — order already terminal, do not re-refund.
   if (isCancelRequest && isTerminalCancelStatus(from)) {
-    return order.toObject();
+    return await populateOrder(order);
   }
 
   // Block resurrecting cancelled/delivered orders into active workflow.
@@ -4289,7 +4301,7 @@ export async function updateOrderStatusRestaurant(
       String(from || "").trim().toLowerCase(),
     )
   ) {
-    return order.toObject();
+    return await populateOrder(order);
   }
   if (
     (requestedStatus === "ready_for_pickup" || requestedStatus === "ready") &&
@@ -4297,7 +4309,7 @@ export async function updateOrderStatusRestaurant(
       String(from || "").trim().toLowerCase(),
     )
   ) {
-    return order.toObject();
+    return await populateOrder(order);
   }
 
   // Enforce actor-specific cancellation status and terminal side effects.
@@ -4701,6 +4713,16 @@ export async function updateOrderStatusRestaurant(
           `updateOrderStatusRestaurant transaction sync failed: ${err?.message || err}`,
         );
       }
+    }
+
+    try {
+      await order.populate([
+        { path: "userId", select: "name phone email profileImage" },
+        { path: "dispatch.deliveryPartnerId", select: "name phone rating" },
+        { path: "dispatchPlan.legs.deliveryPartnerId", select: "name phone rating" },
+      ]);
+    } catch (_popErr) {
+      logger.warn(`updateOrderStatusRestaurant populate failed: ${_popErr?.message || _popErr}`);
     }
 
     const saved = order.toObject();

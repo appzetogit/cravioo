@@ -341,10 +341,32 @@ export function toDeliveryTripDto(orderLike) {
     deliveryAddress: o.deliveryAddress,
     customerLocation: o.customerLocation,
     customerAddress: o.customerAddress,
-    customerName: o.customerName || o.userName || o.userId?.name || o.deliveryAddress?.name,
-    customerPhone: o.customerPhone || o.userPhone || o.userId?.phone || o.deliveryAddress?.phone,
-    userName: o.userName || o.customerName || o.userId?.name,
-    userPhone: o.userPhone || o.customerPhone || o.userId?.phone,
+    customerName:
+      o.customerName ||
+      o.userName ||
+      o.userId?.name ||
+      o.deliveryAddress?.recipientName ||
+      o.deliveryAddress?.name ||
+      "Customer",
+    customerPhone:
+      o.customerPhone ||
+      o.userPhone ||
+      o.userId?.phone ||
+      o.deliveryAddress?.phone ||
+      "",
+    userName:
+      o.userName ||
+      o.customerName ||
+      o.userId?.name ||
+      o.deliveryAddress?.recipientName ||
+      o.deliveryAddress?.name ||
+      "Customer",
+    userPhone:
+      o.userPhone ||
+      o.customerPhone ||
+      o.userId?.phone ||
+      o.deliveryAddress?.phone ||
+      "",
     items: slimItems(o.items),
     pickupPoints: Array.isArray(o.pickupPoints) ? o.pickupPoints : [],
     pricing: slimPricing(o.pricing),
@@ -746,8 +768,19 @@ export function toRestaurantOrderListDto(orderLike) {
     cancelledBy: o.cancelledBy,
     cancellationReason: cancellationReasonForDto(o),
     rejectionReason: o.rejectionReason,
-    customerName: o.customerName,
-    customerPhone: o.customerPhone,
+    customerName:
+      o.customerName ||
+      o.userName ||
+      o.userId?.name ||
+      addr?.recipientName ||
+      addr?.name ||
+      "Customer",
+    customerPhone:
+      o.customerPhone ||
+      o.userPhone ||
+      o.userId?.phone ||
+      addr?.phone ||
+      "",
     userId: slimRestaurantListUser(o.userId),
     restaurantId:
       typeof o.restaurantId === "object"

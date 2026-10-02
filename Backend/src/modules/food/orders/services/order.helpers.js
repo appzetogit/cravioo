@@ -655,6 +655,26 @@ async function buildRestaurantNewOrderSocketPayload(orderDoc) {
     subtotal + tax + packagingFee + quickRestaurantShare - discount,
   );
 
+  let userName = o.customerName || o.userName;
+  let userPhone = o.customerPhone || o.userPhone;
+  if (!userName || !userPhone) {
+    if (o.userId && typeof o.userId === "object" && o.userId.name) {
+      userName = userName || o.userId.name;
+      userPhone = userPhone || o.userId.phone;
+    } else if (o.userId && mongoose.Types.ObjectId.isValid(o.userId)) {
+      try {
+        const FoodUser = mongoose.model("FoodUser");
+        const user = await FoodUser.findById(o.userId).select("name phone").lean();
+        if (user) {
+          userName = userName || user.name;
+          userPhone = userPhone || user.phone;
+        }
+      } catch (_) {}
+    }
+  }
+  userName = userName || addr?.recipientName || addr?.name || "Customer";
+  userPhone = userPhone || addr?.phone || "";
+
   return {
     _id: o._id,
     orderId: o.orderId || o.order_id || mongoId,
@@ -662,6 +682,10 @@ async function buildRestaurantNewOrderSocketPayload(orderDoc) {
     orderStatus: o.orderStatus,
     status: o.orderStatus,
     restaurantId: o.restaurantId,
+    customerName: userName,
+    customerPhone: userPhone,
+    userName,
+    userPhone,
     items: Array.isArray(o.items)
       ? o.items.map((item) => ({
           name: item?.name,
@@ -723,6 +747,27 @@ export async function notifyRestaurantNewOrder(orderDoc) {
   // had a single catch-all swallowing both channels with no log line, so a dropped
   // restaurant popup was invisible in production).
   try {
+    if (!orderDoc || !canExposeOrderToRestaurant(orderDoc)) return;
+    if (String(orderDoc.orderStatus || '').toLowerCase() === 'scheduled') return;
+
+    const orderMongoId = String(orderDoc._id || orderDoc.orderId || '');
+    if (!orderMongoId) return;
+
+    // Deduplicate: Ensure restaurant is only notified ONCE per order across webhook, verification and retries
+    try {
+      const { getRedisClient } = await import("../../../../config/redis.js");
+      const redis = getRedisClient();
+      if (redis) {
+        const lockKey = `food:restaurant:notify-lock:${orderMongoId}`;
+        const locked = await redis.set(lockKey, "1", { NX: true, EX: 86400 });
+        if (locked === null) {
+          logger.info(`[RestaurantOrders] Duplicate notification suppressed for order ${orderDoc.orderId || orderMongoId}`);
+          return;
+        }
+      }
+    } catch (_lockErr) {
+      // Best effort lock
+    }
     const io = getIO();
     if (io) {
       const payload = await buildRestaurantNewOrderSocketPayload(orderDoc);
