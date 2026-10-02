@@ -2,10 +2,22 @@ import mongoose from 'mongoose';
 
 const onboardingPaymentLogSchema = new mongoose.Schema(
     {
-        razorpayOrderId: {
+        cashfreeOrderId: {
             type: String,
             required: true,
             unique: true,
+            index: true
+        },
+        cashfreePaymentId: {
+            type: String,
+            default: null
+        },
+        // Legacy, read-only going forward - kept so historical logs still load correctly.
+        razorpayOrderId: {
+            type: String,
+            default: null,
+            unique: true,
+            sparse: true,
             index: true
         },
         razorpayPaymentId: {

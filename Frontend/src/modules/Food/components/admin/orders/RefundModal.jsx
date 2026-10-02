@@ -68,7 +68,7 @@ export default function RefundModal({ isOpen, onOpenChange, order, onConfirm, is
 
   const maxAmount = order.totalAmount || 0
   const isWalletPayment = order.paymentType === "Wallet" || order.payment?.method === "wallet"
-  const isOnlinePayment = ["razorpay", "razorpay_qr"].includes(String(order.payment?.method || "").toLowerCase())
+  const isOnlinePayment = ["cashfree", "cashfree_qr", "razorpay", "razorpay_qr"].includes(String(order.payment?.method || "").toLowerCase())
   const isPartialOnlineRefund = order.refundPolicy?.allowPartialRefund
   const refundMethodLocked = Boolean(order?.refundPreference?.requestedByUser && order?.refundPreference?.requestedMethod)
   const allowsMethodSelection = isOnlinePayment && !isWalletPayment
@@ -144,7 +144,7 @@ export default function RefundModal({ isOpen, onOpenChange, order, onConfirm, is
                   } ${isProcessing || refundMethodLocked ? "cursor-not-allowed opacity-70" : "hover:border-purple-300"}`}
                 >
                   <p className="text-sm font-semibold">Original payment method</p>
-                  <p className="mt-1 text-xs text-slate-500">Refund through Razorpay to the original source.</p>
+                  <p className="mt-1 text-xs text-slate-500">Refund through Cashfree to the original source.</p>
                 </button>
                 <button
                   type="button"

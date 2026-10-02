@@ -24,10 +24,10 @@ const foodTransactionSchema = new mongoose.Schema({
     deliveryPartnerId: { type: mongoose.Schema.Types.ObjectId, ref: 'FoodDeliveryPartner', index: true },
 
     // Core Payment Info
-    paymentMethod: { 
-        type: String, 
-        enum: ['cash', 'razorpay', 'razorpay_qr', 'wallet'], 
-        required: true 
+    paymentMethod: {
+        type: String,
+        enum: ['cash', 'cashfree', 'cashfree_qr', 'razorpay', 'razorpay_qr', 'wallet'],
+        required: true
     },
     status: { 
         type: String, 
@@ -89,6 +89,12 @@ const foodTransactionSchema = new mongoose.Schema({
         method: { type: String, default: 'cash', trim: true },
         status: { type: String, default: 'cod_pending', trim: true },
         amountDue: { type: Number, default: 0, min: 0 },
+        cashfree: {
+            orderId: { type: String, default: '' },
+            cfOrderId: { type: String, default: '' },
+            paymentId: { type: String, default: '' }
+        },
+        // Legacy, read-only going forward - kept so historical transactions still load correctly.
         razorpay: {
             orderId: { type: String, default: '' },
             paymentId: { type: String, default: '' },
@@ -139,7 +145,10 @@ const foodTransactionSchema = new mongoose.Schema({
 
     // Gateway / Provider Metadata
     gateway: {
-        provider: { type: String, default: 'razorpay' },
+        provider: { type: String, default: 'cashfree' },
+        cashfreeOrderId: String,
+        cashfreePaymentId: String,
+        // Legacy, read-only going forward - kept so historical transactions still load correctly.
         razorpayOrderId: String,
         razorpayPaymentId: String,
         razorpaySignature: String,

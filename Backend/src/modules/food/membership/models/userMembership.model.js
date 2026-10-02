@@ -31,6 +31,9 @@ const userMembershipSchema = new mongoose.Schema(
         startDate: { type: Date, default: null },
         expiryDate: { type: Date, default: null },
 
+        cashfreeOrderId: { type: String },
+        cashfreePaymentId: { type: String },
+        // Legacy, read-only going forward - kept so historical memberships still load correctly.
         razorpayOrderId: { type: String },
         razorpayPaymentId: { type: String },
         paidAt: { type: Date, default: null },
@@ -45,6 +48,9 @@ const userMembershipSchema = new mongoose.Schema(
     { collection: 'food_user_memberships', timestamps: true }
 );
 
+userMembershipSchema.index({ cashfreeOrderId: 1 }, { unique: true, sparse: true });
+userMembershipSchema.index({ cashfreePaymentId: 1 }, { unique: true, sparse: true });
+// Legacy indexes, kept for historical records only.
 userMembershipSchema.index({ razorpayOrderId: 1 }, { unique: true, sparse: true });
 userMembershipSchema.index({ razorpayPaymentId: 1 }, { unique: true, sparse: true });
 userMembershipSchema.index({ userId: 1, status: 1, expiryDate: 1 });

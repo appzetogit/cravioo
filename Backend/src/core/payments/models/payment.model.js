@@ -23,12 +23,13 @@ const paymentSchema = new mongoose.Schema(
 
         method: {
             type: String,
-            enum: ['cash', 'razorpay', 'razorpay_qr', 'wallet', 'upi', 'card', 'netbanking'],
+            // 'razorpay'/'razorpay_qr' kept for historical records only - no code writes them anymore.
+            enum: ['cash', 'cashfree', 'cashfree_qr', 'razorpay', 'razorpay_qr', 'wallet', 'upi', 'card', 'netbanking'],
             required: true
         },
         gateway: {
             type: String,
-            enum: ['razorpay', 'stripe', 'paypal', 'none'],
+            enum: ['cashfree', 'razorpay', 'stripe', 'paypal', 'none'],
             default: 'none'
         },
 

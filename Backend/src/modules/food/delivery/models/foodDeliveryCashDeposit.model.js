@@ -14,7 +14,7 @@ const foodDeliveryCashDepositSchema = new mongoose.Schema({
     },
     paymentMethod: {
         type: String,
-        enum: ['cash', 'razorpay', 'upi', 'bank_transfer'],
+        enum: ['cash', 'cashfree', 'razorpay', 'upi', 'bank_transfer'],
         default: 'cash'
     },
     depositType: {
@@ -33,6 +33,15 @@ const foodDeliveryCashDepositSchema = new mongoose.Schema({
         index: true
     },
 
+    cashfreeOrderId: {
+        type: String,
+        default: ''
+    },
+    cashfreePaymentId: {
+        type: String,
+        default: null
+    },
+    // Legacy, read-only going forward - kept so historical deposits still load correctly.
     razorpayOrderId: {
         type: String,
         default: ''
@@ -54,7 +63,28 @@ const foodDeliveryCashDepositSchema = new mongoose.Schema({
 
 foodDeliveryCashDepositSchema.index({ createdAt: -1 });
 
-// One deposit per Razorpay payment / order — skips blanks (manual deposits)
+// One deposit per Cashfree payment / order — skips blanks (manual deposits)
+foodDeliveryCashDepositSchema.index(
+    { cashfreePaymentId: 1 },
+    {
+        unique: true,
+        name: 'uniq_cashfreePaymentId_nonzero',
+        partialFilterExpression: {
+            cashfreePaymentId: { $type: 'string', $gt: '' },
+        },
+    }
+);
+foodDeliveryCashDepositSchema.index(
+    { cashfreeOrderId: 1 },
+    {
+        unique: true,
+        name: 'uniq_cashfreeOrderId_nonzero',
+        partialFilterExpression: {
+            cashfreeOrderId: { $type: 'string', $gt: '' },
+        },
+    }
+);
+// Legacy indexes, kept for historical records only.
 foodDeliveryCashDepositSchema.index(
     { razorpayPaymentId: 1 },
     {

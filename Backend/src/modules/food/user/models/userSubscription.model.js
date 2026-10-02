@@ -28,6 +28,17 @@ const userSubscriptionSchema = new mongoose.Schema(
             type: String,
             default: 'ADMIN_PLAN'
         },
+        cashfreeSubscriptionId: {
+            type: String,
+            index: true,
+            default: null
+        },
+        cashfreePaymentId: {
+            type: String,
+            index: true,
+            default: null
+        },
+        // Legacy, read-only going forward - kept so historical subscriptions still load correctly.
         razorpaySubscriptionId: {
             type: String,
             index: true,

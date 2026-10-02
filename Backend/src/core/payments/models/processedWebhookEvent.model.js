@@ -6,7 +6,7 @@ import mongoose from 'mongoose';
  */
 const processedWebhookEventSchema = new mongoose.Schema(
     {
-        source: { type: String, default: 'razorpay', trim: true, index: true },
+        source: { type: String, default: 'cashfree', trim: true, index: true },
         dedupeKey: { type: String, required: true, unique: true, index: true, trim: true },
         eventId: { type: String, default: null, index: true, trim: true },
         eventType: { type: String, required: true, index: true, trim: true },

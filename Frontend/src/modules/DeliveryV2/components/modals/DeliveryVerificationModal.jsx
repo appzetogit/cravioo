@@ -510,7 +510,7 @@ const PaymentModal = ({ order, otpString, onComplete, onClose }) => {
               <div className="relative p-6 bg-gray-50 rounded-3xl border-2 border-gray-100 mb-8">
                 <img
                   src={`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(collectQrLink)}`}
-                  alt="Razorpay QR"
+                  alt="Cashfree QR"
                   className="w-56 h-56"
                 />
                 <button
@@ -649,7 +649,7 @@ const ForwardDeliveryVerificationModal = ({ order, onComplete, onClose }) => {
     order?.transaction?.paymentMethod ||
     "cod"
   ).toLowerCase();
-  const isCod = ["cash", "cod", "cash_on_delivery", "razorpay_qr"].includes(
+  const isCod = ["cash", "cod", "cash_on_delivery", "cashfree_qr", "razorpay_qr"].includes(
     paymentMethod,
   );
 

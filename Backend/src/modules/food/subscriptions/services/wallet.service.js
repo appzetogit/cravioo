@@ -9,7 +9,7 @@ import { FoodRestaurantWallet, ensureRestaurantWallet } from '../../restaurant/m
 import { getActiveSubscription } from './subscription.service.js';
 import { SubscriptionPlan } from '../../admin/models/subscriptionPlan.model.js';
 import { ValidationError, NotFoundError } from '../../../../core/auth/errors.js';
-import { createRazorpayOrder, isRazorpayConfigured, getRazorpayKeyId } from '../../orders/helpers/razorpay.helper.js';
+import { createCashfreeOrder, isCashfreeConfigured, getCashfreeAppId } from '../../orders/helpers/cashfree.helper.js';
 import { logger } from '../../../../utils/logger.js';
 import { invalidateSubscriptionStatsCache } from '../../admin/utils/subscriptionStatsCache.js';
 
@@ -57,7 +57,7 @@ function reportDebug(event, data) {
 }
 
 /**
- * Creates a Razorpay order for subscription wallet top-up.
+ * Creates a Cashfree order for subscription wallet top-up.
  */
 export async function createTopupOrder(userId, userType, amount) {
     if (!amount || amount < 1) throw new ValidationError('Minimum topup amount is ₹1');
@@ -82,40 +82,47 @@ export async function createTopupOrder(userId, userType, amount) {
         }
     }
 
-    const amountPaise = Math.round(amount * 100);
-    const receipt = `tp_${String(userId).slice(-6)}_${Date.now().toString().slice(-6)}`;
+    const orderId = `tp_${String(userId).slice(-6)}_${Date.now().toString().slice(-6)}`;
 
-    const notes = {
+    const orderTags = {
         type: 'subscription_wallet_topup',
         ownerId: String(userId),
         ownerType: userType,
         amount: String(amount)
     };
 
-    if (!isRazorpayConfigured()) {
-        // #region debug-point trace-razorpay-unconfigured
-        reportDebug('razorpay-not-configured', { userId, userType, amount });
+    if (!isCashfreeConfigured()) {
+        // #region debug-point trace-cashfree-unconfigured
+        reportDebug('cashfree-not-configured', { userId, userType, amount });
         // #endregion
         return {
-            razorpay: {
-                key: getRazorpayKeyId() || 'rzp_test_dummy',
-                order_id: `order_dev_${Date.now()}`,
-                amount: amountPaise,
+            cashfree: {
+                appId: getCashfreeAppId() || 'test',
+                orderId: `order_dev_${Date.now()}`,
+                paymentSessionId: 'dev_session',
+                amount,
                 currency: 'INR',
-                notes
+                orderTags
             }
         };
     }
 
     try {
-        const order = await createRazorpayOrder(amountPaise, 'INR', receipt);
+        const order = await createCashfreeOrder({
+            orderId,
+            orderAmount: amount,
+            currency: 'INR',
+            customerId: String(userId),
+            orderTags,
+        });
         return {
-            razorpay: {
-                key: getRazorpayKeyId(),
-                order_id: String(order.id),
-                amount: Number(order.amount),
-                currency: order.currency || 'INR',
-                notes
+            cashfree: {
+                appId: getCashfreeAppId(),
+                orderId: order.order_id,
+                paymentSessionId: order.payment_session_id,
+                amount: Number(order.order_amount),
+                currency: order.order_currency || 'INR',
+                orderTags
             }
         };
     } catch (error) {
@@ -124,37 +131,26 @@ export async function createTopupOrder(userId, userType, amount) {
 }
 
 /**
- * Verifies the Razorpay payment and increments subscription balance.
- * This is the SOURCE OF TRUTH called by the Razorpay Webhook.
+ * Verifies the Cashfree payment and increments subscription balance.
+ * This is the SOURCE OF TRUTH called by the Cashfree Webhook.
  */
 export async function verifyTopup(payload) {
-    const { payment, order, notes } = payload;
-    const rzPaymentId = payment.id;
-    const { ownerId, ownerType } = notes;
+    const { payment, order, orderTags } = payload;
+    const cfPaymentId = payment.cf_payment_id;
+    const { ownerId, ownerType } = orderTags || {};
 
     if (!ownerId || !ownerType) {
-        logger.error('verifyTopup: Missing mandatory notes in Razorpay payload', { notes });
+        logger.error('verifyTopup: Missing mandatory order_tags in Cashfree payload', { orderTags });
         return;
     }
 
-    const paymentStatus = String(payment?.status || '').toLowerCase();
-    const topupAmount = Number(payment?.amount || 0) / 100;
-    if (paymentStatus !== 'captured' || !Number.isFinite(topupAmount) || topupAmount <= 0) {
-        logger.error('verifyTopup: Invalid Razorpay payment payload', {
-            rzPaymentId,
-            status: payment?.status,
-            amount: payment?.amount,
-        });
-        return;
-    }
-
-    const paymentOrderId = String(payment?.order_id || '').trim();
-    const expectedOrderId = String(order?.id || '').trim();
-    if (expectedOrderId && paymentOrderId && paymentOrderId !== expectedOrderId) {
-        logger.error('verifyTopup: Payment order mismatch', {
-            rzPaymentId,
-            paymentOrderId,
-            expectedOrderId,
+    const paymentStatus = String(payment?.payment_status || '').toUpperCase();
+    const topupAmount = Number(payment?.payment_amount || 0);
+    if (paymentStatus !== 'SUCCESS' || !Number.isFinite(topupAmount) || topupAmount <= 0) {
+        logger.error('verifyTopup: Invalid Cashfree payment payload', {
+            cfPaymentId,
+            status: payment?.payment_status,
+            amount: payment?.payment_amount,
         });
         return;
     }
@@ -164,13 +160,13 @@ export async function verifyTopup(payload) {
 
     try {
         // 1. Check if already processed (Idempotency via Ledger)
-        const existingLedger = await FoodWalletLedger.findOne({ 
-            referenceId: rzPaymentId, 
-            type: 'TOPUP' 
+        const existingLedger = await FoodWalletLedger.findOne({
+            referenceId: cfPaymentId,
+            type: 'TOPUP'
         }).session(session);
 
         if (existingLedger) {
-            logger.info(`verifyTopup: Topup already processed for payment ${rzPaymentId}`);
+            logger.info(`verifyTopup: Topup already processed for payment ${cfPaymentId}`);
             await session.commitTransaction();
             return;
         }
@@ -197,8 +193,8 @@ export async function verifyTopup(payload) {
             amount: topupAmount,
             beforeBalance,
             afterBalance,
-            referenceId: rzPaymentId,
-            metadata: { razorpayOrderId: order?.id, razorpayPaymentId: rzPaymentId }
+            referenceId: cfPaymentId,
+            metadata: { cashfreeOrderId: order?.order_id, cashfreePaymentId: cfPaymentId }
         }], { session });
 
         await session.commitTransaction();
@@ -206,7 +202,7 @@ export async function verifyTopup(payload) {
         invalidateSubscriptionStatsCache();
     } catch (error) {
         await session.abortTransaction();
-        logger.error('verifyTopup: Transaction failed', { error: error.message, ownerId, rzPaymentId });
+        logger.error('verifyTopup: Transaction failed', { error: error.message, ownerId, cfPaymentId });
         throw error;
     } finally {
         session.endSession();

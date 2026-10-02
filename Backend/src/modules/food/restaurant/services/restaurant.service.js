@@ -727,7 +727,7 @@ const notifyAdminsAboutRestaurantProfileReview = async (restaurantId, restaurant
 //                 const { verifyAndConsumeOnboardingPayment } = await import('../../../common/services/onboardingFee.service.js');
 //                 await verifyAndConsumeOnboardingPayment({
 //                     role: 'RESTAURANT',
-//                     paymentDetails: { razorpayOrderId, razorpayPaymentId, razorpaySignature },
+//                     paymentDetails: { cashfreeOrderId },
 //                     userDetails: { name: ownerName, phone: ownerPhoneDigits, email: ownerEmail },
 //                     entityId: existingRestaurant._id
 //                 });
@@ -748,7 +748,7 @@ const notifyAdminsAboutRestaurantProfileReview = async (restaurantId, restaurant
 //             const { verifyAndConsumeOnboardingPayment } = await import('../../../common/services/onboardingFee.service.js');
 //             await verifyAndConsumeOnboardingPayment({
 //                 role: 'RESTAURANT',
-//                 paymentDetails: { razorpayOrderId, razorpayPaymentId, razorpaySignature },
+//                 paymentDetails: { cashfreeOrderId },
 //                 userDetails: { name: ownerName, phone: ownerPhoneDigits, email: ownerEmail }
 //             });
 
@@ -1195,9 +1195,7 @@ export const registerRestaurant = async (payload, files, authUserId) => {
         accountHolderName,
         accountType,
         ref,
-        razorpayOrderId,
-        razorpayPaymentId,
-        razorpaySignature,
+        cashfreeOrderId,
         finalizeOnboarding
     } = payload;
 
@@ -1396,7 +1394,7 @@ export const registerRestaurant = async (payload, files, authUserId) => {
                 const { verifyAndConsumeOnboardingPayment } = await import('../../../common/services/onboardingFee.service.js');
                 await verifyAndConsumeOnboardingPayment({
                     role: 'RESTAURANT',
-                    paymentDetails: { razorpayOrderId, razorpayPaymentId, razorpaySignature },
+                    paymentDetails: { cashfreeOrderId },
                     userDetails: { name: ownerName, phone: ownerPhoneDigits, email: ownerEmail },
                     entityId: existingRestaurant._id
                 });
@@ -1424,7 +1422,7 @@ export const registerRestaurant = async (payload, files, authUserId) => {
                 const { verifyAndConsumeOnboardingPayment } = await import('../../../common/services/onboardingFee.service.js');
                 await verifyAndConsumeOnboardingPayment({
                     role: 'RESTAURANT',
-                    paymentDetails: { razorpayOrderId, razorpayPaymentId, razorpaySignature },
+                    paymentDetails: { cashfreeOrderId },
                     userDetails: { name: ownerName, phone: ownerPhoneDigits, email: ownerEmail },
                     entityId: existingRestaurant._id
                 });
@@ -1462,17 +1460,17 @@ export const registerRestaurant = async (payload, files, authUserId) => {
             const { verifyAndConsumeOnboardingPayment } = await import('../../../common/services/onboardingFee.service.js');
             await verifyAndConsumeOnboardingPayment({
                 role: 'RESTAURANT',
-                paymentDetails: { razorpayOrderId, razorpayPaymentId, razorpaySignature },
+                paymentDetails: { cashfreeOrderId },
                 userDetails: { name: ownerName, phone: ownerPhoneDigits, email: ownerEmail }
             });
 
             restaurant = await FoodRestaurant.create(restaurantData);
 
             // Associate created restaurant ID with payment log if paid
-            if (razorpayOrderId) {
+            if (cashfreeOrderId) {
                 const { OnboardingPaymentLog } = await import('../../../common/models/onboardingPaymentLog.model.js');
                 await OnboardingPaymentLog.updateOne(
-                    { razorpayOrderId },
+                    { cashfreeOrderId },
                     { $set: { entityId: restaurant._id } }
                 );
             }

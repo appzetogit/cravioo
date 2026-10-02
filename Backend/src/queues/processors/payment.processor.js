@@ -153,8 +153,8 @@ async function handlePaymentVerified(data) {
             userId,
             amount,
             method: paymentMethod,
-            gateway: paymentMethod === 'razorpay' ? 'razorpay' : 'none',
-            gatewayOrderId: data.razorpayOrderId || '',
+            gateway: paymentMethod === 'cashfree' ? 'cashfree' : 'none',
+            gatewayOrderId: data.cashfreeOrderId || '',
             metadata: { orderId, source: 'payment_verified_event' }
         });
 

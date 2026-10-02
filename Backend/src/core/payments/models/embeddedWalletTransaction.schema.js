@@ -80,9 +80,7 @@ export function buildUserEmbeddedTxn({
     amount,
     description = '',
     metadata = {},
-    razorpayOrderId = null,
-    razorpayPaymentId = null,
-    razorpaySignature = null,
+    cashfreeOrderId = null,
     status = 'Completed',
 }) {
     const now = new Date();
@@ -92,9 +90,7 @@ export function buildUserEmbeddedTxn({
         status,
         description: description || '',
         metadata: metadata || {},
-        razorpayOrderId,
-        razorpayPaymentId,
-        razorpaySignature,
+        cashfreeOrderId,
         createdAt: now,
         updatedAt: now,
     };

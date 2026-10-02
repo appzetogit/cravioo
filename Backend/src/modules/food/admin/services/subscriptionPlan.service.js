@@ -3,8 +3,9 @@ import { SubscriptionPlan } from '../models/subscriptionPlan.model.js';
 import { UserSubscription } from '../../user/models/userSubscription.model.js';
 import { FoodWalletLedger } from '../../subscriptions/models/foodWalletLedger.model.js';
 import { FoodDailyPass } from '../../subscriptions/models/foodDailyPass.model.js';
-import * as razorpayHelper from '../../orders/helpers/razorpay.helper.js';
+import * as cashfreeHelper from '../../orders/helpers/cashfree.helper.js';
 import { ValidationError, NotFoundError } from '../../../../core/auth/errors.js';
+import crypto from 'crypto';
 import dayjs from 'dayjs';
 import { logger } from '../../../../utils/logger.js';
 import { getCache, setCache } from '../../../../utils/cacheManager.js';
@@ -14,46 +15,36 @@ import {
     SUBSCRIPTION_OVERVIEW_CACHE_KEY
 } from '../utils/subscriptionStatsCache.js';
 
-/**
- * Maps our internal duration units to Razorpay periods.
- */
-const mapToRazorpayPeriod = (unit) => {
-    const mapping = {
-        'DAY': 'daily',
-        'WEEK': 'weekly',
-        'MONTH': 'monthly',
-        'YEAR': 'yearly'
-    };
-    return mapping[unit];
-};
+const newCashfreePlanId = () => `plan_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
 
 export async function createPlan(data) {
     // 1. Determine Payment Type based on unit
     const paymentType = data.durationUnit === 'DAY' ? 'ONE_TIME' : 'RECURRING';
-    
-    let razorpayPlanId = null;
 
-    // 2. Create Razorpay Plan for recurring types
+    let cashfreePlanId = null;
+
+    // 2. Create a Cashfree Subscription Plan for recurring types
     if (paymentType === 'RECURRING') {
         try {
-            const rpPlan = await razorpayHelper.createRazorpayPlan({
-                name: data.name,
-                description: data.description,
-                amountPaise: data.price * 100,
-                interval: data.durationValue,
-                period: mapToRazorpayPeriod(data.durationUnit)
+            cashfreePlanId = newCashfreePlanId();
+            await cashfreeHelper.createCashfreePlan({
+                planId: cashfreePlanId,
+                planName: data.name,
+                recurringAmount: data.price,
+                intervals: data.durationValue,
+                intervalType: data.durationUnit,
+                note: data.description,
             });
-            razorpayPlanId = rpPlan.id;
         } catch (err) {
-            throw new Error(`Razorpay Plan Creation Failed: ${err.message}`);
+            throw new Error(`Cashfree Plan Creation Failed: ${err.message}`);
         }
     }
 
-    // 3. Save to DB only after RP success
+    // 3. Save to DB only after Cashfree success
     const plan = await SubscriptionPlan.create({
         ...data,
         paymentType,
-        razorpayPlanId
+        cashfreePlanId
     });
 
     invalidateSubscriptionStatsCache();
@@ -69,13 +60,15 @@ export async function updatePlan(id, updates) {
     
     if (oldPlan.paymentType === 'RECURRING' && isPriceChanging) {
         try {
-            // 1. Create NEW Razorpay Plan
-            const rpPlan = await razorpayHelper.createRazorpayPlan({
-                name: updates.name || oldPlan.name,
-                description: updates.description || oldPlan.description,
-                amountPaise: Number(updates.price) * 100,
-                interval: oldPlan.durationValue,
-                period: mapToRazorpayPeriod(oldPlan.durationUnit)
+            // 1. Create NEW Cashfree Plan (Cashfree plans are immutable once created)
+            const newPlanId = newCashfreePlanId();
+            await cashfreeHelper.createCashfreePlan({
+                planId: newPlanId,
+                planName: updates.name || oldPlan.name,
+                recurringAmount: Number(updates.price),
+                intervals: oldPlan.durationValue,
+                intervalType: oldPlan.durationUnit,
+                note: updates.description || oldPlan.description,
             });
 
             // 2. Mark OLD plan as inactive
@@ -87,7 +80,7 @@ export async function updatePlan(id, updates) {
                 ...oldPlan.toObject(),
                 ...updates,
                 _id: undefined, // New ID
-                razorpayPlanId: rpPlan.id,
+                cashfreePlanId: newPlanId,
                 isActive: updates.isActive !== undefined ? updates.isActive : true,
                 createdAt: undefined,
                 updatedAt: undefined
@@ -96,7 +89,7 @@ export async function updatePlan(id, updates) {
             invalidateSubscriptionStatsCache();
             return newPlan;
         } catch (err) {
-            throw new Error(`Failed to version plan on Razorpay: ${err.message}`);
+            throw new Error(`Failed to version plan on Cashfree: ${err.message}`);
         }
     }
 
@@ -438,7 +431,7 @@ export async function getSubscriptionHistory(query, res) {
                 amountPaid: '$amount',
                 beforeBalance: '$beforeBalance',
                 afterBalance: '$afterBalance',
-                paymentMethod: { $cond: [{ $eq: ['$type', 'DAILY_DEDUCTION'] }, 'Wallet', 'Razorpay'] },
+                paymentMethod: { $cond: [{ $eq: ['$type', 'DAILY_DEDUCTION'] }, 'Wallet', 'Cashfree'] },
                 purchaseDate: '$createdAt',
                 expiryDate: { $cond: [{ $eq: ['$type', 'DAILY_DEDUCTION'] }, '$createdAt', null] },
                 status: { $cond: [{ $eq: ['$type', 'DAILY_DEDUCTION'] }, 'Expired', 'Active'] },
@@ -473,7 +466,7 @@ export async function getSubscriptionHistory(query, res) {
                 amountPaid: { $ifNull: ['$purchasedPrice', { $arrayElemAt: ['$p.price', 0] }] },
                 beforeBalance: { $literal: 0 },
                 afterBalance: { $literal: 0 },
-                paymentMethod: { $literal: 'Razorpay' },
+                paymentMethod: { $literal: 'Cashfree' },
                 purchaseDate: '$startDate',
                 expiryDate: '$expiryDate',
                 status: {
@@ -492,9 +485,9 @@ export async function getSubscriptionHistory(query, res) {
                         'MONTH_PLAN'
                     ]
                 },
-                subscriptionSource: { $literal: 'Direct Razorpay' },
+                subscriptionSource: { $literal: 'Direct Cashfree' },
                 purchaseTrigger: { $cond: ['$autoRenew', 'Auto Renewal', 'Manual Plan Purchase'] },
-                transactionId: { $ifNull: ['$razorpayPaymentId', '$razorpaySubscriptionId'] },
+                transactionId: { $ifNull: ['$cashfreePaymentId', '$cashfreeSubscriptionId'] },
                 isLegacyPricing: {
                     $cond: [
                         { $and: [

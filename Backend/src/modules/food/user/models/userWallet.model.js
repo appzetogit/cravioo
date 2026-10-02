@@ -11,6 +11,8 @@ const walletTransactionSchema = new mongoose.Schema(
         status: { type: String, default: 'Completed' }, // UI expects "Completed"
         description: { type: String, default: '' },
         metadata: { type: Object, default: {} },
+        cashfreeOrderId: { type: String, default: null },
+        // Legacy, read-only going forward - kept so historical transactions still load correctly.
         razorpayOrderId: { type: String, default: null },
         razorpayPaymentId: { type: String, default: null },
         razorpaySignature: { type: String, default: null }

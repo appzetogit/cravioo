@@ -1,6 +1,6 @@
 import { SubscriptionPlan } from '../../admin/models/subscriptionPlan.model.js';
 import { UserSubscription } from '../../user/models/userSubscription.model.js';
-import * as razorpayHelper from '../../orders/helpers/razorpay.helper.js';
+import * as cashfreeHelper from '../../orders/helpers/cashfree.helper.js';
 import { ValidationError, NotFoundError } from '../../../../core/auth/errors.js';
 import mongoose from 'mongoose';
 import dayjs from 'dayjs';
@@ -43,20 +43,23 @@ export async function initiatePurchase(userId, userType, { planId }) {
         const ageMs = nowMs - new Date(pendingDoc.createdAt).getTime();
         if (ageMs < PENDING_REUSE_MS) {
             if (plan.paymentType === 'ONE_TIME') {
-                const pendingOrderId = pendingDoc?.metadata?.razorpayOrderId;
-                const pendingAmount = pendingDoc?.metadata?.razorpayOrderAmount;
+                const pendingOrderId = pendingDoc?.metadata?.cashfreeOrderId;
+                const pendingAmount = pendingDoc?.metadata?.cashfreeOrderAmount;
+                const pendingSessionId = pendingDoc?.metadata?.cashfreePaymentSessionId;
                 if (pendingOrderId && pendingAmount) {
                     return {
                         orderId: pendingOrderId,
                         amount: pendingAmount,
-                        key: razorpayHelper.getRazorpayKeyId()
+                        paymentSessionId: pendingSessionId,
+                        appId: cashfreeHelper.getCashfreeAppId()
                     };
                 }
             } else {
-                if (pendingDoc?.razorpaySubscriptionId) {
+                if (pendingDoc?.cashfreeSubscriptionId) {
                     return {
-                        subscriptionId: pendingDoc.razorpaySubscriptionId,
-                        key: razorpayHelper.getRazorpayKeyId()
+                        subscriptionId: pendingDoc.cashfreeSubscriptionId,
+                        subscriptionSessionId: pendingDoc?.metadata?.cashfreeSubscriptionSessionId,
+                        appId: cashfreeHelper.getCashfreeAppId()
                     };
                 }
             }
@@ -114,20 +117,23 @@ export async function initiatePurchase(userId, userType, { planId }) {
             const fresh = await getPendingForPlan();
             if (fresh) {
                 if (plan.paymentType === 'ONE_TIME') {
-                    const pendingOrderId = fresh?.metadata?.razorpayOrderId;
-                    const pendingAmount = fresh?.metadata?.razorpayOrderAmount;
+                    const pendingOrderId = fresh?.metadata?.cashfreeOrderId;
+                    const pendingAmount = fresh?.metadata?.cashfreeOrderAmount;
+                    const pendingSessionId = fresh?.metadata?.cashfreePaymentSessionId;
                     if (pendingOrderId && pendingAmount) {
                         return {
                             orderId: pendingOrderId,
                             amount: pendingAmount,
-                            key: razorpayHelper.getRazorpayKeyId()
+                            paymentSessionId: pendingSessionId,
+                            appId: cashfreeHelper.getCashfreeAppId()
                         };
                     }
                 } else {
-                    if (fresh?.razorpaySubscriptionId) {
+                    if (fresh?.cashfreeSubscriptionId) {
                         return {
-                            subscriptionId: fresh.razorpaySubscriptionId,
-                            key: razorpayHelper.getRazorpayKeyId()
+                            subscriptionId: fresh.cashfreeSubscriptionId,
+                            subscriptionSessionId: fresh?.metadata?.cashfreeSubscriptionSessionId,
+                            appId: cashfreeHelper.getCashfreeAppId()
                         };
                     }
                 }
@@ -137,24 +143,26 @@ export async function initiatePurchase(userId, userType, { planId }) {
         throw new ValidationError('Purchase is already in progress. Please retry.');
     }
 
-    let razorpayData = {};
+    let cashfreeData = {};
 
     // 2. Handle One-Time vs Recurring
     if (plan.paymentType === 'ONE_TIME') {
-        const order = await razorpayHelper.createRazorpayOrder(
-            plan.price * 100,
-            'INR',
-            String(pendingDoc._id)
-        );
+        const order = await cashfreeHelper.createCashfreeOrder({
+            orderId: String(pendingDoc._id),
+            orderAmount: plan.price,
+            currency: 'INR',
+            customerId: String(userId),
+        });
 
         // 📂 CRITICAL: Create PENDING subscription record for One-Time too (idempotency)
         await UserSubscription.updateOne(
             { _id: pendingDoc._id, status: 'pending', planId: plan._id, 'metadata.purchaseLockId': lockId },
             {
                 $set: {
-                    razorpayPaymentId: null,
-                    'metadata.razorpayOrderId': order.id,
-                    'metadata.razorpayOrderAmount': order.amount
+                    cashfreePaymentId: null,
+                    'metadata.cashfreeOrderId': order.order_id,
+                    'metadata.cashfreeOrderAmount': order.order_amount,
+                    'metadata.cashfreePaymentSessionId': order.payment_session_id,
                 },
                 $unset: {
                     'metadata.purchaseLockId': 1,
@@ -163,20 +171,21 @@ export async function initiatePurchase(userId, userType, { planId }) {
             }
         );
 
-        razorpayData = {
-            orderId: order.id,
-            amount: order.amount,
-            key: razorpayHelper.getRazorpayKeyId()
+        cashfreeData = {
+            orderId: order.order_id,
+            amount: order.order_amount,
+            paymentSessionId: order.payment_session_id,
+            appId: cashfreeHelper.getCashfreeAppId()
         };
     } else {
-        const sub = await razorpayHelper.createRazorpaySubscription({
-            planId: plan.razorpayPlanId,
-            customerNotes: {
-                planId: String(plan._id),
-                restaurantId: restaurantId ? String(restaurantId) : undefined,
-                deliveryBoyId: deliveryBoyId ? String(deliveryBoyId) : undefined,
-                userType
-            }
+        if (!plan.cashfreePlanId) {
+            throw new ValidationError('This recurring plan is not configured for payments yet');
+        }
+        const subscriptionId = `sub_${String(pendingDoc._id)}`;
+        const sub = await cashfreeHelper.createCashfreeSubscription({
+            subscriptionId,
+            planId: plan.cashfreePlanId,
+            authorizationAmount: plan.price,
         });
 
         // 📂 CRITICAL: Create PENDING subscription record for Recurring
@@ -184,8 +193,9 @@ export async function initiatePurchase(userId, userType, { planId }) {
             { _id: pendingDoc._id, status: 'pending', planId: plan._id, 'metadata.purchaseLockId': lockId },
             {
                 $set: {
-                    razorpaySubscriptionId: sub.id,
-                    'metadata.razorpaySubscriptionId': sub.id
+                    cashfreeSubscriptionId: sub.subscription_id,
+                    'metadata.cashfreeSubscriptionId': sub.subscription_id,
+                    'metadata.cashfreeSubscriptionSessionId': sub.subscription_session_id,
                 },
                 $unset: {
                     'metadata.purchaseLockId': 1,
@@ -194,46 +204,44 @@ export async function initiatePurchase(userId, userType, { planId }) {
             }
         );
 
-        razorpayData = {
-            subscriptionId: sub.id,
-            key: razorpayHelper.getRazorpayKeyId()
+        cashfreeData = {
+            subscriptionId: sub.subscription_id,
+            subscriptionSessionId: sub.subscription_session_id,
+            appId: cashfreeHelper.getCashfreeAppId()
         };
     }
 
-    return razorpayData;
+    return cashfreeData;
 }
 
 export async function verifyPurchase(userId, userType, data) {
-    const { razorpayPaymentId, razorpaySignature, razorpayOrderId, razorpaySubscriptionId } = data;
+    const { cashfreeOrderId, cashfreeSubscriptionId } = data;
 
-    // 1. Verify Signature
+    // Cashfree never hands the client a signature to verify (unlike Razorpay) - the only
+    // trustworthy confirmation is asking Cashfree's server directly.
     let verified = false;
-    if (razorpaySubscriptionId) {
-        verified = razorpayHelper.verifySubscriptionSignature(
-            razorpaySubscriptionId,
-            razorpayPaymentId,
-            razorpaySignature
-        );
-    } else {
-        verified = razorpayHelper.verifyPaymentSignature(
-            razorpayOrderId,
-            razorpayPaymentId,
-            razorpaySignature
-        );
+    let cashfreePaymentId = null;
+    if (cashfreeSubscriptionId) {
+        const { active } = await cashfreeHelper.verifyCashfreeSubscriptionActive(cashfreeSubscriptionId);
+        verified = active;
+    } else if (cashfreeOrderId) {
+        const { paid, payment } = await cashfreeHelper.verifyCashfreeOrderPaid(cashfreeOrderId);
+        verified = paid;
+        cashfreePaymentId = payment?.cf_payment_id || null;
     }
 
-    if (!verified) throw new ValidationError('Payment signature verification failed');
+    if (!verified) throw new ValidationError('Payment verification failed');
 
-    // 2. Perform direct DB update to activate the subscription immediately (local/fallback bypass)
+    // Perform direct DB update to activate the subscription immediately (local/fallback bypass)
     const restaurantId = userType === 'RESTAURANT' ? userId : null;
     const deliveryBoyId = userType === 'DELIVERY_PARTNER' ? userId : null;
     const ownerFilter = userType === 'RESTAURANT' ? { restaurantId } : { deliveryBoyId };
 
     let query = { ...ownerFilter };
-    if (razorpayOrderId) {
-        query['metadata.razorpayOrderId'] = razorpayOrderId;
-    } else if (razorpaySubscriptionId) {
-        query.razorpaySubscriptionId = razorpaySubscriptionId;
+    if (cashfreeOrderId) {
+        query['metadata.cashfreeOrderId'] = cashfreeOrderId;
+    } else if (cashfreeSubscriptionId) {
+        query.cashfreeSubscriptionId = cashfreeSubscriptionId;
     }
 
     const doc = await UserSubscription.findOne(query).populate('planId');
@@ -241,13 +249,13 @@ export async function verifyPurchase(userId, userType, data) {
         const plan = doc.planId;
         if (plan) {
             const expiryDate = dayjs().add(plan.durationValue, plan.durationUnit.toLowerCase()).toDate();
-            
-            if (razorpayOrderId) {
+
+            if (cashfreeOrderId) {
                 await UserSubscription.updateOne(
                     { _id: doc._id },
                     {
                         $set: {
-                            razorpayPaymentId,
+                            cashfreePaymentId,
                             startDate: new Date(),
                             expiryDate,
                             status: 'active',
@@ -263,7 +271,6 @@ export async function verifyPurchase(userId, userType, data) {
                     { _id: doc._id },
                     {
                         $set: {
-                            razorpayPaymentId,
                             status: 'active',
                             startDate: new Date(),
                             expiryDate,
@@ -314,8 +321,8 @@ export async function cancelAutoRenew(userId, userType) {
         throw new ValidationError('No active subscription found. Cancellation is only allowed for active subscriptions.');
     }
 
-    // 2. Validate subscription type (recurring only; has razorpaySubscriptionId and is not a one-time plan; throw validation error otherwise).
-    if (!sub.razorpaySubscriptionId) {
+    // 2. Validate subscription type (recurring only; has cashfreeSubscriptionId and is not a one-time plan; throw validation error otherwise).
+    if (!sub.cashfreeSubscriptionId) {
         throw new ValidationError('This plan does not support recurring billing auto-renewal.');
     }
 
@@ -324,8 +331,8 @@ export async function cancelAutoRenew(userId, userType) {
         throw new ValidationError('Auto-renewal is already cancelled for this subscription.');
     }
 
-    // 4. Invoke razorpayHelper.cancelRazorpaySubscription(razorpaySubscriptionId, true) to cancel the subscription on Razorpay at the end of the cycle.
-    await razorpayHelper.cancelRazorpaySubscription(sub.razorpaySubscriptionId, true);
+    // 4. Cancel the mandate on Cashfree's side (access still continues until expiryDate, same as before).
+    await cashfreeHelper.cancelCashfreeSubscription(sub.cashfreeSubscriptionId);
 
     // 5. Perform an immediate MongoDB update: set autoRenew = false, cancelAtCycleEnd = true, and cancelAt = new Date().
     sub.autoRenew = false;

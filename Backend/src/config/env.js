@@ -95,10 +95,13 @@ export const config = {
     // Socket.io
     socketCorsOrigin: process.env.SOCKET_CORS_ORIGIN || '*',
 
-    // Razorpay (payments)
-    razorpayKeyId: process.env.RAZORPAY_KEY_ID,
-    razorpayKeySecret: process.env.RAZORPAY_KEY_SECRET,
-    razorpayWebhookSecret: process.env.RAZORPAY_WEBHOOK_SECRET, // ✅ NEW
+    // Cashfree (payments)
+    cashfreeAppId: process.env.CASHFREE_APP_ID,
+    cashfreeSecretKey: process.env.CASHFREE_SECRET_KEY,
+    cashfreeWebhookSecret: process.env.CASHFREE_WEBHOOK_SECRET,
+    // 'sandbox' or 'production'. Defaults to sandbox so an unconfigured server never hits real money.
+    cashfreeEnv: (process.env.CASHFREE_ENV || 'sandbox').toLowerCase(),
+    cashfreeApiVersion: process.env.CASHFREE_API_VERSION || '2025-01-01',
 
     // Google Maps (server-side distance matrix, directions, geocoding)
     googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAP_API_KEY || '',

@@ -4,9 +4,8 @@ import { Button } from "@food/components/ui/button"
 import { Input } from "@food/components/ui/input"
 import { IndianRupee, Loader2, X } from "lucide-react"
 import { userAPI } from "@food/api"
-import { initRazorpayPayment } from "@food/utils/razorpay"
+import { initCashfreePayment } from "@food/utils/cashfree"
 import { toast } from "sonner"
-import { getCompanyNameAsync } from "@common/utils/businessSettings"
 
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
@@ -50,10 +49,10 @@ export default function AddMoneyModal({ open, onOpenChange, onSuccess }) {
       const orderResponse = await userAPI.createWalletTopupOrder(amountNum)
       debugLog("Order response:", orderResponse)
 
-      const { razorpay } = orderResponse.data.data
+      const { cashfree } = orderResponse.data.data
 
-      if (!razorpay || !razorpay.orderId || !razorpay.key) {
-        debugError("Invalid Razorpay response:", { razorpay, orderResponse })
+      if (!cashfree || !cashfree.orderId || !cashfree.paymentSessionId) {
+        debugError("Invalid Cashfree response:", { cashfree, orderResponse })
         throw new Error("Failed to initialize payment gateway")
       }
 
@@ -64,65 +63,38 @@ export default function AddMoneyModal({ open, onOpenChange, onSuccess }) {
 
       setProcessing(true)
 
-      let userInfo = {}
-      try {
-        const userResponse = await userAPI.getProfile()
-        userInfo = userResponse?.data?.data?.user || userResponse?.data?.user || {}
-      } catch (err) {
-        debugWarn("Could not fetch user profile for Razorpay prefill:", err)
+      const verifyAndCredit = async () => {
+        try {
+          await userAPI.verifyWalletTopupPayment({
+            cashfreeOrderId: cashfree.orderId,
+            amount: amountNum,
+          })
+
+          toast.success(`\u20B9${amountNum} added to wallet successfully!`)
+          setAmount("")
+          setProcessing(false)
+          onOpenChange(false)
+
+          if (onSuccess) {
+            onSuccess()
+          }
+        } catch (error) {
+          debugError("Payment verification error:", error)
+          toast.error(error?.response?.data?.message || "Payment verification failed. Please contact support.")
+          setProcessing(false)
+        }
       }
 
-      const userPhone = userInfo.phone || ""
-      const userEmail = userInfo.email || ""
-      const userName = userInfo.name || ""
-      const formattedPhone = userPhone.replace(/\D/g, "").slice(-10)
-      const companyName = await getCompanyNameAsync()
-
-      await initRazorpayPayment({
-        key: razorpay.key,
-        amount: razorpay.amount,
-        currency: razorpay.currency || "INR",
-        order_id: razorpay.orderId,
-        name: companyName,
-        description: `Wallet Top-up - \u20B9${amountNum.toFixed(2)}`,
-        prefill: {
-          name: userName,
-          email: userEmail,
-          contact: formattedPhone,
-        },
-        notes: {
-          type: "wallet_topup",
-          amount: amountNum.toString(),
-        },
-        handler: async (response) => {
-          try {
-            await userAPI.verifyWalletTopupPayment({
-              razorpayOrderId: response.razorpay_order_id,
-              razorpayPaymentId: response.razorpay_payment_id,
-              razorpaySignature: response.razorpay_signature,
-              amount: amountNum,
-            })
-
-            toast.success(`\u20B9${amountNum} added to wallet successfully!`)
-            setAmount("")
-            setProcessing(false)
-            onOpenChange(false)
-
-            if (onSuccess) {
-              onSuccess()
-            }
-          } catch (error) {
-            debugError("Payment verification error:", error)
-            toast.error(error?.response?.data?.message || "Payment verification failed. Please contact support.")
-            setProcessing(false)
-          }
-        },
+      // checkout() resolves once the modal closes (success, failure or dismiss) -
+      // Cashfree never hands back a signature, so the backend verify call is the
+      // only source of truth.
+      await initCashfreePayment({
+        orderId: cashfree.orderId,
+        paymentSessionId: cashfree.paymentSessionId,
+        onSuccess: verifyAndCredit,
         onError: (error) => {
-          debugError("Razorpay payment error:", error)
-          toast.error(error?.description || "Payment failed. Please try again.")
-          setProcessing(false)
-        },
-        onClose: () => {
+          debugError("Cashfree payment error:", error)
+          toast.error(error?.message || "Payment failed. Please try again.")
           setProcessing(false)
         },
       })

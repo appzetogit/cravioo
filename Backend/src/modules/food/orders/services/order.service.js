@@ -59,15 +59,14 @@ import { resolveRestaurantPhone } from '../../shared/restaurantContact.js';
 import { FoodTransaction } from '../models/foodTransaction.model.js';
 import { FoodSupportTicket } from '../../user/models/supportTicket.model.js';
 import {
-    createRazorpayOrder,
-    createPaymentLink,
-    verifyPaymentSignature,
-    getRazorpayKeyId,
-    isRazorpayConfigured,
-    fetchRazorpayPayment,
-    fetchRazorpayPaymentLink,
-    initiateRazorpayRefund
-} from '../helpers/razorpay.helper.js';
+    createCashfreeOrder,
+    createCashfreePaymentLink,
+    verifyCashfreeOrderPaid,
+    getCashfreeAppId,
+    isCashfreeConfigured,
+    fetchCashfreePaymentLink,
+    initiateCashfreeRefund
+} from '../helpers/cashfree.helper.js';
 import { getIO, rooms } from '../../../../config/socket.js';
 import { isPointInPolygon } from '../../../../utils/geo.js';
 import { addOrderJob, removeOrderJob, getOrderJobMeta } from '../../../../queues/producers/order.producer.js';
@@ -142,19 +141,19 @@ const ORDER_ID_LENGTH = 6;
 const USER_CANCEL_FULL_REFUND_WINDOW_MS = 30 * 1000;
 const USER_CANCEL_EDIT_WINDOW_MS = 60 * 1000;
 
-async function ensureRazorpayPaymentNotConsumed(paymentId, { currentFoodOrderId = null } = {}) {
-  const rzPaymentId = String(paymentId || "").trim();
-  if (!rzPaymentId) throw new ValidationError("Razorpay payment id required");
+async function ensureCashfreePaymentNotConsumed(paymentId, { currentFoodOrderId = null } = {}) {
+  const cfPaymentId = String(paymentId || "").trim();
+  if (!cfPaymentId) throw new ValidationError("Cashfree payment id required");
 
   const foodExisting = await FoodOrder.findOne({
-    "payment.razorpay.paymentId": rzPaymentId,
+    "payment.cashfree.paymentId": cfPaymentId,
     ...(currentFoodOrderId ? { _id: { $ne: currentFoodOrderId } } : {}),
   })
     .select("_id orderId")
     .lean();
 
   if (foodExisting) {
-    throw new ValidationError("Razorpay payment already consumed");
+    throw new ValidationError("Cashfree payment already consumed");
   }
 }
 
@@ -569,7 +568,7 @@ function applyCancellationTerminalState(order, { cancelledStatus, reason = "", c
   if (order.payment && typeof order.payment === "object") {
     const method = String(order.payment.method || "").trim().toLowerCase();
     const paid =
-      ["razorpay", "razorpay_qr"].includes(method) &&
+      ["cashfree", "cashfree_qr", "razorpay", "razorpay_qr"].includes(method) &&
       String(order.payment.status || "").trim().toLowerCase() === "paid";
     if (
       !paid &&
@@ -2916,7 +2915,7 @@ export async function createOrder(userId, dto) {
       : normalizeDeliveryAddress(dto.address);
 
   const paymentMethod =
-    dto.paymentMethod === "card" ? "razorpay" : dto.paymentMethod;
+    dto.paymentMethod === "card" ? "cashfree" : dto.paymentMethod;
   const isCash = paymentMethod === "cash";
   const isWallet = paymentMethod === "wallet";
 
@@ -3170,7 +3169,7 @@ export async function createOrder(userId, dto) {
     method: paymentMethod,
     status: isCash ? "cod_pending" : isWallet ? "paid" : "created",
     amountDue: normalizedPricing.total ?? 0,
-    razorpay: {},
+    cashfree: {},
     qr: {},
   };
 
@@ -3397,25 +3396,32 @@ export async function createOrder(userId, dto) {
     platformProfit,
   });
 
-  let razorpayPayload = null;
+  let cashfreePayload = null;
 
-  if (paymentMethod === "razorpay" && isRazorpayConfigured()) {
-    const amountPaise = Math.round((normalizedPricing.total ?? 0) * 100);
-    if (amountPaise < 100)
+  if (paymentMethod === "cashfree" && isCashfreeConfigured()) {
+    const orderAmount = Number(normalizedPricing.total ?? 0);
+    if (orderAmount < 1)
       throw new ValidationError("Amount too low for online payment");
     try {
-      const rzOrder = await createRazorpayOrder(amountPaise, "INR", orderId);
-      order.payment.razorpay = {
-        orderId: rzOrder.id,
+      const cfOrder = await createCashfreeOrder({
+        orderId,
+        orderAmount,
+        currency: "INR",
+        customerId: String(userId),
+        customerPhone: deliveryAddress?.phone || "",
+      });
+      order.payment.cashfree = {
+        orderId: cfOrder.order_id,
+        cfOrderId: String(cfOrder.cf_order_id || ""),
         paymentId: "",
-        signature: "",
       };
       order.payment.status = "created";
-      razorpayPayload = {
-        key: getRazorpayKeyId(),
-        orderId: rzOrder.id,
-        amount: rzOrder.amount,
-        currency: rzOrder.currency || "INR",
+      cashfreePayload = {
+        appId: getCashfreeAppId(),
+        orderId: cfOrder.order_id,
+        paymentSessionId: cfOrder.payment_session_id,
+        amount: cfOrder.order_amount,
+        currency: cfOrder.order_currency || "INR",
       };
     } catch (err) {
       throw new ValidationError(err?.message || "Payment gateway error");
@@ -3463,7 +3469,7 @@ export async function createOrder(userId, dto) {
 
   await foodTransactionService.createInitialTransaction(order);
 
-  if (paymentMethod === "razorpay" && order.payment?.razorpay?.orderId) {
+  if (paymentMethod === "cashfree" && order.payment?.cashfree?.orderId) {
     // Audit can still happen here or via FinanceService events
   }
 
@@ -3473,7 +3479,7 @@ export async function createOrder(userId, dto) {
     const branding = await getGlobalBranding();
     // Notify customer. For online payments, order is created but awaits payment confirmation.
     const isAwaitingOnlinePayment =
-      String(order.payment?.method || "").toLowerCase() === "razorpay" &&
+      String(order.payment?.method || "").toLowerCase() === "cashfree" &&
       String(order.payment?.status || "").toLowerCase() !== "paid";
     await notifyOwnersSafely([{ ownerType: "USER", ownerId: userId }], {
       title: isAwaitingOnlinePayment
@@ -3541,7 +3547,7 @@ export async function createOrder(userId, dto) {
   }
   return {
     order: orderForClientEnriched,
-    razorpay: razorpayPayload,
+    cashfree: cashfreePayload,
     ...(quickFallbackApplied
       ? {
           quickDeliveryFallback: {
@@ -3571,52 +3577,43 @@ export async function verifyPayment(userId, dto) {
   if (order.payment.status === "paid")
     return { order: order.toObject(), payment: order.payment };
 
-  const expectedRazorpayOrderId = String(order.payment?.razorpay?.orderId || "").trim();
-  const providedRazorpayOrderId = String(dto.razorpayOrderId || "").trim();
-  if (!expectedRazorpayOrderId || providedRazorpayOrderId !== expectedRazorpayOrderId) {
+  const expectedCashfreeOrderId = String(order.payment?.cashfree?.orderId || "").trim();
+  const providedCashfreeOrderId = String(dto.cashfreeOrderId || dto.orderId || "").trim();
+  if (!expectedCashfreeOrderId || providedCashfreeOrderId !== expectedCashfreeOrderId) {
     throw new ValidationError("Payment order mismatch");
   }
 
-  const valid = verifyPaymentSignature(
-    expectedRazorpayOrderId,
-    dto.razorpayPaymentId,
-    dto.razorpaySignature,
-  );
-  if (!valid) throw new ValidationError("Payment verification failed");
-  await ensureRazorpayPaymentNotConsumed(dto.razorpayPaymentId, {
+  // Cashfree never hands the client a signature to verify (unlike Razorpay) - the only
+  // trustworthy confirmation is asking Cashfree's server directly for the order's payments.
+  if (!isCashfreeConfigured()) {
+    throw new ValidationError("Payment gateway is not configured on this server");
+  }
+  const { paid, payment: cfPayment } = await verifyCashfreeOrderPaid(expectedCashfreeOrderId);
+  if (!paid || !cfPayment) {
+    throw new ValidationError("Payment not captured");
+  }
+  const cfPaymentId = String(cfPayment.cf_payment_id || "");
+  await ensureCashfreePaymentNotConsumed(cfPaymentId, {
     currentFoodOrderId: order._id,
   });
 
-  if (isRazorpayConfigured()) {
-    const fetchedPayment = await fetchRazorpayPayment(dto.razorpayPaymentId);
-    const fetchedOrderId = String(fetchedPayment?.order_id || "").trim();
-    const fetchedStatus = String(fetchedPayment?.status || "").toLowerCase();
-    const fetchedAmountPaise = Number(fetchedPayment?.amount || 0);
-    const expectedAmountPaise = Math.round(Number(order.payment?.amountDue || 0) * 100);
-
-    if (fetchedOrderId !== expectedRazorpayOrderId) {
-      throw new ValidationError("Payment order mismatch");
-    }
-    if (fetchedStatus !== "captured") {
-      throw new ValidationError("Payment not captured");
-    }
-    if (!Number.isFinite(expectedAmountPaise) || expectedAmountPaise < 100) {
-      throw new ValidationError("Invalid order payment amount");
-    }
-    if (fetchedAmountPaise !== expectedAmountPaise) {
-      throw new ValidationError("Payment amount mismatch");
-    }
+  const fetchedAmount = Number(cfPayment.payment_amount || 0);
+  const expectedAmount = Number(order.payment?.amountDue || 0);
+  if (!Number.isFinite(expectedAmount) || expectedAmount < 1) {
+    throw new ValidationError("Invalid order payment amount");
+  }
+  if (Math.abs(fetchedAmount - expectedAmount) > 0.01) {
+    throw new ValidationError("Payment amount mismatch");
   }
 
   order.payment.status = "paid";
-  order.payment.razorpay.paymentId = dto.razorpayPaymentId;
-  order.payment.razorpay.signature = dto.razorpaySignature;
+  order.payment.cashfree.paymentId = cfPaymentId;
   await order.save();
 
   await foodTransactionService.updateTransactionStatus(order._id, 'captured', {
     status: 'captured',
-    razorpayPaymentId: dto.razorpayPaymentId,
-    razorpaySignature: dto.razorpaySignature,
+    cashfreePaymentId: cfPaymentId,
+    cashfreeOrderId: expectedCashfreeOrderId,
     recordedByRole: "USER",
     recordedById: new mongoose.Types.ObjectId(userId)
   });
@@ -3775,7 +3772,7 @@ async function autoProcessRefund(order, source) {
     if (!order || !order.payment || order.payment.status !== 'paid') return false;
     
     const paymentMethod = String(order.payment.method || '').trim().toLowerCase();
-    const isOnlinePaid = ['razorpay', 'razorpay_qr'].includes(paymentMethod);
+    const isOnlinePaid = ['cashfree', 'cashfree_qr'].includes(paymentMethod);
     const isWalletPaid = paymentMethod === 'wallet';
     
     if (!isOnlinePaid && !isWalletPaid) return false;
@@ -3805,9 +3802,9 @@ async function autoProcessRefund(order, source) {
             processed = true;
             refundId = `wallet_refund_${Date.now()}`;
         } else if (isOnlinePaid) {
-            const paymentId = order.payment.razorpay?.paymentId;
-            if (paymentId) {
-                const refundResult = await initiateRazorpayRefund(paymentId, amount, {
+            const cfOrderId = order.payment.cashfree?.orderId;
+            if (cfOrderId) {
+                const refundResult = await initiateCashfreeRefund(cfOrderId, amount, {
                     idempotencyKey: `food_refund_${String(order._id)}_${source}`,
                     notes: {
                         orderId: String(order.orderId || order._id),
@@ -3934,7 +3931,7 @@ export async function cancelOrder(orderId, userId, reason, refundTo) {
 
   const paymentMethod = String(order.payment?.method || "").trim().toLowerCase();
   const isOnlinePaid =
-    ["razorpay", "razorpay_qr"].includes(paymentMethod) &&
+    ["cashfree", "cashfree_qr", "razorpay", "razorpay_qr"].includes(paymentMethod) &&
     (order.payment.status === "paid" || order.payment.status === "refunded");
   const isWalletPaid =
     paymentMethod === "wallet" &&
@@ -4011,13 +4008,13 @@ export async function cancelOrder(orderId, userId, reason, refundTo) {
   if (
     false &&
     order.payment.status === "paid" &&
-    order.payment.method === "razorpay" &&
-    order.payment.razorpay?.paymentId &&
+    order.payment.method === "cashfree" &&
+    order.payment.cashfree?.orderId &&
     (!order.payment.refund || order.payment.refund.status !== "processed")
   ) {
     try {
-      const refundResult = await initiateRazorpayRefund(
-        order.payment.razorpay.paymentId,
+      const refundResult = await initiateCashfreeRefund(
+        order.payment.cashfree.orderId,
         order.pricing.total,
         {
           idempotencyKey: `food_refund_${String(order._id)}_user_cancel`,
@@ -4381,7 +4378,7 @@ export async function updateOrderStatusRestaurant(
   // Payment + refund side effects before persistence (admin path saves after refund).
   if (isCancelRequest) {
     const isOnlinePaid =
-      order.payment?.method === "razorpay" &&
+      ["cashfree", "razorpay"].includes(order.payment?.method) &&
       (order.payment?.status === "paid" || order.payment?.status === "refunded");
     if (["paid", "refunded"].includes(order.payment?.status)) {
       await autoProcessRefund(order, "restaurant");
@@ -4441,7 +4438,7 @@ export async function updateOrderStatusRestaurant(
       String(order.orderStatus || "").includes("cancel")
     ) {
       const isOnlinePaid =
-        order.payment?.method === "razorpay" &&
+        ["cashfree", "razorpay"].includes(order.payment?.method) &&
         (order.payment?.status === "paid" ||
           order.payment?.status === "refunded");
       const refundDetail = isOnlinePaid ? ` Your refund of ₹${order.pricing.total} is being processed and will be credited to your original payment method within 5-7 working days.` : "";
@@ -4766,7 +4763,7 @@ export async function updateOrderStatusAdmin(orderId, adminId, orderStatus, reas
 
   // ✅ Automated refund on ADMIN cancel (same behavior as restaurant-cancel)
   // - Wallet payment: credit back to user wallet immediately.
-  // - Razorpay payment: initiate Razorpay refund (full amount).
+  // - Cashfree payment: initiate Cashfree refund (full amount).
   if (order.orderStatus === "cancelled_by_admin") {
     if (["paid", "refunded"].includes(order.payment?.status)) {
       await autoProcessRefund(order, "admin");
@@ -5585,17 +5582,17 @@ export async function completeDelivery(orderId, deliveryPartnerId, body = {}) {
   const { otp, ratings, paymentMode } = body;
 
   // Only unpaid COD flows may switch collection mode at delivery.
-  // Never rewrite wallet / Razorpay method after prepaid capture.
+  // Never rewrite wallet / Cashfree method after prepaid capture.
   const existingPayMethod = String(order.payment?.method || "").trim().toLowerCase();
   const existingPayStatus = String(order.payment?.status || "").trim().toLowerCase();
   const isPrepaidCaptured =
-    ["wallet", "razorpay", "razorpay_qr"].includes(existingPayMethod) &&
+    ["wallet", "cashfree", "cashfree_qr", "razorpay", "razorpay_qr"].includes(existingPayMethod) &&
     ["paid", "refunded"].includes(existingPayStatus);
   if (!isPrepaidCaptured) {
     if (paymentMode === "cash") {
       order.payment.method = "cash";
     } else if (paymentMode === "qr") {
-      order.payment.method = "razorpay_qr";
+      order.payment.method = "cashfree_qr";
     }
   }
 
@@ -5613,11 +5610,11 @@ export async function completeDelivery(orderId, deliveryPartnerId, body = {}) {
   const prevPayStatus = order.payment.status;
   const payMethod = order.payment.method;
 
-  // Security gate: only complete QR delivery after Razorpay payment-link is actually paid.
+  // Security gate: only complete QR delivery after Cashfree payment-link is actually paid.
   // This enables frontend auto-complete after QR success.
-  if (payMethod === "razorpay_qr") {
-    // syncRazorpayQrPayment is a helper presumed present in this service context
-    if (typeof syncRazorpayQrPayment === 'function') await syncRazorpayQrPayment(order);
+  if (payMethod === "cashfree_qr") {
+    // syncCashfreeQrPayment is a helper presumed present in this service context
+    if (typeof syncCashfreeQrPayment === 'function') await syncCashfreeQrPayment(order);
     if (order.payment.status !== "paid") {
       throw new ValidationError("QR payment not verified yet");
     }
@@ -5629,7 +5626,7 @@ export async function completeDelivery(orderId, deliveryPartnerId, body = {}) {
   // Mark COD / unpaid collection as paid on delivery; prepaid stays paid/refunded as-is.
   if (!["paid", "refunded"].includes(String(order.payment?.status || "").trim().toLowerCase())) {
     order.payment.status = "paid";
-  } else if (["cash", "cod", "cash_on_delivery", "razorpay_qr"].includes(String(payMethod || "").toLowerCase())) {
+  } else if (["cash", "cod", "cash_on_delivery", "cashfree_qr"].includes(String(payMethod || "").toLowerCase())) {
     order.payment.status = "paid";
   }
   order.deliveryState = {
@@ -5865,16 +5862,16 @@ export async function createCollectQr(
   const amountDue = order.payment.amountDue ?? order.pricing?.total ?? 0;
   if (amountDue < 1) throw new ValidationError("No amount due");
 
-  if (!isRazorpayConfigured())
+  if (!isCashfreeConfigured())
     throw new ValidationError("QR payment not configured");
 
-  const amountPaise = Math.round(amountDue * 100);
   const user = order.userId || {};
-  const link = await createPaymentLink({
-    amountPaise,
+  const linkId = `${order.orderId}_qr_${Date.now()}`;
+  const link = await createCashfreePaymentLink({
+    linkId,
+    amount: amountDue,
     currency: "INR",
     description: `Order ${order.orderId} - COD collect`,
-    orderId: order.orderId,
     customerName: customerInfo.name || user.name || "Customer",
     customerEmail: customerInfo.email || user.email || "customer@example.com",
     customerPhone: customerInfo.phone || user.phone,
@@ -5889,14 +5886,14 @@ export async function createCollectQr(
     },
     {
       $set: {
-        "payment.method": "razorpay_qr",
+        "payment.method": "cashfree_qr",
         "payment.status": "pending_qr",
         "payment.qr": {
-          paymentLinkId: link.id,
-          shortUrl: link.short_url,
-          imageUrl: link.short_url,
-          status: link.status || "created",
-          expiresAt: link.expire_by ? new Date(link.expire_by * 1000) : null,
+          paymentLinkId: link.link_id,
+          shortUrl: link.link_url,
+          imageUrl: link.link_qrcode,
+          status: link.link_status || "ACTIVE",
+          expiresAt: link.link_expiry_time ? new Date(link.link_expiry_time) : null,
         },
       },
     },
@@ -5918,64 +5915,50 @@ export async function createCollectQr(
         orderMongoId: String(orderId),
         orderId: updated?.orderId || null,
         deliveryPartnerId,
-        paymentLinkId: link.id,
-        shortUrl: link.short_url,
+        paymentLinkId: link.link_id,
+        shortUrl: link.link_url,
         amountDue
     });
 
   // IMPORTANT: return QR payload so frontend can render "Generate QR" / "Show QR".
-  const shortUrl =
-    link?.short_url ?? link?.shortUrl ?? link?.short_url_path ?? null;
-  const imageUrl =
-    link?.short_url ??
-    link?.image_url ??
-    link?.imageUrl ??
-    link?.image ??
-    null;
-
   return {
-    shortUrl,
-    imageUrl,
+    shortUrl: link?.link_url ?? null,
+    imageUrl: link?.link_qrcode ?? null,
     amount: amountDue,
-    expiresAt:
-      link?.expire_by
-        ? new Date(link.expire_by * 1000)
-        : link?.expiresAt
-          ? new Date(link.expiresAt)
-          : null,
+    expiresAt: link?.link_expiry_time ? new Date(link.link_expiry_time) : null,
   };
 }
 
 /**
- * Razorpay QR auto-verify:
- * - Fetch payment-link status from Razorpay
- * - Update `order.payment.status` to `paid` when Razorpay marks it paid
+ * Cashfree QR auto-verify:
+ * - Fetch payment-link status from Cashfree
+ * - Update `order.payment.status` to `paid` when Cashfree marks it paid
  * - Update `order.payment.qr.status` for UI/debugging
  *
  * IMPORTANT: Callers should `await` this before completing delivery.
  */
-async function syncRazorpayQrPayment(orderDoc) {
+async function syncCashfreeQrPayment(orderDoc) {
   if (!orderDoc?.payment) return orderDoc?.payment;
-  if (orderDoc.payment.method !== "razorpay_qr") return orderDoc.payment;
+  if (orderDoc.payment.method !== "cashfree_qr") return orderDoc.payment;
   if (orderDoc.payment.status === "paid") return orderDoc.payment;
 
   const paymentLinkId = orderDoc.payment?.qr?.paymentLinkId;
   if (!paymentLinkId) return orderDoc.payment;
-  if (!isRazorpayConfigured()) return orderDoc.payment;
+  if (!isCashfreeConfigured()) return orderDoc.payment;
 
   let link;
   try {
-    link = await fetchRazorpayPaymentLink(paymentLinkId);
+    link = await fetchCashfreePaymentLink(paymentLinkId);
   } catch (err) {
     logger.warn(
-      `Razorpay payment-link fetch failed for ${paymentLinkId}: ${
+      `Cashfree payment-link fetch failed for ${paymentLinkId}: ${
         err?.message || err
       }`
     );
     return orderDoc.payment;
   }
 
-  const linkStatus = String(link?.status || "").toLowerCase();
+  const linkStatus = String(link?.link_status || "").toUpperCase();
   if (!linkStatus) return orderDoc.payment;
 
   // Update QR snapshot status.
@@ -5984,11 +5967,11 @@ async function syncRazorpayQrPayment(orderDoc) {
     status: linkStatus,
   };
 
-  // Mark paid only when Razorpay says it's paid/settled.
-  if (["paid", "captured", "authorized"].includes(linkStatus)) {
+  // Mark paid only when Cashfree says it's paid.
+  if (linkStatus === "PAID") {
     orderDoc.payment.status = "paid";
     await orderDoc.save();
-  } else if (["expired", "cancelled", "canceled", "failed"].includes(linkStatus)) {
+  } else if (["EXPIRED", "CANCELLED"].includes(linkStatus)) {
     orderDoc.payment.status = "failed";
     await orderDoc.save();
   }
@@ -6011,10 +5994,10 @@ export async function getPaymentStatus(orderId, deliveryPartnerId) {
   )
     throw new ForbiddenError("Not your order");
 
-  // Auto-sync Razorpay QR payment status before returning.
-  // syncRazorpayQrPayment calls Razorpay, updates order.payment.status, and saves.
-  if (order.payment?.method === "razorpay_qr") {
-    await syncRazorpayQrPayment(order);
+  // Auto-sync Cashfree QR payment status before returning.
+  // syncCashfreeQrPayment calls Cashfree, updates order.payment.status, and saves.
+  if (order.payment?.method === "cashfree_qr") {
+    await syncCashfreeQrPayment(order);
   }
 
   const transaction = await FoodTransaction.findOne({ orderId: order._id }).lean();

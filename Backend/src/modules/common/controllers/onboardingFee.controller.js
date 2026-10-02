@@ -1,6 +1,6 @@
 import { OnboardingFeeConfig } from '../models/onboardingFeeConfig.model.js';
 import { OnboardingPaymentLog } from '../models/onboardingPaymentLog.model.js';
-import { createRazorpayOrder, getRazorpayKeyId, isRazorpayConfigured } from '../../food/orders/helpers/razorpay.helper.js';
+import { createCashfreeOrder, getCashfreeAppId, isCashfreeConfigured } from '../../food/orders/helpers/cashfree.helper.js';
 import { sendResponse } from '../../../utils/response.js';
 import { ValidationError } from '../../../core/auth/errors.js';
 import { config } from '../../../config/env.js';
@@ -33,7 +33,7 @@ export async function getPublicOnboardingFees(req, res, next) {
     }
 }
 
-// Create a Razorpay Order for Onboarding Payment
+// Create a Cashfree Order for Onboarding Payment
 export async function createOnboardingPaymentOrder(req, res, next) {
     try {
         const { role, name, phone, email } = req.body;
@@ -69,7 +69,7 @@ export async function createOnboardingPaymentOrder(req, res, next) {
                     orderId: `already_paid_${Date.now()}`,
                     amount: config.price,
                     currency: 'INR',
-                    keyId: getRazorpayKeyId(),
+                    appId: getCashfreeAppId(),
                     isMock: false,
                     alreadyPaid: true
                 });
@@ -77,24 +77,32 @@ export async function createOnboardingPaymentOrder(req, res, next) {
         }
 
         const price = config.price;
-        const amountPaise = Math.round(price * 100);
 
         let orderId = '';
-        if (isRazorpayConfigured()) {
-            const receipt = `onb_${role.toLowerCase().slice(0, 3)}_${Date.now()}`;
-            const order = await createRazorpayOrder(amountPaise, 'INR', receipt);
-            orderId = order.id;
+        let paymentSessionId = '';
+        if (isCashfreeConfigured()) {
+            orderId = `onb_${role.toLowerCase().slice(0, 3)}_${Date.now()}`;
+            const order = await createCashfreeOrder({
+                orderId,
+                orderAmount: price,
+                currency: 'INR',
+                customerName: name.trim(),
+                customerPhone: phone.trim(),
+                customerEmail: email || undefined,
+            });
+            orderId = order.order_id;
+            paymentSessionId = order.payment_session_id;
         } else {
             if (isProduction) {
                 throw new ValidationError('Onboarding payment provider is unavailable. Please contact support.');
             }
-            // Mock order creation for development environments without Razorpay keys
+            // Mock order creation for development environments without Cashfree keys
             orderId = `mock_ord_${role.toLowerCase().slice(0, 3)}_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
         }
 
         // Create a pending payment log in the database
         await OnboardingPaymentLog.create({
-            razorpayOrderId: orderId,
+            cashfreeOrderId: orderId,
             role,
             amount: price,
             status: 'pending',
@@ -107,10 +115,11 @@ export async function createOnboardingPaymentOrder(req, res, next) {
 
         return sendResponse(res, 201, 'Onboarding payment order created successfully', {
             orderId,
+            paymentSessionId,
             amount: price,
             currency: 'INR',
-            keyId: getRazorpayKeyId(),
-            isMock: !isRazorpayConfigured() && !isProduction
+            appId: getCashfreeAppId(),
+            isMock: !isCashfreeConfigured() && !isProduction
         });
     } catch (error) {
         next(error);
@@ -209,8 +218,8 @@ export async function getOnboardingPayments(req, res, next) {
                 { 'userDetails.name': searchRegex },
                 { 'userDetails.phone': searchRegex },
                 { 'userDetails.email': searchRegex },
-                { razorpayOrderId: searchRegex },
-                { razorpayPaymentId: searchRegex }
+                { cashfreeOrderId: searchRegex },
+                { cashfreePaymentId: searchRegex }
             ];
         }
 

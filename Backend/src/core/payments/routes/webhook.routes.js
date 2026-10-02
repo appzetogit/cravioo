@@ -1,13 +1,13 @@
 import express from 'express';
-import { handleRazorpayWebhook } from '../controllers/razorpayWebhook.controller.js';
+import { handleCashfreeWebhook } from '../controllers/cashfreeWebhook.controller.js';
 
-/** ✅ NEW: Webhook Routes Module */
+/** Webhook Routes Module */
 const router = express.Router();
 
 /**
- * Endpoint for Razorpay payment/refund events (Public)
- * Path: /api/v1/payments/webhook/razorpay
+ * Endpoint for Cashfree payment/refund/subscription events (Public)
+ * Path: /api/v1/payments/webhook/cashfree
  */
-router.post('/razorpay', handleRazorpayWebhook);
+router.post('/cashfree', handleCashfreeWebhook);
 
 export default router;

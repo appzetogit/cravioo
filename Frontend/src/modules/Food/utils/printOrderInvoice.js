@@ -32,6 +32,7 @@ const normalizePaymentLabel = (raw, statusRaw = "") => {
   if (method.includes("cash") || method === "cod") return "COD"
   if (method.includes("wallet")) return "WALLET"
   if (
+    method.includes("cashfree") ||
     method.includes("razorpay") ||
     method.includes("online") ||
     method.includes("upi") ||

@@ -32,14 +32,14 @@ const thirdPartyServices = [
   },
   {
     id: 3,
-    name: "Razorpay",
+    name: "Cashfree",
     category: "Payment Gateway",
-    description: "Razorpay payment gateway",
+    description: "Cashfree payment gateway",
     enabled: false,
     configured: false,
     fields: [
-      { key: "keyId", label: "Key ID", value: "", type: "text" },
-      { key: "keySecret", label: "Key Secret", value: "", type: "password" }
+      { key: "appId", label: "App ID", value: "", type: "text" },
+      { key: "secretKey", label: "Secret Key", value: "", type: "password" }
     ]
   },
   {

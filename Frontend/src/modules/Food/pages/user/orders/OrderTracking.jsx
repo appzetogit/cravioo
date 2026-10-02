@@ -871,13 +871,13 @@ function isRefundablePrepaidOrder(order) {
 
   if (["cash", "cod"].includes(method)) return false;
 
-  const hasRazorpayPaymentId = Boolean(order?.payment?.razorpay?.paymentId);
-  const hasRazorpayOrderId = Boolean(order?.payment?.razorpay?.orderId);
+  const hasCashfreePaymentId = Boolean(order?.payment?.cashfree?.paymentId || order?.payment?.razorpay?.paymentId);
+  const hasCashfreeOrderId = Boolean(order?.payment?.cashfree?.orderId || order?.payment?.razorpay?.orderId);
   const isPaid = ["paid", "refunded"].includes(status);
-  const isOnlineMethod = ["razorpay", "razorpay_qr", "online", "upi", "card"].includes(method);
+  const isOnlineMethod = ["cashfree", "cashfree_qr", "razorpay", "razorpay_qr", "online", "upi", "card"].includes(method);
 
-  if (isPaid && (isOnlineMethod || hasRazorpayPaymentId || hasRazorpayOrderId)) return true;
-  if (hasRazorpayPaymentId && !["failed", "cancelled"].includes(status)) return true;
+  if (isPaid && (isOnlineMethod || hasCashfreePaymentId || hasCashfreeOrderId)) return true;
+  if (hasCashfreePaymentId && !["failed", "cancelled"].includes(status)) return true;
 
   return false;
 }
@@ -1109,7 +1109,7 @@ export default function OrderTracking() {
     if (!order) return false;
     const method = String(order?.payment?.method || order?.paymentMethod || "").trim().toLowerCase();
     if (method === "wallet") return false;
-    return isRefundablePrepaidOrder(order) && ["razorpay", "razorpay_qr", "online"].includes(method);
+    return isRefundablePrepaidOrder(order) && ["cashfree", "cashfree_qr", "razorpay", "razorpay_qr", "online"].includes(method);
   }, [order, confirmed]);
 
   const canUseWalletRefund = useMemo(() => Boolean(
@@ -2427,7 +2427,7 @@ export default function OrderTracking() {
                 <div className="grid gap-3 sm:grid-cols-2">
                   {[
                     { value: "wallet", label: "Wallet", desc: "Amount will be added to your app wallet." },
-                    { value: "gateway", label: "Original payment method", desc: "Refund back to Razorpay / UPI / card." },
+                    { value: "gateway", label: "Original payment method", desc: "Refund back to Cashfree / UPI / card." },
                   ].map(({ value, label, desc }) => (
                     <button
                       key={value}

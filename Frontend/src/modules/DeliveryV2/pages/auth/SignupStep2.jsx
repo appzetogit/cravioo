@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom"
 import { ArrowLeft, Upload, X, Check, Camera, Image as ImageIcon, Truck } from "lucide-react"
 import { deliveryAPI, onboardingFeeAPI } from "@food/api"
 import { toast } from "sonner"
-import { initRazorpayPayment } from "@food/utils/razorpay"
+import { initCashfreePayment } from "@food/utils/cashfree"
 import { openCamera, openGallery } from "@food/utils/imageUploadUtils"
 import useDeliveryBackNavigation from "../../hooks/useDeliveryBackNavigation"
 
@@ -669,9 +669,7 @@ export default function SignupStep2() {
       if (paymentSuccessData) {
         toast.info("Using previously completed payment details.")
         const formData = await buildFormData(details, documentsRef.current)
-        formData.append("razorpayOrderId", paymentSuccessData.razorpayOrderId)
-        formData.append("razorpayPaymentId", paymentSuccessData.razorpayPaymentId)
-        formData.append("razorpaySignature", paymentSuccessData.razorpaySignature)
+        formData.append("cashfreeOrderId", paymentSuccessData.cashfreeOrderId)
 
         await submitRegistration({ isCompleteProfile, formData, navigate })
         setIsSubmitting(false)
@@ -694,42 +692,25 @@ export default function SignupStep2() {
         if (orderData.isMock || orderData.orderId.startsWith("mock_ord_")) {
           toast.success("Developer Mode: Payment bypassed. Submitting mock payment details.")
           const formData = await buildFormData(details, documentsRef.current)
-          formData.append("razorpayOrderId", orderData.orderId)
-          formData.append("razorpayPaymentId", `mock_pay_${Date.now()}`)
-          formData.append("razorpaySignature", `mock_sig_${Date.now()}`)
+          formData.append("cashfreeOrderId", orderData.orderId)
 
           await submitRegistration({ isCompleteProfile, formData, navigate })
           setIsSubmitting(false)
           return
 
         } else {
-          const rzpOptions = {
-            key: orderData.keyId,
-            amount: Math.round(feeConfig.price * 100),
-            currency: orderData.currency || "INR",
-            order_id: orderData.orderId,
-            name: "Onboarding Fee Payment",
-            description: `Onboarding fee for ${details.name}`,
-            prefill: {
-              name: details.name || "",
-              email: details.email || "",
-              contact: String(details.phone || "").replace(/\D/g, "").slice(0, 15)
-            },
-            handler: async (response) => {
+          const cfOptions = {
+            orderId: orderData.orderId,
+            paymentSessionId: orderData.paymentSessionId,
+            onSuccess: async () => {
               try {
                 setIsSubmitting(true)
-                const payData = {
-                  razorpayOrderId: response.razorpay_order_id,
-                  razorpayPaymentId: response.razorpay_payment_id,
-                  razorpaySignature: response.razorpay_signature
-                }
+                const payData = { cashfreeOrderId: orderData.orderId }
                 setPaymentSuccessData(payData)
                 sessionStorage.setItem("deliveryPaymentSuccessData", JSON.stringify(payData))
 
                 const formData = await buildFormData(details, documentsRef.current)
-                formData.append("razorpayOrderId", response.razorpay_order_id)
-                formData.append("razorpayPaymentId", response.razorpay_payment_id)
-                formData.append("razorpaySignature", response.razorpay_signature)
+                formData.append("cashfreeOrderId", orderData.orderId)
 
                 await submitRegistration({ isCompleteProfile, formData, navigate })
               } catch (err) {
@@ -740,16 +721,12 @@ export default function SignupStep2() {
               }
             },
             onError: (err) => {
-              toast.error(err?.description || "Payment failed. Please try again.")
+              toast.error(err?.message || "Payment failed. Please try again.")
               setIsSubmitting(false)
             },
-            onClose: () => {
-              toast.error("Payment modal closed. Payment is required to complete signup.")
-              setIsSubmitting(false)
-            }
           }
 
-          await initRazorpayPayment(rzpOptions)
+          await initCashfreePayment(cfOptions)
           return
         }
 

@@ -1132,7 +1132,7 @@ export default function SubscriptionManagement() {
                             </div>
                             <div className="mt-3 flex items-start gap-2 text-[10px] text-slate-500 leading-relaxed italic">
                                 <AlertCircle className="w-3 h-3 mt-0.5 shrink-0" />
-                                <p>For Week/Month plans, changing the price will automatically generate a new Razorpay Plan to protect existing subscriptions.</p>
+                                <p>For Week/Month plans, changing the price will automatically generate a new Cashfree Plan to protect existing subscriptions.</p>
                             </div>
                         </div>
 

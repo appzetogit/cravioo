@@ -1,6 +1,6 @@
 import { OnboardingFeeConfig } from '../models/onboardingFeeConfig.model.js';
 import { OnboardingPaymentLog } from '../models/onboardingPaymentLog.model.js';
-import { verifyPaymentSignature } from '../../food/orders/helpers/razorpay.helper.js';
+import { verifyCashfreeOrderPaid } from '../../food/orders/helpers/cashfree.helper.js';
 import { ValidationError } from '../../../core/auth/errors.js';
 import { config } from '../../../config/env.js';
 import mongoose from 'mongoose';
@@ -8,10 +8,10 @@ import mongoose from 'mongoose';
 /**
  * Verifies and consumes the onboarding payment for a given role and profile ID.
  * If onboarding fee configuration is inactive or fee is 0, this check is bypassed.
- * 
+ *
  * @param {Object} params
  * @param {string} params.role - 'RESTAURANT' | 'SELLER' | 'DELIVERY_PARTNER'
- * @param {Object} params.paymentDetails - { razorpayOrderId, razorpayPaymentId, razorpaySignature }
+ * @param {Object} params.paymentDetails - { cashfreeOrderId }
  * @param {Object} params.userDetails - { name, phone, email }
  * @param {string} params.entityId - Mongoose ObjectId of the created partner profile
  */
@@ -43,22 +43,17 @@ export async function verifyAndConsumeOnboardingPayment({ role, paymentDetails =
         }
     }
 
-    const { razorpayOrderId, razorpayPaymentId, razorpaySignature } = paymentDetails;
-    if (!razorpayOrderId) {
-        throw new ValidationError('razorpayOrderId is required for onboarding fee payment');
-    }
-    if (!razorpayPaymentId) {
-        throw new ValidationError('razorpayPaymentId is required for onboarding fee payment');
-    }
-    if (!razorpaySignature) {
-        throw new ValidationError('razorpaySignature is required for onboarding fee payment');
+    const { cashfreeOrderId } = paymentDetails;
+    if (!cashfreeOrderId) {
+        throw new ValidationError('cashfreeOrderId is required for onboarding fee payment');
     }
 
     const isProduction = String(config.nodeEnv).toLowerCase() === 'production';
 
     // 2. Check if this is a mock order ID
-    const isMock = String(razorpayOrderId).startsWith('mock_ord_');
+    const isMock = String(cashfreeOrderId).startsWith('mock_ord_');
     let isValid = false;
+    let cashfreePaymentId = null;
 
     if (isMock) {
         if (isProduction) {
@@ -67,38 +62,41 @@ export async function verifyAndConsumeOnboardingPayment({ role, paymentDetails =
         // Automatically validate mock order IDs only in non-production environments
         isValid = true;
     } else {
-        // Validate signature using standard Razorpay helper
-        isValid = verifyPaymentSignature(razorpayOrderId, razorpayPaymentId, razorpaySignature);
+        // Cashfree never hands the client a signature - confirm with Cashfree's server directly.
+        const { paid, payment } = await verifyCashfreeOrderPaid(cashfreeOrderId);
+        isValid = paid;
+        cashfreePaymentId = payment?.cf_payment_id || null;
     }
 
     if (!isValid) {
         // Record failed payment attempt
         await OnboardingPaymentLog.findOneAndUpdate(
-            { razorpayOrderId },
+            { cashfreeOrderId },
             {
                 $set: {
                     role,
                     status: 'failed',
-                    razorpayPaymentId,
-                    razorpaySignature,
-                    errorDetails: 'Payment signature verification failed.'
+                    cashfreePaymentId,
+                    errorDetails: 'Payment verification failed.'
                 }
             },
             { upsert: true, new: true }
         );
-        throw new ValidationError('Onboarding payment verification failed. Invalid signature.');
+        throw new ValidationError('Onboarding payment verification failed.');
     }
 
-    const consumedByPaymentId = await OnboardingPaymentLog.findOne({
-        razorpayPaymentId,
-        status: 'success',
-        role,
-    }).lean();
-    if (consumedByPaymentId && String(consumedByPaymentId.razorpayOrderId || '') !== String(razorpayOrderId)) {
+    const consumedByPaymentId = cashfreePaymentId
+        ? await OnboardingPaymentLog.findOne({
+            cashfreePaymentId,
+            status: 'success',
+            role,
+        }).lean()
+        : null;
+    if (consumedByPaymentId && String(consumedByPaymentId.cashfreeOrderId || '') !== String(cashfreeOrderId)) {
         throw new ValidationError('This payment has already been consumed.');
     }
 
-    const existingLog = await OnboardingPaymentLog.findOne({ razorpayOrderId }).lean();
+    const existingLog = await OnboardingPaymentLog.findOne({ cashfreeOrderId }).lean();
     if (existingLog?.status === 'success') {
         const existingEntityId = existingLog?.entityId ? String(existingLog.entityId) : '';
         const incomingEntityId = entityId ? String(entityId) : '';
@@ -112,13 +110,12 @@ export async function verifyAndConsumeOnboardingPayment({ role, paymentDetails =
 
     // 3. Mark payment log as successful and associate with created entity (Restaurant, Seller, Delivery Partner)
     await OnboardingPaymentLog.findOneAndUpdate(
-        { razorpayOrderId },
+        { cashfreeOrderId },
         {
             $set: {
                 role,
                 status: 'success',
-                razorpayPaymentId,
-                razorpaySignature,
+                cashfreePaymentId,
                 entityId: entityId ? new mongoose.Types.ObjectId(entityId) : null,
                 amount: config.price,
                 userDetails: {

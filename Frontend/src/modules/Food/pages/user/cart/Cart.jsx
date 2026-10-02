@@ -23,7 +23,7 @@ import { useZone } from "@food/hooks/useZone"
 import { useLocationSelector } from "@food/components/user/UserLayout"
 import { orderAPI, restaurantAPI, adminAPI, userAPI, API_ENDPOINTS } from "@food/api"
 import { API_BASE_URL } from "@food/api/config"
-import { initRazorpayPayment, isFlutterWebView, handleFlutterRazorpayPayment } from "@food/utils/razorpay"
+import { initCashfreePayment, isFlutterWebView, handleFlutterCashfreePayment } from "@food/utils/cashfree"
 import { sanitizeOrderImage, sanitizeOrderNotes } from "@food/utils/orderPayload"
 import {
   areQuickGatesOpen,
@@ -38,7 +38,6 @@ import {
   createCartPricingRequestController,
 } from "@food/utils/cartPricingRequest"
 import { toast } from "sonner"
-import { getCompanyNameAsync } from "@common/utils/businessSettings"
 import { useCompanyName } from "@food/hooks/useCompanyName"
 import { getRestaurantAvailabilityStatus } from "@food/utils/restaurantAvailability"
 import useAppBackNavigation from "@food/hooks/useAppBackNavigation"
@@ -1398,7 +1397,7 @@ const codBlockedMessage = isCodBlockedByOrderValue
   : ""
 const paymentOptions = [
   {
-    id: 'razorpay',
+    id: 'cashfree',
     name: 'Online Payment',
     description: 'UPI, Cards, Netbanking',
     icon: <Zap className="w-5 h-5" />,
@@ -1431,7 +1430,7 @@ const paymentOptions = [
 const selectedPaymentLabel =
   selectedPaymentMethod === "wallet"
     ? "Wallet"
-    : selectedPaymentMethod === "razorpay"
+    : selectedPaymentMethod === "cashfree"
       ? "Online Payment"
       : "Cash on Delivery"
 
@@ -2114,7 +2113,7 @@ const handlePlaceOrder = async () => {
 
     debugLog("? Order created successfully:", orderResponse.data)
 
-    const { order, razorpay, quickDeliveryFallback } = orderResponse.data.data || {}
+    const { order, cashfree, quickDeliveryFallback } = orderResponse.data.data || {}
 
     if (quickDeliveryFallback || (orderPayload.deliveryMode === "quick" && order?.deliveryMode !== "quick")) {
       setDeliveryType("standard")
@@ -2186,194 +2185,114 @@ const handlePlaceOrder = async () => {
       return
     }
 
-    if (!razorpay || !razorpay.orderId || !razorpay.key) {
-      debugError("? Razorpay initialization failed:", { razorpay, order })
-      throw new Error(razorpay ? "Razorpay payment gateway is not configured. Please contact support." : "Failed to initialize payment")
+    if (!cashfree || !cashfree.orderId || !cashfree.paymentSessionId) {
+      debugError("? Cashfree initialization failed:", { cashfree, order })
+      throw new Error(cashfree ? "Cashfree payment gateway is not configured. Please contact support." : "Failed to initialize payment")
     }
 
-    debugLog("?? Razorpay order created:", {
-      orderId: razorpay.orderId,
-      amount: razorpay.amount,
-      currency: razorpay.currency,
-      keyPresent: !!razorpay.key
+    debugLog("?? Cashfree order created:", {
+      orderId: cashfree.orderId,
+      amount: cashfree.amount,
+      currency: cashfree.currency,
     })
 
-    // Get user info for Razorpay prefill
-    const userInfo = userProfile || {}
-    const userPhone = recipientPhone || userInfo.phone || defaultAddress?.phone || ""
-    const userEmail = userInfo.email || ""
-    const userName = recipientName || userInfo.name || ""
+    const verifyOrderId = order?._id || order?.id || order?.orderMongoId
 
-    // Format phone number (remove non-digits, take last 10 digits)
-    const formattedPhone = userPhone.replace(/\D/g, "").slice(-10)
-
-    debugLog("?? User info for payment:", {
-      name: userName,
-      email: userEmail,
-      phone: formattedPhone
-    })
-
-    // Get company name for Razorpay
-    const companyName = await getCompanyNameAsync()
-
-    // ─── Payment: Flutter WebView → native Razorpay, Web → JS checkout ───
-    if (isFlutterWebView()) {
-      // Native Flutter Razorpay SDK via JS bridge
-      setIsPlacingOrder(true)
+    const verifyAndFinish = async () => {
       try {
-        const flutterResult = await handleFlutterRazorpayPayment({
-          key: razorpay.key,
-          order_id: razorpay.orderId,
-          amount: razorpay.amount, // already in paise
-          currency: razorpay.currency || 'INR',
-          name: companyName,
-          description: `Order ${order._id || order.orderId} - ${RUPEE_SYMBOL}${(razorpay.amount / 100).toFixed(2)}`,
-          prefill: { name: userName, email: userEmail, contact: formattedPhone },
-          notes: {
-            orderId: order._id || order.orderId,
-            userId: userInfo.id || '',
-            restaurantId: restaurantId || 'unknown',
-          },
-        })
-
-        // Verify payment with backend (same as web flow)
-        const verifyOrderId = order?._id || order?.id || order?.orderMongoId
-        if (!verifyOrderId) throw new Error('Unable to verify payment: missing order id')
+        if (!verifyOrderId) {
+          throw new Error("Unable to verify payment: missing order id from create-order response")
+        }
         const verifyResponse = await orderAPI.verifyPayment({
           orderId: verifyOrderId,
-          razorpayOrderId: flutterResult.razorpay_order_id,
-          razorpayPaymentId: flutterResult.razorpay_payment_id,
-          razorpaySignature: flutterResult.razorpay_signature,
+          cashfreeOrderId: cashfree.orderId,
         })
 
+        debugLog("? Payment verification response:", verifyResponse.data)
+
         if (verifyResponse.data.success) {
+          debugLog("?? Order placed successfully:", {
+            orderId: order._id || order.orderId,
+            paymentId: verifyResponse.data.data?.payment?.paymentId
+          })
           setPlacedOrderId(order._id || order.orderId)
           setPlacedOrderData(order || null)
           setShowOrderSuccess(true)
           window.dispatchEvent(new CustomEvent('order-placed', { detail: { order } }))
           clearCart()
         } else {
-          throw new Error(verifyResponse.data.message || 'Payment verification failed')
+          throw new Error(verifyResponse.data.message || "Payment verification failed")
         }
-      } catch (payErr) {
-        const msg = payErr?.message || 'Payment failed or cancelled'
-        if (!/cancel/i.test(msg)) {
-          // Cancel order in backend if payment failed (not just cancelled)
-          try {
-            const cancelId = order?._id || order?.id || order?.orderMongoId
-            if (cancelId) {
-              await orderAPI.cancelOrder(cancelId, { reason: 'Payment Failed', note: msg })
-            }
-          } catch { /* ignore cancel error */ }
-          alert(msg)
+      } catch (error) {
+        debugError("? Payment verification error:", error)
+        const errorMessage =
+          error?.response?.data?.message ||
+          error?.response?.data?.error?.message ||
+          error?.response?.data?.errors?.[0]?.message ||
+          error?.message ||
+          "Payment verification failed. Please contact support."
+        // Clean up the pending order in backend since it never got paid.
+        try {
+          const cancelId = order?._id || order?.id || order?.orderMongoId
+          if (cancelId) {
+            await orderAPI.cancelOrder(cancelId, { reason: "Payment Failed", note: errorMessage })
+          }
+        } catch (cancelErr) {
+          debugError("? Failed to auto-cancel order after payment error:", cancelErr)
         }
+        alert(errorMessage)
       } finally {
         setIsPlacingOrder(false)
       }
-    } else {
-      // Standard web Razorpay checkout modal (unchanged)
-      await initRazorpayPayment({
-        key: razorpay.key,
-        amount: razorpay.amount, // Already in paise from backend
-        currency: razorpay.currency || 'INR',
-        order_id: razorpay.orderId,
-        name: companyName,
-        description: `Order ${order._id || order.orderId} - ${RUPEE_SYMBOL}${(razorpay.amount / 100).toFixed(2)}`,
-        prefill: {
-          name: userName,
-          email: userEmail,
-          contact: formattedPhone
-        },
-        notes: {
-          orderId: order._id || order.orderId,
-          userId: userInfo.id || "",
-          restaurantId: restaurantId || "unknown"
-        },
-        handler: async (response) => {
-          try {
-            debugLog("? Payment successful, verifying...", {
-              razorpay_order_id: response.razorpay_order_id,
-              razorpay_payment_id: response.razorpay_payment_id
-            })
+    }
 
-            // Verify payment with backend
-            const verifyOrderId = order?._id || order?.id || order?.orderMongoId
-            if (!verifyOrderId) {
-              throw new Error("Unable to verify payment: missing order id from create-order response")
-            }
-            const verifyResponse = await orderAPI.verifyPayment({
-              orderId: verifyOrderId,
-              razorpayOrderId: response.razorpay_order_id,
-              razorpayPaymentId: response.razorpay_payment_id,
-              razorpaySignature: response.razorpay_signature
-            })
-
-            debugLog("? Payment verification response:", verifyResponse.data)
-
-            if (verifyResponse.data.success) {
-              debugLog("?? Order placed successfully:", {
-                orderId: order._id || order.orderId,
-                paymentId: verifyResponse.data.data?.payment?.paymentId
-              })
-              setPlacedOrderId(order._id || order.orderId)
-              setPlacedOrderData(order || null)
-              setShowOrderSuccess(true)
-              window.dispatchEvent(new CustomEvent('order-placed', { detail: { order } }))
-              clearCart()
-              setIsPlacingOrder(false)
-            } else {
-              throw new Error(verifyResponse.data.message || "Payment verification failed")
-            }
-          } catch (error) {
-            debugError("? Payment verification error:", error)
-            const errorMessage =
-              error?.response?.data?.message ||
-              error?.response?.data?.error?.message ||
-              error?.response?.data?.errors?.[0]?.message ||
-              error?.message ||
-              "Payment verification failed. Please contact support."
-            alert(errorMessage)
-            setIsPlacingOrder(false)
+    // ─── Payment: Flutter WebView → native Cashfree, Web → JS checkout ───
+    if (isFlutterWebView()) {
+      // Native Flutter Cashfree SDK via JS bridge
+      setIsPlacingOrder(true)
+      try {
+        await handleFlutterCashfreePayment({
+          orderId: cashfree.orderId,
+          paymentSessionId: cashfree.paymentSessionId,
+          amount: cashfree.amount,
+          currency: cashfree.currency || 'INR',
+        })
+        await verifyAndFinish()
+      } catch (payErr) {
+        const msg = payErr?.message || 'Payment failed or cancelled'
+        // Clean up the pending order in backend.
+        try {
+          const cancelId = order?._id || order?.id || order?.orderMongoId
+          if (cancelId) {
+            await orderAPI.cancelOrder(cancelId, { reason: 'Payment Cancelled', note: msg })
           }
-        },
+        } catch { /* ignore cancel error */ }
+        if (!/cancel/i.test(msg)) {
+          alert(msg)
+        }
+        setIsPlacingOrder(false)
+      }
+    } else {
+      // Standard web Cashfree checkout modal. checkout() resolves once the modal
+      // closes (success, failure OR user dismiss) - Cashfree never hands back a
+      // signature, so the backend verify call above is the only source of truth.
+      await initCashfreePayment({
+        orderId: cashfree.orderId,
+        paymentSessionId: cashfree.paymentSessionId,
+        onSuccess: verifyAndFinish,
         onError: async (error) => {
-          debugError("? Razorpay payment error:", error)
-          // Clean up the pending order in backend if payment failed
+          debugError("? Cashfree payment error:", error)
+          const msg = error?.message || "Payment failed or cancelled"
           try {
             const cancelId = order?._id || order?.id || order?.orderMongoId
             if (cancelId) {
-              await orderAPI.cancelOrder(cancelId, {
-                reason: "Payment Failed",
-                note: error?.description || error?.message || "Online payment failed"
-              })
+              await orderAPI.cancelOrder(cancelId, { reason: "Payment Cancelled", note: msg })
             }
           } catch (cancelErr) {
             debugError("? Failed to auto-cancel order after payment error:", cancelErr)
           }
-
-          // Don't show alert for user cancellation
-          if (error?.code !== 'PAYMENT_CANCELLED' && error?.message !== 'PAYMENT_CANCELLED') {
-            const errorMessage = error?.description || error?.message || "Payment failed. Please try again."
-            alert(errorMessage)
-          }
           setIsPlacingOrder(false)
         },
-        onClose: async () => {
-          debugLog("?? Payment modal closed by user")
-          // Clean up the pending order in backend if user closed the modal without paying
-          try {
-            const cancelId = order?._id || order?.id || order?.orderMongoId
-            if (cancelId) {
-              await orderAPI.cancelOrder(cancelId, {
-                reason: "Payment Cancelled",
-                note: "User closed payment modal"
-              })
-            }
-          } catch (cancelErr) {
-            debugError("? Failed to auto-cancel order after modal close:", cancelErr)
-          }
-          setIsPlacingOrder(false)
-        }
       })
     }
   } catch (error) {
@@ -3513,7 +3432,7 @@ return (
               <div className="w-9 h-9 rounded-lg bg-red-100/80 dark:bg-red-900/40 flex items-center justify-center flex-shrink-0">
                 {selectedPaymentMethod === "wallet" ? (
                   <Wallet className="h-5 w-5 text-[#32C45A]" />
-                ) : selectedPaymentMethod === "razorpay" ? (
+                ) : selectedPaymentMethod === "cashfree" ? (
                   <Zap className="h-5 w-5 text-[#32C45A]" />
                 ) : (
                   <Banknote className="h-5 w-5 text-[#32C45A]" />
@@ -3547,7 +3466,7 @@ return (
             disabled={isPlacingOrder || (selectedPaymentMethod === "wallet" && walletBalance < total)}
             className="w-full bg-gradient-to-r from-[#32C45A] to-[#32C45A] hover:from-[#28A047] hover:to-[#28A047] text-white px-6 h-12 md:h-14 rounded-2xl font-bold shadow-lg shadow-[#32C45A]/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-between transition-transform active:scale-[0.98]"
           >
-            {(selectedPaymentMethod === "razorpay" || selectedPaymentMethod === "wallet" || selectedPaymentMethod === "cash") && (
+            {(selectedPaymentMethod === "cashfree" || selectedPaymentMethod === "wallet" || selectedPaymentMethod === "cash") && (
               <div className="text-left flex flex-col justify-center border-r-[1.5px] border-white/20 pr-4">
                 <span className="text-xs md:text-sm font-semibold text-white/90">{RUPEE_SYMBOL}{total.toFixed(2)}</span>
                 <span className="text-[9px] md:text-[10px] uppercase font-bold tracking-wider text-white/80 mt-[-2px]">Total</span>
@@ -3590,8 +3509,8 @@ return (
               </div>
               <div>
                 <p className="text-lg font-semibold text-gray-900">
-                  {selectedPaymentMethod === "razorpay"
-                    ? `Pay ${RUPEE_SYMBOL}${total.toFixed(2)} online (Razorpay)`
+                  {selectedPaymentMethod === "cashfree"
+                    ? `Pay ${RUPEE_SYMBOL}${total.toFixed(2)} online (Cashfree)`
                     : selectedPaymentMethod === "wallet"
                       ? `Pay ${RUPEE_SYMBOL}${total.toFixed(2)} from Wallet`
                       : `Pay on delivery (COD)`}

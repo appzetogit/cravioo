@@ -6,13 +6,12 @@ import { FoodUser } from '../../../../core/users/user.model.js';
 import { ValidationError, NotFoundError } from '../../../../core/auth/errors.js';
 import { logger } from '../../../../utils/logger.js';
 import {
-    createRazorpayOrder,
-    fetchRazorpayPayment,
-    getRazorpayKeyId,
-    initiateRazorpayRefund,
-    isRazorpayConfigured,
-    verifyPaymentSignature
-} from '../../orders/helpers/razorpay.helper.js';
+    createCashfreeOrder,
+    verifyCashfreeOrderPaid,
+    getCashfreeAppId,
+    initiateCashfreeRefund,
+    isCashfreeConfigured,
+} from '../../orders/helpers/cashfree.helper.js';
 
 const DURATION_UNITS = ['DAY', 'WEEK', 'MONTH', 'YEAR'];
 const EXPIRING_SOON_DAYS = 7;
@@ -184,7 +183,7 @@ const presentMembership = (m, now = new Date()) => {
         expiryDate: m.expiryDate,
         daysRemaining: running ? daysBetween(now, m.expiryDate) : 0,
         paidAt: m.paidAt,
-        razorpayPaymentId: m.razorpayPaymentId || null,
+        cashfreePaymentId: m.cashfreePaymentId || null,
         createdAt: m.createdAt
     };
 };
@@ -228,7 +227,7 @@ export async function createMembershipOrder(userId, planId) {
     }).lean();
     if (!plan) throw new NotFoundError('Membership plan is not available');
 
-    if (!isRazorpayConfigured()) {
+    if (!isCashfreeConfigured()) {
         throw new ValidationError('Online payments are currently unavailable. Please try again later.');
     }
     if (await isUserActiveMember(uid)) {
@@ -241,12 +240,17 @@ export async function createMembershipOrder(userId, planId) {
         { $set: { status: MEMBERSHIP_STATUS.FAILED, failureReason: 'superseded_by_new_attempt' } }
     );
 
-    const amountPaise = Math.round(plan.price * 100);
+    const orderId = `membership_${String(uid).slice(-8)}_${Date.now()}`;
     let order;
     try {
-        order = await createRazorpayOrder(amountPaise, 'INR', `membership_${String(uid).slice(-8)}_${Date.now()}`);
+        order = await createCashfreeOrder({
+            orderId,
+            orderAmount: plan.price,
+            currency: 'INR',
+            customerId: String(uid),
+        });
     } catch (error) {
-        logger.error(`Membership Razorpay order failed: ${error?.description || error?.message}`);
+        logger.error(`Membership Cashfree order failed: ${error?.description || error?.message}`);
         throw new Error(error?.description || error?.message || 'Failed to create payment order');
     }
 
@@ -259,17 +263,18 @@ export async function createMembershipOrder(userId, planId) {
         benefits: plan.benefits || [],
         amountPaid: plan.price,
         status: MEMBERSHIP_STATUS.PENDING,
-        razorpayOrderId: String(order.id)
+        cashfreeOrderId: String(order.order_id)
     });
 
     return {
         membershipId: String(membership._id),
         planName: plan.name,
-        razorpay: {
-            key: getRazorpayKeyId(),
-            orderId: String(order.id),
-            amount: Number(order.amount) || amountPaise,
-            currency: order.currency || 'INR'
+        cashfree: {
+            appId: getCashfreeAppId(),
+            orderId: String(order.order_id),
+            paymentSessionId: order.payment_session_id,
+            amount: Number(order.order_amount) || plan.price,
+            currency: order.order_currency || 'INR'
         }
     };
 }
@@ -278,18 +283,18 @@ export async function createMembershipOrder(userId, planId) {
  * Idempotently turns a pending membership into an active one once payment is confirmed.
  * Safe to call from both the client verify call and the webhook.
  */
-export async function activateMembershipForPayment({ razorpayOrderId, razorpayPaymentId, amountPaise }) {
-    const membership = await UserMembership.findOne({ razorpayOrderId: String(razorpayOrderId) }).lean();
+export async function activateMembershipForPayment({ cashfreeOrderId, cashfreePaymentId, amount }) {
+    const membership = await UserMembership.findOne({ cashfreeOrderId: String(cashfreeOrderId) }).lean();
     if (!membership) return { activated: false, reason: 'not_found' };
 
-    if (membership.status === MEMBERSHIP_STATUS.ACTIVE && membership.razorpayPaymentId === String(razorpayPaymentId)) {
+    if (membership.status === MEMBERSHIP_STATUS.ACTIVE && membership.cashfreePaymentId === String(cashfreePaymentId)) {
         return { activated: true, membership, alreadyActive: true };
     }
-    if (amountPaise != null && Math.round(membership.amountPaid * 100) !== Number(amountPaise)) {
-        logger.error(`Membership amount mismatch order=${razorpayOrderId}`);
+    if (amount != null && Math.round(membership.amountPaid * 100) !== Math.round(Number(amount) * 100)) {
+        logger.error(`Membership amount mismatch order=${cashfreeOrderId}`);
         return { activated: false, reason: 'amount_mismatch' };
     }
-    // A superseded/failed attempt can still be paid at Razorpay; honour a genuine capture.
+    // A superseded/failed attempt can still be paid at Cashfree; honour a genuine capture.
     const activatable = [MEMBERSHIP_STATUS.PENDING, MEMBERSHIP_STATUS.FAILED];
     if (!activatable.includes(membership.status)) {
         return { activated: false, reason: `status_${membership.status}` };
@@ -304,7 +309,7 @@ export async function activateMembershipForPayment({ razorpayOrderId, razorpayPa
             {
                 $set: {
                     status: MEMBERSHIP_STATUS.ACTIVE,
-                    razorpayPaymentId: String(razorpayPaymentId),
+                    cashfreePaymentId: String(cashfreePaymentId),
                     paidAt: startDate,
                     startDate,
                     expiryDate,
@@ -323,14 +328,14 @@ export async function activateMembershipForPayment({ razorpayOrderId, razorpayPa
             { _id: membership._id },
             {
                 $set: {
-                    razorpayPaymentId: String(razorpayPaymentId),
+                    cashfreePaymentId: String(cashfreePaymentId),
                     paidAt: new Date(),
                     failureReason: 'duplicate_active_membership'
                 }
             }
         ).catch(() => {});
         try {
-            const refund = await initiateRazorpayRefund(razorpayPaymentId, membership.amountPaid, {
+            const refund = await initiateCashfreeRefund(cashfreeOrderId, membership.amountPaid, {
                 idempotencyKey: `membership_dup_${membership._id}`,
                 notes: { reason: 'Duplicate membership payment' }
             });
@@ -339,7 +344,7 @@ export async function activateMembershipForPayment({ razorpayOrderId, razorpayPa
                 {
                     $set: {
                         status: MEMBERSHIP_STATUS.REFUNDED,
-                        refundId: String(refund?.id || ''),
+                        refundId: String(refund?.refundId || ''),
                         refundedAt: new Date()
                     }
                 }
@@ -353,28 +358,22 @@ export async function activateMembershipForPayment({ razorpayOrderId, razorpayPa
 
 export async function verifyMembershipPayment(userId, payload = {}) {
     const uid = toObjectId(userId, 'user id');
-    const orderId = String(payload.razorpayOrderId || '').trim();
-    const paymentId = String(payload.razorpayPaymentId || '').trim();
-    const signature = String(payload.razorpaySignature || '').trim();
-    if (!orderId || !paymentId || !signature) {
-        throw new ValidationError('razorpayOrderId, razorpayPaymentId and razorpaySignature are required');
+    const orderId = String(payload.cashfreeOrderId || '').trim();
+    if (!orderId) {
+        throw new ValidationError('cashfreeOrderId is required');
     }
 
-    const membership = await UserMembership.findOne({ razorpayOrderId: orderId, userId: uid }).select('_id').lean();
+    const membership = await UserMembership.findOne({ cashfreeOrderId: orderId, userId: uid }).select('_id').lean();
     if (!membership) throw new NotFoundError('Membership order not found');
 
-    if (!verifyPaymentSignature(orderId, paymentId, signature)) {
-        throw new ValidationError('Payment verification failed');
-    }
-
-    const payment = await fetchRazorpayPayment(paymentId);
-    if (String(payment?.order_id || '') !== orderId) throw new ValidationError('Payment order mismatch');
-    if (String(payment?.status || '').toLowerCase() !== 'captured') throw new ValidationError('Payment not captured');
+    // Cashfree never hands the client a signature - confirm with Cashfree's server directly.
+    const { paid, payment } = await verifyCashfreeOrderPaid(orderId);
+    if (!paid || !payment) throw new ValidationError('Payment not captured');
 
     const result = await activateMembershipForPayment({
-        razorpayOrderId: orderId,
-        razorpayPaymentId: paymentId,
-        amountPaise: Number(payment.amount)
+        cashfreeOrderId: orderId,
+        cashfreePaymentId: payment.cf_payment_id,
+        amount: Number(payment.payment_amount)
     });
     if (!result.activated) {
         throw new ValidationError(
@@ -387,9 +386,9 @@ export async function verifyMembershipPayment(userId, payload = {}) {
 }
 
 /** Webhook: payment failed for a membership order. */
-export async function markMembershipPaymentFailed(razorpayOrderId, reason = 'payment_failed') {
+export async function markMembershipPaymentFailed(cashfreeOrderId, reason = 'payment_failed') {
     await UserMembership.updateOne(
-        { razorpayOrderId: String(razorpayOrderId), status: MEMBERSHIP_STATUS.PENDING },
+        { cashfreeOrderId: String(cashfreeOrderId), status: MEMBERSHIP_STATUS.PENDING },
         { $set: { status: MEMBERSHIP_STATUS.FAILED, failureReason: reason } }
     );
 }
@@ -532,8 +531,8 @@ export async function listMembershipsAdmin(query = {}) {
             .lean();
         filter.$or = [
             { userId: { $in: users.map((u) => u._id) } },
-            { razorpayPaymentId: { $regex: escaped, $options: 'i' } },
-            { razorpayOrderId: { $regex: escaped, $options: 'i' } }
+            { cashfreePaymentId: { $regex: escaped, $options: 'i' } },
+            { cashfreeOrderId: { $regex: escaped, $options: 'i' } }
         ];
     }
 
@@ -550,7 +549,7 @@ export async function listMembershipsAdmin(query = {}) {
     return {
         memberships: docs.map((m) => ({
             ...presentMembership(m, now),
-            razorpayOrderId: m.razorpayOrderId || null,
+            cashfreeOrderId: m.cashfreeOrderId || null,
             refundId: m.refundId || null,
             refundedAt: m.refundedAt || null,
             cancelledAt: m.cancelledAt || null,
@@ -594,11 +593,11 @@ export async function refundMembershipAdmin(id, adminId, reason = '') {
     const membership = await UserMembership.findById(toObjectId(id, 'membership id')).lean();
     if (!membership) throw new NotFoundError('Membership not found');
     if (membership.status === MEMBERSHIP_STATUS.REFUNDED) throw new ValidationError('Membership is already refunded');
-    if (!membership.razorpayPaymentId || !PAID_STATUSES.includes(membership.status)) {
+    if (!membership.cashfreeOrderId || !PAID_STATUSES.includes(membership.status)) {
         throw new ValidationError('No captured payment to refund for this membership');
     }
 
-    const refund = await initiateRazorpayRefund(membership.razorpayPaymentId, membership.amountPaid, {
+    const refund = await initiateCashfreeRefund(membership.cashfreeOrderId, membership.amountPaid, {
         idempotencyKey: `membership_refund_${membership._id}`,
         notes: { reason: reason || 'Membership refunded by admin', membershipId: String(membership._id) }
     });
@@ -608,7 +607,7 @@ export async function refundMembershipAdmin(id, adminId, reason = '') {
         {
             $set: {
                 status: MEMBERSHIP_STATUS.REFUNDED,
-                refundId: String(refund?.id || ''),
+                refundId: String(refund?.refundId || ''),
                 refundedAt: new Date(),
                 cancelledAt: membership.cancelledAt || new Date(),
                 cancelledBy: optionalObjectId(adminId),

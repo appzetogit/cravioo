@@ -326,7 +326,7 @@ const GlobalApplicationSettings = () => {
               />
               <div>
                 <span className="text-sm font-semibold text-gray-800">Online Payment</span>
-                <p className="text-xs text-gray-500 mt-0.5">Allow customers to pay online via Razorpay</p>
+                <p className="text-xs text-gray-500 mt-0.5">Allow customers to pay online via Cashfree</p>
               </div>
             </label>
           </div>

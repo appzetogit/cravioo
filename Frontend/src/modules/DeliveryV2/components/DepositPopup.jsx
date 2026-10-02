@@ -19,9 +19,8 @@ import {
   X
 } from "lucide-react"
 import { deliveryAPI } from "@food/api"
-import { initRazorpayPayment } from "@food/utils/razorpay"
+import { initCashfreePayment } from "@food/utils/cashfree"
 import { toast } from "sonner"
-import { getCompanyNameAsync } from "@common/utils/businessSettings"
 
 export default function DepositPopup({ onSuccess, cashInHand = 0 }) {
   const [step, setStep] = useState(1) // 1: Amount Summary, 2: Payment Mode Selection, 3: Direct Admin details / Hub details
@@ -82,46 +81,27 @@ export default function DepositPopup({ onSuccess, cashInHand = 0 }) {
     }
   }
 
-  // razorpay online flow
+  // cashfree online flow
   const handleOnlinePayment = async () => {
     try {
       setLoading(true)
       const orderRes = await deliveryAPI.createDepositOrder(cashInHandNum)
-      const data = orderRes?.data?.data
-      const rp = data?.razorpay
-      if (!rp?.orderId || !rp?.key) {
+      const cashfree = orderRes?.data?.data?.cashfree
+      if (!cashfree?.orderId || !cashfree?.paymentSessionId) {
         toast.error("Payment gateway not ready. Please try again.")
         setLoading(false)
         return
       }
       setLoading(false)
-
-      let profile = {}
-      try {
-        const pr = await deliveryAPI.getProfile()
-        profile = pr?.data?.data?.profile || pr?.data?.profile || {}
-      } catch (_) {}
-
-      const phone = (profile?.phone || "").replace(/\D/g, "").slice(-10)
-      const email = profile?.email || ""
-      const name = profile?.name || ""
-
-      const companyName = await getCompanyNameAsync()
       setProcessing(true)
-      await initRazorpayPayment({
-        key: rp.key,
-        amount: rp.amount,
-        currency: rp.currency || "INR",
-        order_id: rp.orderId,
-        name: companyName,
-        description: `Cash limit deposit - ₹${cashInHandNum.toFixed(2)}`,
-        prefill: { name, email, contact: phone },
-        handler: async (res) => {
+
+      await initCashfreePayment({
+        orderId: cashfree.orderId,
+        paymentSessionId: cashfree.paymentSessionId,
+        onSuccess: async () => {
           try {
             const verifyRes = await deliveryAPI.verifyDepositPayment({
-              razorpay_order_id: res.razorpay_order_id,
-              razorpay_payment_id: res.razorpay_payment_id,
-              razorpay_signature: res.razorpay_signature,
+              cashfreeOrderId: cashfree.orderId,
               amount: cashInHandNum
             })
             if (verifyRes?.data?.success) {
@@ -138,10 +118,9 @@ export default function DepositPopup({ onSuccess, cashInHand = 0 }) {
           }
         },
         onError: (e) => {
-          toast.error(e?.description || "Payment failed")
+          toast.error(e?.description || e?.message || "Payment failed")
           setProcessing(false)
         },
-        onClose: () => setProcessing(false)
       })
     } catch (err) {
       setLoading(false)

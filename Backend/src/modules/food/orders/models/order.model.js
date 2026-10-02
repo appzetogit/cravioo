@@ -154,7 +154,8 @@ const paymentSchema = new mongoose.Schema(
     {
         method: {
             type: String,
-            enum: ['cash', 'razorpay', 'razorpay_qr', 'wallet'],
+            // 'razorpay'/'razorpay_qr' kept for historical orders only - no code path writes them anymore.
+            enum: ['cash', 'razorpay', 'razorpay_qr', 'cashfree', 'cashfree_qr', 'wallet'],
             required: true
         },
         status: {
@@ -172,10 +173,16 @@ const paymentSchema = new mongoose.Schema(
             default: 'cod_pending'
         },
         amountDue: { type: Number, min: 0 },
+        // Legacy, read-only going forward - kept so historical orders still load/display correctly.
         razorpay: {
             orderId: { type: String },
             paymentId: { type: String },
             signature: { type: String }
+        },
+        cashfree: {
+            orderId: { type: String },
+            cfOrderId: { type: String },
+            paymentId: { type: String }
         },
         qr: {
             qrId: { type: String },

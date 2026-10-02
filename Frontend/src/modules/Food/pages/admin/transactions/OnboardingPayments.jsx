@@ -165,7 +165,7 @@ export default function OnboardingPayments() {
                   <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-600 uppercase tracking-wider">Date</th>
                   <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-600 uppercase tracking-wider">User Details</th>
                   <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-600 uppercase tracking-wider">Role</th>
-                  <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-600 uppercase tracking-wider">Razorpay IDs</th>
+                  <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-600 uppercase tracking-wider">Cashfree IDs</th>
                   <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-600 uppercase tracking-wider">Amount</th>
                   <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-600 uppercase tracking-wider">Status</th>
                 </tr>
@@ -212,12 +212,12 @@ export default function OnboardingPayments() {
                       <td className="px-6 py-4 text-sm text-slate-600">
                         <div>
                           <span className="font-semibold text-slate-500 text-xs">Order:</span>{" "}
-                          <code className="bg-slate-100 px-1 py-0.5 rounded text-xs">{log.razorpayOrderId}</code>
+                          <code className="bg-slate-100 px-1 py-0.5 rounded text-xs">{log.cashfreeOrderId || log.razorpayOrderId}</code>
                         </div>
-                        {log.razorpayPaymentId && (
+                        {(log.cashfreePaymentId || log.razorpayPaymentId) && (
                           <div className="mt-1">
                             <span className="font-semibold text-slate-500 text-xs">Payment:</span>{" "}
-                            <code className="bg-slate-100 px-1 py-0.5 rounded text-xs">{log.razorpayPaymentId}</code>
+                            <code className="bg-slate-100 px-1 py-0.5 rounded text-xs">{log.cashfreePaymentId || log.razorpayPaymentId}</code>
                           </div>
                         )}
                       </td>

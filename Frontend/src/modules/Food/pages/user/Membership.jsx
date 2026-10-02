@@ -5,8 +5,7 @@ import { toast } from "sonner"
 import { Button } from "@food/components/ui/button"
 import AnimatedPage from "@food/components/user/AnimatedPage"
 import { userAPI } from "@food/api"
-import { initRazorpayPayment } from "@food/utils/razorpay"
-import { getCompanyNameAsync } from "@common/utils/businessSettings"
+import { initCashfreePayment } from "@food/utils/cashfree"
 
 const UNIT_LABEL = { DAY: "day", WEEK: "week", MONTH: "month", YEAR: "year" }
 
@@ -60,36 +59,19 @@ export default function Membership() {
     setBuyingPlanId(plan._id)
     try {
       const orderRes = await userAPI.createMembershipOrder(plan._id)
-      const { razorpay } = orderRes?.data?.data || {}
-      if (!razorpay?.orderId || !razorpay?.key) throw new Error("Invalid payment order")
+      const { cashfree } = orderRes?.data?.data || {}
+      if (!cashfree?.orderId || !cashfree?.paymentSessionId) throw new Error("Invalid payment order")
 
-      let profile = {}
-      try {
-        const profileRes = await userAPI.getProfile()
-        profile = profileRes?.data?.data?.user || {}
-      } catch {
-        // Prefill is optional.
-      }
-      const companyName = await getCompanyNameAsync()
-
-      await initRazorpayPayment({
-        key: razorpay.key,
-        amount: razorpay.amount,
-        currency: razorpay.currency || "INR",
-        order_id: razorpay.orderId,
-        name: companyName,
-        description: `${plan.name} Membership`,
-        prefill: {
-          name: profile.name || "",
-          email: profile.email || "",
-          contact: String(profile.phone || "").replace(/\D/g, "").slice(-10),
-        },
-        handler: async (response) => {
+      // checkout() resolves once the modal closes (success, failure or dismiss) -
+      // Cashfree never hands back a signature, so the backend verify call is the
+      // only source of truth.
+      await initCashfreePayment({
+        orderId: cashfree.orderId,
+        paymentSessionId: cashfree.paymentSessionId,
+        onSuccess: async () => {
           try {
             const verifyRes = await userAPI.verifyMembershipPayment({
-              razorpayOrderId: response.razorpay_order_id,
-              razorpayPaymentId: response.razorpay_payment_id,
-              razorpaySignature: response.razorpay_signature,
+              cashfreeOrderId: cashfree.orderId,
             })
             applyMembership(verifyRes?.data?.data)
             toast.success("Membership activated!")
@@ -104,10 +86,9 @@ export default function Membership() {
           }
         },
         onError: (error) => {
-          toast.error(error?.description || "Payment failed. Please try again.")
+          toast.error(error?.message || "Payment failed. Please try again.")
           setBuyingPlanId(null)
         },
-        onClose: () => setBuyingPlanId(null),
       })
     } catch (error) {
       toast.error(error?.response?.data?.message || error?.message || "Could not start payment")

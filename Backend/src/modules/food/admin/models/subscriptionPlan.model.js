@@ -37,6 +37,12 @@ const subscriptionPlanSchema = new mongoose.Schema(
             required: true,
             min: 0
         },
+        cashfreePlanId: {
+            type: String,
+            default: null,
+            index: true
+        },
+        // Legacy, read-only going forward - kept so historical plans still load correctly.
         razorpayPlanId: {
             type: String,
             default: null,

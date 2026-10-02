@@ -8,7 +8,7 @@ import { Card, CardContent } from "@food/components/ui/card"
 import { Button } from "@food/components/ui/button"
 
 import { subscriptionAPI } from "@food/api"
-import { initRazorpayPayment, initRazorpaySubscription } from "@food/utils/razorpay"
+import { initCashfreePayment, initCashfreeSubscription } from "@food/utils/cashfree"
 import { toast } from "react-hot-toast"
 import dayjs from "dayjs"
 
@@ -98,58 +98,44 @@ export default function BusinessPlanPage() {
       const data = res.data?.data
       const isOneTime = !!data.orderId
 
-      const options = {
-        key: data.key,
-        name: "Itzo Business Plan",
-        description: `Subscription: ${plan.name}`,
-        handler: async (response) => {
-          if (isOneTime) {
-            try {
-              await subscriptionAPI.verify("RESTAURANT", {
-                razorpayOrderId: response.razorpay_order_id,
-                razorpayPaymentId: response.razorpay_payment_id,
-                razorpaySignature: response.razorpay_signature,
-              })
-            } catch (_err) {
-            }
-          } else {
-            try {
-              await subscriptionAPI.verify("RESTAURANT", {
-                razorpaySubscriptionId: response.razorpay_subscription_id,
-                razorpayPaymentId: response.razorpay_payment_id,
-                razorpaySignature: response.razorpay_signature,
-              })
-            } catch (_err) {
-            }
-          }
-
-          toast.success(isOneTime ? "Payment received. Activating..." : "Payment received. Activating subscription...")
-          const activated = await pollActiveSubscription()
-          if (activated) {
-            toast.success("Subscription Active")
-          } else {
-            toast.success("Activation pending. Webhook will sync shortly.")
-          }
-          await fetchData()
-          setPurchasing(null)
-          purchasingRef.current = false
-        },
-        onError: (err) => {
-          toast.error("Payment failed or cancelled")
-          setPurchasing(null)
-          purchasingRef.current = false
-        },
-        onClose: () => {
-          toast.error("Payment cancelled")
-          setPurchasing(null)
-          purchasingRef.current = false
+      const onDone = async (verifyPayload) => {
+        try {
+          await subscriptionAPI.verify("RESTAURANT", verifyPayload)
+        } catch (_err) {
         }
+
+        toast.success(isOneTime ? "Payment received. Activating..." : "Payment received. Activating subscription...")
+        const activated = await pollActiveSubscription()
+        if (activated) {
+          toast.success("Subscription Active")
+        } else {
+          toast.success("Activation pending. Webhook will sync shortly.")
+        }
+        await fetchData()
+        setPurchasing(null)
+        purchasingRef.current = false
       }
 
-      if (data.orderId) {
-        await initRazorpayPayment({ ...options, order_id: data.orderId, amount: data.amount })
+      const onFail = () => {
+        toast.error("Payment failed or cancelled")
+        setPurchasing(null)
+        purchasingRef.current = false
+      }
+
+      if (isOneTime) {
+        await initCashfreePayment({
+          orderId: data.orderId,
+          paymentSessionId: data.paymentSessionId,
+          onSuccess: () => onDone({ cashfreeOrderId: data.orderId }),
+          onError: onFail,
+        })
       } else {
-        await initRazorpaySubscription({ ...options, subscription_id: data.subscriptionId })
+        await initCashfreeSubscription({
+          subscriptionId: data.subscriptionId,
+          subscriptionSessionId: data.subscriptionSessionId,
+          onSuccess: () => onDone({ cashfreeSubscriptionId: data.subscriptionId }),
+          onError: onFail,
+        })
       }
     } catch (error) {
       toast.error(error?.response?.data?.message || "Purchase failed")
@@ -221,7 +207,7 @@ export default function BusinessPlanPage() {
                   </div>
                 </div>
 
-                {activeSub.razorpaySubscriptionId && (
+                {activeSub.cashfreeSubscriptionId && (
                   <div className="mt-6 pt-6 border-t border-white/10">
                     {activeSub.cancelAtCycleEnd ? (
                       <div className="flex items-center gap-2.5 text-amber-400 text-sm font-bold bg-white/5 p-4 rounded-2xl border border-white/10">

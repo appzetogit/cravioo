@@ -58,8 +58,8 @@ app.use(morgan('dev'));
 app.use(express.json({
     limit: config.requestBodyLimit,
     verify: (req, res, buf) => {
-        // ✅ Store rawBody for signature verification (Razorpay Webhooks)
-        if (req.originalUrl && req.originalUrl.includes('/webhook/razorpay')) {
+        // ✅ Store rawBody for signature verification (Cashfree Webhooks)
+        if (req.originalUrl && req.originalUrl.includes('/webhook/cashfree')) {
             req.rawBody = buf;
         }
     }

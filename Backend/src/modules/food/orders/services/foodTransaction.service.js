@@ -147,10 +147,10 @@ export async function createInitialTransaction(order) {
             method: String(order.payment?.method || 'cash'),
             status: String(order.payment?.status || 'cod_pending'),
             amountDue: Number(order.payment?.amountDue ?? order.pricing?.total ?? 0) || 0,
-            razorpay: {
-                orderId: String(order.payment?.razorpay?.orderId || ''),
-                paymentId: String(order.payment?.razorpay?.paymentId || ''),
-                signature: String(order.payment?.razorpay?.signature || ''),
+            cashfree: {
+                orderId: String(order.payment?.cashfree?.orderId || ''),
+                cfOrderId: String(order.payment?.cashfree?.cfOrderId || ''),
+                paymentId: String(order.payment?.cashfree?.paymentId || ''),
             },
             qr: {
                 qrId: String(order.payment?.qr?.qrId || ''),
@@ -226,7 +226,7 @@ export async function createInitialTransaction(order) {
             quickFinanceVersion,
         },
         gateway: {
-            razorpayOrderId: order.payment?.razorpay?.orderId,
+            cashfreeOrderId: order.payment?.cashfree?.orderId,
             qrUrl: order.payment?.qr?.imageUrl
         },
         history: [{
@@ -321,6 +321,9 @@ export async function updateTransactionStatus(orderId, kind, details = {}) {
     if (!transaction) return null;
 
     if (details.status) transaction.status = details.status;
+    if (details.cashfreePaymentId) transaction.gateway.cashfreePaymentId = details.cashfreePaymentId;
+    if (details.cashfreeOrderId) transaction.gateway.cashfreeOrderId = details.cashfreeOrderId;
+    // Legacy fields, kept for historical transactions only - no code writes razorpay* anymore.
     if (details.razorpayPaymentId) transaction.gateway.razorpayPaymentId = details.razorpayPaymentId;
     if (details.razorpaySignature) transaction.gateway.razorpaySignature = details.razorpaySignature;
 

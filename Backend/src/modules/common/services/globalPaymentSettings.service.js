@@ -30,8 +30,8 @@ export function clearGlobalPaymentSettingsCache() {
 
 export function assertPaymentMethodAllowed(paymentMethod, paymentSettings) {
     const method = String(paymentMethod || '').trim().toLowerCase();
-    const codMethods = new Set(['cash', 'cod', 'razorpay_qr']);
-    const onlineMethods = new Set(['razorpay', 'card', 'online']);
+    const codMethods = new Set(['cash', 'cod', 'cashfree_qr', 'razorpay_qr']);
+    const onlineMethods = new Set(['cashfree', 'razorpay', 'card', 'online']);
 
     if (!paymentSettings.codEnabled && codMethods.has(method)) {
         return { allowed: false, message: 'Cash on delivery is currently disabled' };

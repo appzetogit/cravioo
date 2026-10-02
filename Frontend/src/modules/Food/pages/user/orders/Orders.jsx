@@ -777,7 +777,7 @@ Order again from this restaurant in the ${companyName} app.`
               order.paymentMethod === 'cod' ||
               order.paymentMethod === 'wallet'
 
-            // Payment failed only for online payments (razorpay) that actually failed
+            // Payment failed only for online payments (cashfree) that actually failed
             // Don't show payment failed for COD/wallet or cancelled orders
             const isCancelled = order.status === 'cancelled' || order.status === 'restaurant_cancelled'
             const paymentFailed = !isCodOrWallet &&
@@ -1006,7 +1006,7 @@ Order again from this restaurant in the ${companyName} app.`
                         Payment: <span className="font-medium capitalize">
                           {order.payment.method === 'cash' || order.payment.method === 'cod' ? 'Cash on Delivery' :
                             order.payment.method === 'wallet' ? 'Wallet' :
-                              order.payment.method === 'razorpay' ? 'Online' :
+                              (order.payment.method === 'cashfree' || order.payment.method === 'razorpay') ? 'Online' :
                                 order.payment.method || 'N/A'}
                         </span>
                         {order.payment.status && (

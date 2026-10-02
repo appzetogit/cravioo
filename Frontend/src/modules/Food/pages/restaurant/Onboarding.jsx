@@ -30,7 +30,7 @@ import {
   SelectValue,
 } from "@food/components/ui/select"
 import { restaurantAPI, zoneAPI, api, onboardingFeeAPI } from "@food/api"
-import { initRazorpayPayment } from "@food/utils/razorpay"
+import { initCashfreePayment } from "@food/utils/cashfree"
 import { MobileTimePicker } from "@mui/x-date-pickers/MobileTimePicker"
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider"
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns"
@@ -1385,9 +1385,7 @@ export default function RestaurantOnboarding() {
 
           if (orderData.isMock || orderData.orderId.startsWith("mock_ord_")) {
             toast.success("Developer Mode: Payment bypassed. Submitting mock payment details.");
-            formData.append("razorpayOrderId", orderData.orderId);
-            formData.append("razorpayPaymentId", `mock_pay_${Date.now()}`);
-            formData.append("razorpaySignature", `mock_sig_${Date.now()}`);
+            formData.append("cashfreeOrderId", orderData.orderId);
 
             const registerResponse = await restaurantAPI.register(formData);
             await finishRegistrationAndGoPending(
@@ -1396,27 +1394,16 @@ export default function RestaurantOnboarding() {
               navigate,
             );
           } else {
-            // Keep Next locked while Razorpay is open to prevent duplicate createOrder calls.
+            // Keep Next locked while Cashfree checkout is open to prevent duplicate createOrder calls.
             paymentFlowInProgressRef.current = true
             setPaymentInProgress(true)
-            const rzpOptions = {
-              key: orderData.keyId,
-              amount: Math.round(orderData.amount * 100),
-              currency: orderData.currency || "INR",
-              order_id: orderData.orderId,
-              name: "Onboarding Fee Payment",
-              description: `Onboarding fee for ${mergedStep1.restaurantName}`,
-              prefill: {
-                name: mergedStep1.ownerName || "",
-                email: mergedStep1.ownerEmail || "",
-                contact: normalizePhoneDigits(mergedStep1.ownerPhone)
-              },
-              handler: async (response) => {
+            const cfOptions = {
+              orderId: orderData.orderId,
+              paymentSessionId: orderData.paymentSessionId,
+              onSuccess: async () => {
                 try {
                   setSaving(true);
-                  formData.append("razorpayOrderId", response.razorpay_order_id);
-                  formData.append("razorpayPaymentId", response.razorpay_payment_id);
-                  formData.append("razorpaySignature", response.razorpay_signature);
+                  formData.append("cashfreeOrderId", orderData.orderId);
 
                   const registerResponse = await restaurantAPI.register(formData);
                   await finishRegistrationAndGoPending(
@@ -1447,20 +1434,14 @@ export default function RestaurantOnboarding() {
                 }
               },
               onError: (err) => {
-                toast.error(err?.description || "Payment failed. Please try again.");
-                setError(err?.description || "Payment failed");
+                toast.error(err?.message || "Payment failed. Please try again.");
+                setError(err?.message || "Payment failed");
                 paymentFlowInProgressRef.current = false
                 setPaymentInProgress(false)
                 setSaving(false);
               },
-              onClose: () => {
-                toast.error("Payment modal closed. Payment is required to complete onboarding.");
-                paymentFlowInProgressRef.current = false
-                setPaymentInProgress(false)
-                setSaving(false);
-              }
             };
-            await initRazorpayPayment(rzpOptions);
+            await initCashfreePayment(cfOptions);
           }
         } else {
           const registerResponse = await restaurantAPI.register(formData);
@@ -1488,7 +1469,7 @@ export default function RestaurantOnboarding() {
       setError(msg)
       toast.error(msg)
     } finally {
-      // Do not unlock Next while Razorpay modal is still open.
+      // Do not unlock Next while Cashfree checkout is still open.
       if (!paymentFlowInProgressRef.current) {
         setSaving(false)
       }

@@ -52,7 +52,6 @@
     "nodemailer": "^8.0.2",
     "pdfkit": "^0.18.0",
     "rate-limit-redis": "^4.3.1",
-    "razorpay": "^2.9.2",
     "redis": "^4.6.14",
     "sharp": "^0.33.5",
     "simplify-js": "^1.2.4",

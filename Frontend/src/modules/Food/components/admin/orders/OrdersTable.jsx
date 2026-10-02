@@ -458,10 +458,13 @@ export default function OrdersTable({
                                               (order.paymentType !== "Cash on Delivery" && 
                                                order.payment?.method !== "cash" && 
                                                order.payment?.method !== "cod" &&
-                                               (order.paymentMethod === "razorpay" || 
-                                                order.paymentMethod === "online" || 
-                                                order.payment?.paymentMethod === "razorpay" || 
+                                               (order.paymentMethod === "razorpay" ||
+                                                order.paymentMethod === "cashfree" ||
+                                                order.paymentMethod === "online" ||
+                                                order.payment?.paymentMethod === "razorpay" ||
+                                                order.payment?.paymentMethod === "cashfree" ||
                                                 order.payment?.method === "razorpay" ||
+                                                order.payment?.method === "cashfree" ||
                                                 order.payment?.method === "online"));
                         
                         const isWalletPayment = order.paymentType === "Wallet" || paymentMethod === "wallet";
@@ -493,7 +496,7 @@ export default function OrdersTable({
                               }`}
                               title={order.paymentType === "Wallet" || order.payment?.method === "wallet"
                                 ? "Process Wallet Refund (Add to user wallet)"
-                                : "Process Refund via Razorpay"}
+                                : "Process Refund via Cashfree"}
                             >
                               <span className="text-sm">₹</span>
                               <span>Refund</span>

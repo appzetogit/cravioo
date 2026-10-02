@@ -66,10 +66,10 @@ function slimPayment(payment) {
     amountDue: payment.amountDue,
     amount: payment.amount,
     refund: slimRefund(payment.refund),
-    razorpay: payment.razorpay
+    cashfree: payment.cashfree
       ? {
-          orderId: payment.razorpay.orderId,
-          paymentId: payment.razorpay.paymentId,
+          orderId: payment.cashfree.orderId,
+          paymentId: payment.cashfree.paymentId,
         }
       : undefined,
   };
@@ -454,11 +454,11 @@ export function toOrderStatusSocketDto(orderLike, extras = {}) {
  * Positive select lists are brittle across roles; exclude is safer.
  */
 export const ORDER_LIST_PROJECTION =
-  "-statusHistory -__v -deliveryOtp -dispatch.offeredTo -dispatch.huntLog -dispatch.attempts -payment.razorpay.signature";
+  "-statusHistory -__v -deliveryOtp -dispatch.offeredTo -dispatch.huntLog -dispatch.attempts";
 
 /** Detail must include statusHistory (admin / restaurant timeline). */
 export const ORDER_DETAIL_PROJECTION =
-  "-__v -dispatch.offeredTo -dispatch.huntLog -dispatch.attempts -payment.razorpay.signature";
+  "-__v -dispatch.offeredTo -dispatch.huntLog -dispatch.attempts";
 
 /**
  * Drop null/undefined keys (and empty nested objects after slim).

@@ -27,7 +27,7 @@ import { restaurantAPI } from "@food/api"
 import { formatCurrency } from "@food/utils/currency"
 import { toast } from "react-hot-toast"
 import dayjs from "dayjs"
-import { initRazorpayPayment } from "@food/utils/razorpay"
+import { initCashfreePayment } from "@food/utils/cashfree"
 
 export default function WalletPage() {
   const navigate = useNavigate()
@@ -84,24 +84,18 @@ export default function WalletPage() {
       const response = await restaurantAPI.createSubscriptionTopupOrder(amount)
 
       if (response.data?.success) {
-        const orderData = response.data.data
+        const { cashfree } = response.data.data || {}
+        if (!cashfree?.orderId || !cashfree?.paymentSessionId) {
+          throw new Error("Invalid payment order")
+        }
 
-        await initRazorpayPayment({
-          key: orderData.key,
-          amount: orderData.amount,
-          currency: orderData.currency,
-          order_id: orderData.order_id,
-          name: "ITZO Subscriptions",
-          description: "Wallet Top-up",
-          prefill: {
-            name: "Restaurant Partner",
-          },
-          handler: async (response) => {
+        await initCashfreePayment({
+          orderId: cashfree.orderId,
+          paymentSessionId: cashfree.paymentSessionId,
+          onSuccess: async () => {
             try {
               await restaurantAPI.verifyTopup({
-                razorpayPaymentId: response.razorpay_payment_id,
-                razorpayOrderId: response.razorpay_order_id,
-                razorpaySignature: response.razorpay_signature,
+                cashfreeOrderId: cashfree.orderId,
                 amount: amount
               })
               toast.success("Payment successful! Wallet credited.")
@@ -112,7 +106,7 @@ export default function WalletPage() {
             }
           },
           onError: (err) => {
-            toast.error(err.description || "Payment failed")
+            toast.error(err?.description || err?.message || "Payment failed")
           }
         })
       }

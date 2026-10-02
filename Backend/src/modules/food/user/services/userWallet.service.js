@@ -3,12 +3,11 @@ import { ValidationError } from '../../../../core/auth/errors.js';
 import { FoodUser } from '../../../../core/users/user.model.js';
 import { FoodUserWallet } from '../models/userWallet.model.js';
 import {
-    createRazorpayOrder,
-    fetchRazorpayPayment,
-    getRazorpayKeyId,
-    isRazorpayConfigured,
-    verifyPaymentSignature,
-} from '../../orders/helpers/razorpay.helper.js';
+    createCashfreeOrder,
+    verifyCashfreeOrderPaid,
+    getCashfreeAppId,
+    isCashfreeConfigured,
+} from '../../orders/helpers/cashfree.helper.js';
 
 const syncUserWalletBalance = async (userId, balance) => {
     const numericBalance = Math.max(0, Number(balance) || 0);
@@ -110,76 +109,64 @@ export const createWalletTopupOrder = async (userId, amountInr) => {
         throw new ValidationError('Maximum amount is 50,000');
     }
 
-    const amountPaise = Math.round(amount * 100);
-
-    if (!isRazorpayConfigured()) {
+    if (!isCashfreeConfigured()) {
         // Dev fallback: return a compatible shape without writing to DB.
         const orderId = `order_dev_${Date.now()}`;
         return {
-            razorpay: {
-                key: getRazorpayKeyId() || 'rzp_test_dummy',
+            cashfree: {
+                appId: getCashfreeAppId() || 'test',
                 orderId,
-                amount: amountPaise,
+                paymentSessionId: 'dev_session',
+                amount,
                 currency: 'INR'
             }
         };
     }
 
-    const receipt = `wallet_topup_${String(userId).slice(-8)}_${Date.now()}`;
-    
+    const orderId = `wallet_topup_${String(userId).slice(-8)}_${Date.now()}`;
+
     try {
-        const order = await createRazorpayOrder(amountPaise, 'INR', receipt);
+        const order = await createCashfreeOrder({
+            orderId,
+            orderAmount: amount,
+            currency: 'INR',
+            customerId: String(userId),
+        });
 
         return {
-            razorpay: {
-                key: getRazorpayKeyId(),
-                orderId: String(order.id),
-                amount: Number(order.amount) || amountPaise,
-                currency: order.currency || 'INR'
+            cashfree: {
+                appId: getCashfreeAppId(),
+                orderId: order.order_id,
+                paymentSessionId: order.payment_session_id,
+                amount: Number(order.order_amount) || amount,
+                currency: order.order_currency || 'INR'
             }
         };
     } catch (error) {
-        console.error('Razorpay Wallet Topup Error:', error);
+        console.error('Cashfree Wallet Topup Error:', error);
         throw new Error(error.description || error.message || 'Failed to create payment order');
     }
 };
 
 export const verifyWalletTopupPayment = async (userId, payload) => {
-    const orderId = String(payload?.razorpayOrderId || '').trim();
-    const paymentId = String(payload?.razorpayPaymentId || '').trim();
-    const signature = String(payload?.razorpaySignature || '').trim();
+    const orderId = String(payload?.cashfreeOrderId || '').trim();
 
-    if (!orderId) throw new ValidationError('razorpayOrderId is required');
-    if (!paymentId) throw new ValidationError('razorpayPaymentId is required');
-    if (!signature) throw new ValidationError('razorpaySignature is required');
+    if (!orderId) throw new ValidationError('cashfreeOrderId is required');
 
     const wallet = await ensureWallet(userId);
-    const existing = wallet.transactions.find((t) => String(t.razorpayOrderId || '') === orderId);
+    const existing = wallet.transactions.find((t) => String(t.cashfreeOrderId || '') === orderId);
     if (existing && String(existing.status).toLowerCase() === 'completed') {
         return { wallet: await getUserWallet(userId) };
     }
 
-    // If razorpay not configured (dev), accept and credit wallet.
-    const ok = isRazorpayConfigured()
-        ? verifyPaymentSignature(orderId, paymentId, signature)
-        : true;
-    if (!ok) {
-        throw new ValidationError('Payment verification failed');
-    }
-
+    // If Cashfree not configured (dev), accept and credit wallet using the client-supplied amount.
     let creditedAmount = Number(payload?.amount);
-    if (isRazorpayConfigured()) {
-        const fetchedPayment = await fetchRazorpayPayment(paymentId);
-        const fetchedOrderId = String(fetchedPayment?.order_id || '').trim();
-        const fetchedStatus = String(fetchedPayment?.status || '').toLowerCase();
-        const fetchedAmount = Number(fetchedPayment?.amount || 0) / 100;
-
-        if (fetchedOrderId !== orderId) {
-            throw new ValidationError('Payment order mismatch');
-        }
-        if (fetchedStatus !== 'captured') {
+    if (isCashfreeConfigured()) {
+        const { paid, payment } = await verifyCashfreeOrderPaid(orderId);
+        if (!paid || !payment) {
             throw new ValidationError('Payment not captured');
         }
+        const fetchedAmount = Number(payment?.payment_amount || 0);
         if (!Number.isFinite(fetchedAmount) || fetchedAmount <= 0) {
             throw new ValidationError('Invalid payment amount');
         }
@@ -193,11 +180,9 @@ export const verifyWalletTopupPayment = async (userId, payload) => {
         type: 'addition',
         amount: creditedAmount,
         status: 'Completed',
-        description: isRazorpayConfigured() ? 'Wallet top-up' : 'Wallet top-up (dev)',
-        metadata: { source: 'wallet_topup', mode: isRazorpayConfigured() ? 'razorpay' : 'dev' },
-        razorpayOrderId: orderId,
-        razorpayPaymentId: paymentId,
-        razorpaySignature: signature
+        description: isCashfreeConfigured() ? 'Wallet top-up' : 'Wallet top-up (dev)',
+        metadata: { source: 'wallet_topup', mode: isCashfreeConfigured() ? 'cashfree' : 'dev' },
+        cashfreeOrderId: orderId,
     });
 
     wallet.balance = Number(wallet.balance || 0) + creditedAmount;

@@ -42,7 +42,7 @@ const foodWalletLedgerSchema = new mongoose.Schema(
             type: Number,
             required: true
         },
-        /** Reference ID (Razorpay Order ID, Daily Pass ID, etc.) */
+        /** Reference ID (Cashfree Payment ID, Daily Pass ID, etc.) */
         referenceId: {
             type: String,
             default: null,

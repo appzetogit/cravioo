@@ -12,12 +12,11 @@ import { Transaction } from "../../../../core/payments/models/transaction.model.
 import { getDeliveryCashLimitSettings } from "../../admin/services/admin.service.js";
 import { ValidationError } from "../../../../core/auth/errors.js";
 import {
-  createRazorpayOrder,
-  fetchRazorpayPayment,
-  getRazorpayKeyId,
-  isRazorpayConfigured,
-  verifyPaymentSignature,
-} from "../../orders/helpers/razorpay.helper.js";
+  createCashfreeOrder,
+  verifyCashfreeOrderPaid,
+  getCashfreeAppId,
+  isCashfreeConfigured,
+} from "../../orders/helpers/cashfree.helper.js";
 
 import { getTransactionsByEntity } from "../../../../core/payments/transaction.service.js";
 import { FoodDeliveryWallet } from "../models/deliveryWallet.model.js";
@@ -503,7 +502,7 @@ export const requestDeliveryWithdrawal = async (deliveryPartnerId, payload) => {
 };
 
 /**
- * Creates a Razorpay order for cash deposit and persists a Pending intent
+ * Creates a Cashfree order for cash deposit and persists a Pending intent
  * bound to this delivery partner (prevents payment hijack across partners).
  */
 export const createDeliveryCashDepositOrder = async (
@@ -529,33 +528,38 @@ export const createDeliveryCashDepositOrder = async (
     );
   }
 
-  const amountPaise = Math.round(amount * 100);
-  const receipt = `cash_deposit_${String(deliveryPartnerId).slice(-8)}_${Date.now()}`;
-
   let orderId;
-  let orderAmountPaise = amountPaise;
+  let orderAmount = amount;
   let currency = "INR";
-  let key = getRazorpayKeyId() || "rzp_test_dummy";
+  let appId = getCashfreeAppId() || "test";
+  let paymentSessionId = "dev_session";
 
-  if (!isRazorpayConfigured()) {
+  if (!isCashfreeConfigured()) {
     orderId = `order_dev_${Date.now()}_${String(deliveryPartnerId).slice(-6)}`;
   } else {
-    const order = await createRazorpayOrder(amountPaise, "INR", receipt);
-    orderId = String(order.id);
-    orderAmountPaise = Number(order.amount) || amountPaise;
-    currency = order.currency || "INR";
-    key = getRazorpayKeyId();
+    orderId = `cash_deposit_${String(deliveryPartnerId).slice(-8)}_${Date.now()}`;
+    const order = await createCashfreeOrder({
+      orderId,
+      orderAmount: amount,
+      currency: "INR",
+      customerId: String(deliveryPartnerId),
+    });
+    orderId = order.order_id;
+    orderAmount = Number(order.order_amount) || amount;
+    currency = order.order_currency || "INR";
+    appId = getCashfreeAppId();
+    paymentSessionId = order.payment_session_id;
   }
 
   try {
     await FoodDeliveryCashDeposit.create({
       deliveryPartnerId: partnerOid,
       amount,
-      paymentMethod: isRazorpayConfigured() ? "razorpay" : "cash",
+      paymentMethod: isCashfreeConfigured() ? "cashfree" : "cash",
       depositType: "online",
       status: "Pending",
-      razorpayOrderId: orderId,
-      razorpayPaymentId: null,
+      cashfreeOrderId: orderId,
+      cashfreePaymentId: null,
     });
   } catch (err) {
     const isDup =
@@ -569,10 +573,11 @@ export const createDeliveryCashDepositOrder = async (
   }
 
   return {
-    razorpay: {
-      key,
+    cashfree: {
+      appId,
       orderId,
-      amount: orderAmountPaise,
+      paymentSessionId,
+      amount: orderAmount,
       currency,
     },
   };
@@ -580,20 +585,15 @@ export const createDeliveryCashDepositOrder = async (
 
 /**
  * Verifies a cash deposit payment against the Pending intent created for this partner.
- * Idempotent under concurrency: unique razorpayPaymentId / razorpayOrderId + duplicate-key replay.
+ * Idempotent under concurrency: unique cashfreePaymentId / cashfreeOrderId + duplicate-key replay.
  */
 export const verifyDeliveryCashDepositPayment = async (
   deliveryPartnerId,
   payload = {},
 ) => {
-  const orderId = String(payload?.razorpayOrderId || "").trim();
-  const paymentId = String(payload?.razorpayPaymentId || "").trim();
-  const signature = String(payload?.razorpaySignature || "").trim();
+  const orderId = String(payload?.cashfreeOrderId || "").trim();
 
-  if (!orderId) throw new ValidationError("razorpayOrderId is required");
-  if (!paymentId) throw new ValidationError("razorpayPaymentId is required");
-  if (!signature && isRazorpayConfigured())
-    throw new ValidationError("razorpaySignature is required");
+  if (!orderId) throw new ValidationError("cashfreeOrderId is required");
 
   await ensureCashDepositIdempotencyIndexes();
 
@@ -611,43 +611,28 @@ export const verifyDeliveryCashDepositPayment = async (
     return doc;
   };
 
-  // Global replay by payment id (any partner)
-  const completedByPayment = await FoodDeliveryCashDeposit.findOne({
-    razorpayPaymentId: paymentId,
-    status: "Completed",
-  }).lean();
-  if (completedByPayment) {
-    return {
-      deposit: assertOwnCompleted(completedByPayment),
-      wallet: await loadWallet(),
-    };
-  }
-
-  // Replay by order id for this partner
-  const completedByOrder = await FoodDeliveryCashDeposit.findOne({
-    deliveryPartnerId: partnerOid,
-    razorpayOrderId: orderId,
-    status: "Completed",
-  }).lean();
-  if (completedByOrder) {
-    return {
-      deposit: completedByOrder,
-      wallet: await loadWallet(),
-    };
-  }
-
-  // Must have a Pending intent created by this partner for this Razorpay order
+  // Must have a Pending intent created by this partner for this Cashfree order
   const intent = await FoodDeliveryCashDeposit.findOne({
     deliveryPartnerId: partnerOid,
-    razorpayOrderId: orderId,
+    cashfreeOrderId: orderId,
     depositType: "online",
     status: "Pending",
   }).lean();
 
   if (!intent) {
-    // Another partner owns this order id (or no order was created)
+    // Already completed (replay) or belongs to another partner, or no order was created.
+    const completedByOrder = await FoodDeliveryCashDeposit.findOne({
+      cashfreeOrderId: orderId,
+      status: "Completed",
+    }).lean();
+    if (completedByOrder) {
+      return {
+        deposit: assertOwnCompleted(completedByOrder),
+        wallet: await loadWallet(),
+      };
+    }
     const foreignIntent = await FoodDeliveryCashDeposit.findOne({
-      razorpayOrderId: orderId,
+      cashfreeOrderId: orderId,
       depositType: "online",
     })
       .select("deliveryPartnerId status")
@@ -665,33 +650,36 @@ export const verifyDeliveryCashDepositPayment = async (
     );
   }
 
-  const isValid = isRazorpayConfigured()
-    ? verifyPaymentSignature(orderId, paymentId, signature)
-    : true;
-
-  if (!isValid) {
-    throw new ValidationError("Payment verification failed");
-  }
-
+  // Cashfree never hands the client a signature - confirm with Cashfree's server directly.
   let resolvedAmount = Number(payload?.amount);
-  if (isRazorpayConfigured()) {
-    const fetchedPayment = await fetchRazorpayPayment(paymentId);
-    const fetchedOrderId = String(fetchedPayment?.order_id || "").trim();
-    const fetchedStatus = String(fetchedPayment?.status || "").toLowerCase();
-    const fetchedAmount = Number(fetchedPayment?.amount || 0) / 100;
-
-    if (fetchedOrderId !== orderId) {
-      throw new ValidationError("Payment order mismatch");
-    }
-    if (fetchedStatus !== "captured") {
+  let paymentId = null;
+  if (isCashfreeConfigured()) {
+    const { paid, payment } = await verifyCashfreeOrderPaid(orderId);
+    if (!paid || !payment) {
       throw new ValidationError("Payment not captured");
     }
+    paymentId = payment.cf_payment_id;
+    const fetchedAmount = Number(payment?.payment_amount || 0);
     if (!Number.isFinite(fetchedAmount) || fetchedAmount < 1) {
       throw new ValidationError("Invalid payment amount");
     }
     resolvedAmount = fetchedAmount;
   } else if (!Number.isFinite(resolvedAmount) || resolvedAmount < 1) {
     throw new ValidationError("amount is required");
+  }
+
+  // Global replay by payment id (any partner) - checked after we know the real payment id.
+  if (paymentId) {
+    const completedByPayment = await FoodDeliveryCashDeposit.findOne({
+      cashfreePaymentId: paymentId,
+      status: "Completed",
+    }).lean();
+    if (completedByPayment) {
+      return {
+        deposit: assertOwnCompleted(completedByPayment),
+        wallet: await loadWallet(),
+      };
+    }
   }
 
   const intentAmount = Number(intent.amount || 0);
@@ -715,10 +703,10 @@ export const verifyDeliveryCashDepositPayment = async (
 
   const completionFields = {
     amount: resolvedAmount,
-    paymentMethod: isRazorpayConfigured() ? "razorpay" : "cash",
+    paymentMethod: isCashfreeConfigured() ? "cashfree" : "cash",
     status: "Completed",
-    razorpayOrderId: orderId,
-    razorpayPaymentId: paymentId,
+    cashfreeOrderId: orderId,
+    cashfreePaymentId: paymentId,
     depositType: "online",
   };
 
@@ -727,7 +715,7 @@ export const verifyDeliveryCashDepositPayment = async (
     {
       _id: intent._id,
       deliveryPartnerId: partnerOid,
-      razorpayOrderId: orderId,
+      cashfreeOrderId: orderId,
       status: "Pending",
     },
     { $set: completionFields },
@@ -737,13 +725,14 @@ export const verifyDeliveryCashDepositPayment = async (
   if (!deposit) {
     // Concurrent verify completed it, or intent disappeared
     const raced =
-      (await FoodDeliveryCashDeposit.findOne({
-        razorpayPaymentId: paymentId,
-        status: "Completed",
-      }).lean()) ||
+      (paymentId &&
+        (await FoodDeliveryCashDeposit.findOne({
+          cashfreePaymentId: paymentId,
+          status: "Completed",
+        }).lean())) ||
       (await FoodDeliveryCashDeposit.findOne({
         deliveryPartnerId: partnerOid,
-        razorpayOrderId: orderId,
+        cashfreeOrderId: orderId,
         status: "Completed",
       }).lean());
 

@@ -137,7 +137,7 @@ export const registerDeliveryPartner = async (payload, files, options = {}) => {
     const {
         name, phone, email, countryCode, address, city, state,
         vehicleType, vehicleName, vehicleNumber, drivingLicenseNumber, panNumber, aadharNumber,
-        fcmToken, platform, razorpayOrderId, razorpayPaymentId, razorpaySignature
+        fcmToken, platform, cashfreeOrderId
     } = payload;
     const requestedType = String(payload?.submissionType || '').trim().toLowerCase();
 
@@ -257,7 +257,7 @@ export const registerDeliveryPartner = async (payload, files, options = {}) => {
             ? Promise.resolve(null)
             : verifyAndConsumeOnboardingPayment({
                 role: 'DELIVERY_PARTNER',
-                paymentDetails: { razorpayOrderId, razorpayPaymentId, razorpaySignature },
+                paymentDetails: { cashfreeOrderId },
                 userDetails: { name, phone, email },
                 entityId: partner?._id,
             }),
@@ -401,9 +401,9 @@ export const registerDeliveryPartner = async (payload, files, options = {}) => {
     createdSubmissionId = createdSubmission?._id || null;
     await partner.save();
 
-    if (razorpayOrderId) {
+    if (cashfreeOrderId) {
         void OnboardingPaymentLog.updateOne(
-            { razorpayOrderId },
+            { cashfreeOrderId },
             { $set: { entityId: partner._id } },
         );
     }

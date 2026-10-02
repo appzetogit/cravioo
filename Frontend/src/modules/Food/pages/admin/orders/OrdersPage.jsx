@@ -627,10 +627,10 @@ export default function OrdersPage({ statusKey = "all" }) {
         refundPolicy: {
           isUserCancelledOnline:
             backendStatus === "cancelled_by_user" &&
-            ["razorpay", "razorpay_qr"].includes(String(paymentMethod || "").toLowerCase()),
+            ["razorpay", "razorpay_qr", "cashfree", "cashfree_qr"].includes(String(paymentMethod || "").toLowerCase()),
           allowPartialRefund:
             backendStatus === "cancelled_by_user" &&
-            ["razorpay", "razorpay_qr"].includes(String(paymentMethod || "").toLowerCase()) &&
+            ["razorpay", "razorpay_qr", "cashfree", "cashfree_qr"].includes(String(paymentMethod || "").toLowerCase()) &&
             cancellationElapsedMs !== null &&
             cancellationElapsedMs > USER_CANCEL_FULL_REFUND_WINDOW_MS,
           requiresFullRefund:
@@ -639,7 +639,7 @@ export default function OrdersPage({ statusKey = "all" }) {
             paymentMethod === "wallet" ||
             (
               backendStatus === "cancelled_by_user" &&
-              ["razorpay", "razorpay_qr"].includes(String(paymentMethod || "").toLowerCase()) &&
+              ["razorpay", "razorpay_qr", "cashfree", "cashfree_qr"].includes(String(paymentMethod || "").toLowerCase()) &&
               (
                 cancellationElapsedMs === null ||
                 cancellationElapsedMs <= USER_CANCEL_FULL_REFUND_WINDOW_MS

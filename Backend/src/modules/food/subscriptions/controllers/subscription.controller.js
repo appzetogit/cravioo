@@ -51,7 +51,7 @@ export async function createTopupOrderController(req, res, next) {
         reportDebug('service-success', { data });
         // #endregion
 
-        return sendResponse(res, 200, 'Topup order created', data.razorpay);
+        return sendResponse(res, 200, 'Topup order created', data.cashfree);
     } catch (err) {
         next(err);
     }
@@ -92,34 +92,24 @@ export async function getMySubscriptionController(req, res, next) {
 export async function verifyTopupController(req, res, next) {
     try {
         const { userId, role: userType } = req.user;
-        const { razorpayPaymentId, razorpayOrderId, razorpaySignature } = req.body;
+        const { cashfreeOrderId } = req.body;
 
-        if (!razorpayPaymentId || !razorpayOrderId || !razorpaySignature) {
+        if (!cashfreeOrderId) {
             return res.status(400).json({ success: false, message: 'Missing payment details' });
         }
 
-        // Verify signature
-        const { fetchRazorpayPayment, verifyPaymentSignature } = await import('../../orders/helpers/razorpay.helper.js');
-        const isValid = verifyPaymentSignature(razorpayOrderId, razorpayPaymentId, razorpaySignature);
-        if (!isValid) {
-            return res.status(400).json({ success: false, message: 'Invalid payment signature' });
-        }
-
-        const fetchedPayment = await fetchRazorpayPayment(razorpayPaymentId);
-        const fetchedOrderId = String(fetchedPayment?.order_id || '').trim();
-        const fetchedStatus = String(fetchedPayment?.status || '').toLowerCase();
-        if (fetchedOrderId !== String(razorpayOrderId).trim()) {
-            return res.status(400).json({ success: false, message: 'Payment order mismatch' });
-        }
-        if (fetchedStatus !== 'captured') {
+        // Cashfree never hands the client a signature to verify - confirm with Cashfree's server directly.
+        const { verifyCashfreeOrderPaid } = await import('../../orders/helpers/cashfree.helper.js');
+        const { paid, payment } = await verifyCashfreeOrderPaid(cashfreeOrderId);
+        if (!paid || !payment) {
             return res.status(400).json({ success: false, message: 'Payment not captured' });
         }
 
         // Credit wallet
         await walletService.verifyTopup({
-            payment: fetchedPayment,
-            order: { id: razorpayOrderId },
-            notes: {
+            payment,
+            order: { order_id: cashfreeOrderId },
+            orderTags: {
                 ownerId: String(userId),
                 ownerType: userType
             }

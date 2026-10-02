@@ -68,7 +68,7 @@ import {
 import { FoodDeliveryWithdrawal } from '../../delivery/models/foodDeliveryWithdrawal.model.js';
 import { FoodDeliveryWallet } from '../../delivery/models/deliveryWallet.model.js';
 import { FoodDeliveryCashDeposit } from '../../delivery/models/foodDeliveryCashDeposit.model.js';
-import { initiateRazorpayRefund } from '../../orders/helpers/razorpay.helper.js';
+import { initiateCashfreeRefund } from '../../orders/helpers/cashfree.helper.js';
 import { refundWalletBalance } from '../../user/services/userWallet.service.js';
 import * as foodTransactionService from '../../orders/services/foodTransaction.service.js';
 import { getDeliveryPartnerWalletEnhanced } from '../../delivery/services/deliveryFinance.service.js';
@@ -8833,8 +8833,8 @@ export async function updateDeliveryBoyWallet(dto) {
             status: 'Completed',
             paymentMethod: 'cash',
             depositType: 'online',
-            razorpayOrderId: `manual_adj_${String(deliveryId).slice(-8)}_${Date.now()}`,
-            razorpayPaymentId: null,
+            cashfreeOrderId: `manual_adj_${String(deliveryId).slice(-8)}_${Date.now()}`,
+            cashfreePaymentId: null,
             adminNote: 'Admin manual cash-in-hand adjustment',
         });
     } else if (cashDiff < -0.01) {
@@ -8869,9 +8869,9 @@ export async function getCashLimitSettlements(query = {}) {
         ]
     };
     if (query.search) {
-        // Search by razorpay ID or find partner IDs to search by partner
-        if (query.search.startsWith('pay_')) {
-            filter.razorpayPaymentId = query.search;
+        // Search by Cashfree payment ID or find partner IDs to search by partner
+        if (query.search.startsWith('pay_') || query.search.startsWith('cf_')) {
+            filter.cashfreePaymentId = query.search;
         }
     }
 
@@ -8893,7 +8893,7 @@ export async function getCashLimitSettlements(query = {}) {
         deliveryIdString: d.deliveryPartnerId?.phone || 'N/A',
         amount: Number(d.amount || 0),
         status: d.status,
-        razorpayPaymentId: d.razorpayPaymentId || '-'
+        cashfreePaymentId: d.cashfreePaymentId || d.razorpayPaymentId || '-'
     }));
 
     return {
@@ -8980,7 +8980,7 @@ const USER_CANCEL_FULL_REFUND_WINDOW_MS = 30 * 1000;
 const CANCELLED_ORDER_STATUSES_FOR_REFUND = ['cancelled_by_user', 'cancelled_by_restaurant', 'cancelled_by_admin'];
 
 function isOnlinePrepaidMethod(method) {
-    return ['razorpay', 'razorpay_qr'].includes(String(method || '').trim().toLowerCase());
+    return ['cashfree', 'cashfree_qr', 'razorpay', 'razorpay_qr'].includes(String(method || '').trim().toLowerCase());
 }
 
 function getUserCancellationElapsedMs(order) {
@@ -9102,12 +9102,12 @@ export async function processRefund(orderId, refundAmount, refundTo) {
             processedAt
         };
     } else {
-        const paymentId = order.payment?.razorpay?.paymentId;
-        if (!paymentId) {
+        const cfOrderId = order.payment?.cashfree?.orderId;
+        if (!cfOrderId) {
             throw new ValidationError('Original payment reference not found for this online order');
         }
 
-        const refundResult = await initiateRazorpayRefund(paymentId, normalizedAmount, {
+        const refundResult = await initiateCashfreeRefund(cfOrderId, normalizedAmount, {
             idempotencyKey: `food_refund_${String(order._id)}_admin_${Math.round(Number(normalizedAmount) * 100)}`,
             notes: {
                 orderId: String(order.orderId || order._id),
@@ -9125,7 +9125,7 @@ export async function processRefund(orderId, refundAmount, refundTo) {
                 reason: existingRefund?.reason || ''
             };
             await order.save();
-            throw new ValidationError(refundResult?.error || 'Failed to process Razorpay refund');
+            throw new ValidationError(refundResult?.error || 'Failed to process Cashfree refund');
         }
 
         order.payment.status = 'refunded';

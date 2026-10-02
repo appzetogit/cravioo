@@ -107,6 +107,42 @@ export const connectDB = async () => {
         } catch (idxErr) {
             logger.warn(`Failed to inspect/drop legacy index: ${idxErr.message}`);
         }
+
+        // Cashfree migration: the old razorpayOrderId unique index is non-sparse, so once
+        // new logs stop setting that field every second insert would collide on null.
+        // Drop it and let the model's createIndexes() below rebuild the correct (sparse
+        // legacy + new cashfreeOrderId) indexes.
+        try {
+            const { OnboardingPaymentLog } = await import(
+                '../modules/common/models/onboardingPaymentLog.model.js'
+            );
+            const opCollections = await conn.connection.db
+                .listCollections({ name: 'common_onboarding_payment_logs' })
+                .toArray();
+            if (opCollections.length > 0) {
+                const opCol = conn.connection.db.collection('common_onboarding_payment_logs');
+                const indexes = await opCol.indexes();
+                const legacyIndex = indexes.find((idx) => idx.name === 'razorpayOrderId_1');
+                if (legacyIndex && !legacyIndex.sparse) {
+                    logger.info("Dropping legacy non-sparse index 'razorpayOrderId_1' on 'common_onboarding_payment_logs'...");
+                    await opCol.dropIndex('razorpayOrderId_1');
+                }
+            }
+            await OnboardingPaymentLog.createIndexes();
+        } catch (idxErr) {
+            logger.warn(`Failed to migrate onboarding payment log indexes: ${idxErr.message}`);
+        }
+
+        // Cashfree migration: ensure new cashfree* unique indexes exist on models whose
+        // razorpay* equivalents were already sparse (no legacy index to drop/fix here).
+        try {
+            const { UserMembership } = await import(
+                '../modules/food/membership/models/userMembership.model.js'
+            );
+            await UserMembership.createIndexes();
+        } catch (idxErr) {
+            logger.warn(`Failed to ensure UserMembership cashfree indexes: ${idxErr.message}`);
+        }
     } catch (error) {
         logger.error(`MongoDB connection error: ${error.message}`);
         // Log the URI without password for debugging

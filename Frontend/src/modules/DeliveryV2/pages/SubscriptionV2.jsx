@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom"
 import { ArrowLeft, CheckCircle, Crown, Clock, Calendar, AlertCircle, Loader2, ShieldCheck, Zap, Star, Trophy, Wallet, IndianRupee, Plus, History, Info, ChevronRight } from "lucide-react"
 import { Button } from "@food/components/ui/button"
 import { subscriptionAPI, deliveryAPI } from "@food/api"
-import { initRazorpayPayment, initRazorpaySubscription } from "@food/utils/razorpay"
+import { initCashfreePayment, initCashfreeSubscription } from "@food/utils/cashfree"
 import { toast } from "react-hot-toast"
 import dayjs from "dayjs"
 
@@ -89,59 +89,44 @@ export default function SubscriptionV2() {
       const data = res.data?.data
       const isOneTime = !!data.orderId
 
-      const options = {
-        key: data.key,
-        name: "Itzo Delivery Partner",
-        description: `Plan: ${plan.name}`,
-        handler: async (response) => {
-          if (isOneTime) {
-            try {
-              await subscriptionAPI.verify("DELIVERY_PARTNER", {
-                razorpayOrderId: response.razorpay_order_id,
-                razorpayPaymentId: response.razorpay_payment_id,
-                razorpaySignature: response.razorpay_signature,
-              })
-            } catch (_err) {
-            }
-          } else {
-            try {
-              await subscriptionAPI.verify("DELIVERY_PARTNER", {
-                razorpaySubscriptionId: response.razorpay_subscription_id,
-                razorpayPaymentId: response.razorpay_payment_id,
-                razorpaySignature: response.razorpay_signature,
-              })
-            } catch (_err) {
-            }
-          }
+      const onDone = async (verifyPayload) => {
+        try {
+          await subscriptionAPI.verify("DELIVERY_PARTNER", verifyPayload)
+        } catch (_err) {
+        }
 
-          toast.success(isOneTime ? "Payment received. Activating..." : "Payment received. Activating subscription...")
-          const activated = await pollActiveSubscription()
-          if (activated) {
-            toast.success("Subscription Active")
-          } else {
-            toast.success("Activation pending. Webhook will sync shortly.")
-          }
-          await fetchData()
-          setPurchasing(null)
-          purchasingRef.current = false
+        toast.success(isOneTime ? "Payment received. Activating..." : "Payment received. Activating subscription...")
+        const activated = await pollActiveSubscription()
+        if (activated) {
+          toast.success("Subscription Active")
+        } else {
+          toast.success("Activation pending. Webhook will sync shortly.")
         }
-        ,
-        onError: () => {
-          toast.error("Payment failed or cancelled")
-          setPurchasing(null)
-          purchasingRef.current = false
-        },
-        onClose: () => {
-          toast.error("Payment cancelled")
-          setPurchasing(null)
-          purchasingRef.current = false
-        }
+        await fetchData()
+        setPurchasing(null)
+        purchasingRef.current = false
       }
 
-      if (data.orderId) {
-        await initRazorpayPayment({ ...options, order_id: data.orderId, amount: data.amount })
+      const onFail = () => {
+        toast.error("Payment failed or cancelled")
+        setPurchasing(null)
+        purchasingRef.current = false
+      }
+
+      if (isOneTime) {
+        await initCashfreePayment({
+          orderId: data.orderId,
+          paymentSessionId: data.paymentSessionId,
+          onSuccess: () => onDone({ cashfreeOrderId: data.orderId }),
+          onError: onFail,
+        })
       } else {
-        await initRazorpaySubscription({ ...options, subscription_id: data.subscriptionId })
+        await initCashfreeSubscription({
+          subscriptionId: data.subscriptionId,
+          subscriptionSessionId: data.subscriptionSessionId,
+          onSuccess: () => onDone({ cashfreeSubscriptionId: data.subscriptionId }),
+          onError: onFail,
+        })
       }
     } catch (error) {
       toast.error(error?.response?.data?.message || "Purchase failed")
@@ -174,21 +159,16 @@ export default function SubscriptionV2() {
     try {
       setTopupLoading(true)
       const res = await subscriptionAPI.createWalletTopupOrder("DELIVERY_PARTNER", amt)
-      const data = res.data?.data
-      
-      await initRazorpayPayment({
-        key: data.key,
-        amount: data.amount,
-        currency: data.currency,
-        order_id: data.order_id,
-        name: "Subscription Wallet Topup",
-        description: `Topup Amount: ₹${amt}`,
-        handler: async (response) => {
+      const { cashfree } = res.data?.data || {}
+      if (!cashfree?.orderId || !cashfree?.paymentSessionId) throw new Error("Invalid payment order")
+
+      await initCashfreePayment({
+        orderId: cashfree.orderId,
+        paymentSessionId: cashfree.paymentSessionId,
+        onSuccess: async () => {
           try {
             await subscriptionAPI.verifyWalletTopup("DELIVERY_PARTNER", {
-              razorpayOrderId: response.razorpay_order_id,
-              razorpayPaymentId: response.razorpay_payment_id,
-              razorpaySignature: response.razorpay_signature,
+              cashfreeOrderId: cashfree.orderId,
               amount: amt
             })
             toast.success("Wallet recharged successfully")
@@ -197,10 +177,11 @@ export default function SubscriptionV2() {
             fetchData()
           } catch (err) {
             toast.error("Payment verification failed")
+          } finally {
+            setTopupLoading(false)
           }
         },
         onError: () => setTopupLoading(false),
-        onClose: () => setTopupLoading(false)
       })
     } catch (err) {
       toast.error(err.response?.data?.message || "Recharge failed")
@@ -293,7 +274,7 @@ export default function SubscriptionV2() {
                       </div>
                     </div>
 
-                    {activeSub.razorpaySubscriptionId && (
+                    {activeSub.cashfreeSubscriptionId && (
                       <div className="mt-4 pt-4 border-t border-white/5">
                         {activeSub.cancelAtCycleEnd ? (
                           <div className="flex items-center gap-2 text-amber-400 text-xs font-bold bg-white/5 p-3 rounded-2xl border border-white/10">
@@ -519,7 +500,7 @@ export default function SubscriptionV2() {
         <div className="text-center space-y-2 opacity-50 pb-8">
           <div className="flex items-center justify-center gap-2">
             <ShieldCheck className="w-4 h-4 text-slate-900" />
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-900">Secure Payments via Razorpay</p>
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-900">Secure Payments via Cashfree</p>
           </div>
           <p className="text-[9px] font-bold text-slate-400 px-8 leading-relaxed">Financial data is encrypted. Subscription credits are valid for operational fees only and are non-refundable.</p>
         </div>

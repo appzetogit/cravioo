@@ -2616,7 +2616,7 @@ export const deliveryAPI = {
         contextModule: "delivery",
       },
     ),
-  /** POST /food/delivery/orders/:orderId/collect/qr - create Razorpay payment link (COD collection) */
+  /** POST /food/delivery/orders/:orderId/collect/qr - create Cashfree payment link (COD collection) */
   createCollectQr: (orderId, body = {}) =>
     apiClient.post(
       `/food/delivery/orders/${String(orderId)}/collect/qr`,

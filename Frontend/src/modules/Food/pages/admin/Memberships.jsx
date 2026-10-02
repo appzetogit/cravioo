@@ -461,7 +461,7 @@ function Members({ plans }) {
                   <td className="px-3 py-3 text-slate-600">{fmtDateTime(m.paidAt || m.createdAt)}</td>
                   <td className="px-3 py-3 text-slate-600">{fmtDate(m.expiryDate)}</td>
                   <td className="px-3 py-3 text-xs text-slate-500">
-                    <p className="break-all">{m.razorpayPaymentId || "-"}</p>
+                    <p className="break-all">{m.cashfreePaymentId || "-"}</p>
                     {m.refundId && <p className="break-all text-amber-700">Refund: {m.refundId}</p>}
                   </td>
                   <td className="px-3 py-3 text-right">
@@ -472,7 +472,7 @@ function Members({ plans }) {
                         {m.status === "active" && (
                           <button onClick={() => act(m, "cancel")} className="text-red-600 hover:underline">Cancel</button>
                         )}
-                        {["active", "expired", "cancelled"].includes(m.status) && m.razorpayPaymentId && (
+                        {["active", "expired", "cancelled"].includes(m.status) && m.cashfreePaymentId && (
                           <button onClick={() => act(m, "refund")} className="text-amber-700 hover:underline">Refund</button>
                         )}
                       </div>
