@@ -3473,9 +3473,11 @@ export async function createOrder(userId, dto) {
     // Audit can still happen here or via FinanceService events
   }
 
-  // Realtime + push notifications.
+  // Realtime + push notifications. Customer and restaurant notifications run in
+  // separate try/catch blocks - a failure notifying the customer (e.g. branding
+  // lookup) must never silently prevent the restaurant's new-order popup, which
+  // previously shared one catch-all with no logging.
   try {
-
     const branding = await getGlobalBranding();
     // Notify customer. For online payments, order is created but awaits payment confirmation.
     const isAwaitingOnlinePayment =
@@ -3504,11 +3506,15 @@ export async function createOrder(userId, dto) {
         link: `/food/user/orders/${order._id?.toString?.() || ""}`,
       },
     });
+  } catch (err) {
+    logger.error(`Customer order-confirmed notification failed for order ${orderId}: ${err?.message || err}`);
+  }
 
+  try {
     // Restaurant gets new-order request only when payment flow is eligible (not while scheduled).
     await notifyRestaurantNewOrder(order);
-  } catch {
-    // Don't block order placement on socket/notification failures.
+  } catch (err) {
+    logger.error(`notifyRestaurantNewOrder threw for order ${orderId}: ${err?.message || err}`);
   }
 
   // PRIMARY BullMQ enqueue must NOT be swallowed by notification catch above.

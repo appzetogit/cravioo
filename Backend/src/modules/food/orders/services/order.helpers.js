@@ -712,12 +712,18 @@ async function buildRestaurantNewOrderSocketPayload(orderDoc) {
 }
 
 export async function notifyRestaurantNewOrder(orderDoc) {
+  if (!orderDoc || !canExposeOrderToRestaurant(orderDoc)) return;
+  if (String(orderDoc.orderStatus || '').toLowerCase() === 'scheduled') return;
+
+  const orderLabel = orderDoc.orderId || orderDoc._id?.toString?.() || '';
+
+  // Socket emit and FCM push are independent channels - a failure building/sending
+  // one (e.g. a transient DB hiccup in the pricing enrichment) must never silently
+  // take the other down too, and every failure must be logged (this path previously
+  // had a single catch-all swallowing both channels with no log line, so a dropped
+  // restaurant popup was invisible in production).
   try {
-    if (!orderDoc || !canExposeOrderToRestaurant(orderDoc)) return;
-    if (String(orderDoc.orderStatus || '').toLowerCase() === 'scheduled') return;
-
     const io = getIO();
-
     if (io) {
       const payload = await buildRestaurantNewOrderSocketPayload(orderDoc);
       logger.info(
@@ -733,9 +739,12 @@ export async function notifyRestaurantNewOrder(orderDoc) {
           orderMongoId: payload.orderMongoId,
         },
       );
-
     }
+  } catch (err) {
+    logger.error(`notifyRestaurantNewOrder: socket emit failed for order ${orderLabel}: ${err?.message || err}`);
+  }
 
+  try {
     const isFoodQuick =
       String(orderDoc.deliveryMode || "").toLowerCase() === "quick";
     await notifyOwnersSafely(
@@ -757,9 +766,8 @@ export async function notifyRestaurantNewOrder(orderDoc) {
         },
       },
     );
-
-  } catch {
-    // Do not block order/payment flow if notification fails.
+  } catch (err) {
+    logger.error(`notifyRestaurantNewOrder: FCM push failed for order ${orderLabel}: ${err?.message || err}`);
   }
 }
 
