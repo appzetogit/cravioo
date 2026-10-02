@@ -570,6 +570,31 @@ async function runDispatchHunt({
     return { notifiedCount: notifyTargets.length, payload, dispatchAudit };
   }
 
+  const dispatchPushData = {
+    type: "new_order_available",
+    audience: "delivery",
+    documentType,
+    orderId: payload.orderId || documentMongoId,
+    orderMongoId: documentMongoId,
+    restaurantName: payload.restaurantName || "Restaurant",
+    pickupAddress: payload.restaurantAddress || "",
+    dropAddress: payload.customerAddress || "",
+    price: String(payload.riderEarning || payload.earnings || ""),
+    distance: String(payload.distanceKm || payload.deliveryDistanceKm || ""),
+    offerTimeoutSeconds: String(Math.round(offerTimeoutMs / 1000)),
+    tripType: payload.tripType || "forward",
+    deliveryMode: payload.deliveryMode || "basic",
+    isFoodQuickDelivery: payload.isFoodQuickDelivery === true,
+    link: "/food/delivery",
+    targetUrl: "/food/delivery",
+  };
+
+  const dispatchPushNotification = {
+    title: payload.tripType === "return_pickup" ? "New return pickup!" : "New order available!",
+    body: `You have ${Math.round(offerTimeoutMs / 1000)} seconds to accept ${alertLabel} ${payload.orderId || documentMongoId}.`,
+    data: dispatchPushData,
+  };
+
   if (isPhase2) {
     for (const p of eligible) {
       emitDispatchOffer(io, rooms.delivery(p.partnerId), {
@@ -577,6 +602,14 @@ async function runDispatchHunt({
         pickupDistanceKm: p.distanceKm,
       });
       socketEmitCount += 1;
+    }
+    try {
+      await notifyOwnersSafely(
+        eligible.map((p) => ({ ownerType: "DELIVERY_PARTNER", ownerId: p.partnerId })),
+        dispatchPushNotification,
+      );
+    } catch (err) {
+      logger.warn(`Push notifications failed for Phase 2 partners: ${err.message}`);
     }
   } else {
     const p = eligible[0];
@@ -589,19 +622,8 @@ async function runDispatchHunt({
       await notifyOwnerSafely(
         { ownerType: "DELIVERY_PARTNER", ownerId: p.partnerId },
         {
+          ...dispatchPushNotification,
           title: payload.tripType === "return_pickup" ? "New return pickup!" : "New order assigned!",
-          body: `You have ${Math.round(offerTimeoutMs / 1000)} seconds to accept ${alertLabel} ${payload.orderId || documentMongoId}.`,
-          data: {
-            type: "new_order_available",
-            audience: "delivery",
-            documentType,
-            orderId: documentMongoId,
-            tripType: payload.tripType || "forward",
-            deliveryMode: payload.deliveryMode || "basic",
-            isFoodQuickDelivery: payload.isFoodQuickDelivery === true,
-            link: "/food/delivery",
-            targetUrl: "/food/delivery",
-          },
         },
       );
     } catch (err) {
@@ -648,12 +670,9 @@ async function runDispatchHunt({
 async function tryAutoAssignForwardOrder(orderId, options = {}) {
   const attempt = options.attempt || 1;
   const lockTimeout = 55000;
-  // Never auto-assign while orderStatus is scheduled (hold until activation → placed → restaurant accept).
+  // Forward orders must only be auto-assigned when marked ready for pickup (or picked up).
+  // Do NOT dispatch to delivery partners while restaurant is confirming or preparing the order.
   const activeOrderStatuses = [
-    "created",
-    "placed",
-    "confirmed",
-    "preparing",
     "ready_for_pickup",
     "picked_up",
   ];
@@ -822,14 +841,12 @@ export async function resendDeliveryNotificationRestaurant(
   if (!order) throw new NotFoundError("Order not found");
 
   const activeStatuses = [
-    "confirmed",
-    "preparing",
     "ready_for_pickup",
     "ready",
   ];
   if (!activeStatuses.includes(order.orderStatus)) {
     throw new ValidationError(
-      `Cannot resend notification for order in status: ${order.orderStatus}`,
+      `Cannot resend notification for order in status: ${order.orderStatus}. Food must be marked ready for pickup first.`,
     );
   }
 

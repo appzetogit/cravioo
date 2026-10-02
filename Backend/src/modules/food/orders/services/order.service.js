@@ -2525,17 +2525,8 @@ export async function processOrderPostPaymentFulfillment(orderInput, options = {
     await scheduleOrderActivationJob(order);
   }
 
-  if (
-    String(order.dispatch?.modeAtCreation || "manual") === "auto" &&
-    String(order.payment?.status || "").toLowerCase() === "paid" &&
-    !shouldHoldDispatchForScheduled(order)
-  ) {
-    try {
-      await tryAutoAssign(order._id);
-    } catch {
-      // leave unassigned
-    }
-  }
+  // Delivery dispatch will trigger when the restaurant marks the order 'ready_for_pickup'.
+  // Do NOT dispatch to delivery partner upon order payment/confirmation.
 
   if (notifyCustomer && customerUserId) {
     const branding = await getGlobalBranding();
@@ -3525,10 +3516,8 @@ export async function createOrder(userId, dto) {
     }
   }
 
-  // Delivery partner dispatch intentionally does NOT happen here. A delivery partner
-  // must only be found/notified once the restaurant marks the order "ready_for_pickup"
-  // (see updateOrderStatusRestaurant) - dispatching at creation notified riders before
-  // the restaurant had even seen the order.
+  // Delivery dispatch will trigger when the restaurant marks the order 'ready_for_pickup'.
+  // Do NOT dispatch to delivery partner on order creation.
 
   const saved = order.toObject();
   // Omit bulky history from create response — clients refetch detail when needed.
@@ -4545,26 +4534,25 @@ export async function updateOrderStatusRestaurant(
   try {
     const io = getIO();
     if (io) {
-      // Delivery dispatch is gated on "ready_for_pickup", not on accept/preparing -
-      // a rider should only be found/notified once the food is actually ready
-      // (see restaurant_delivery_notification_flow_fix.md).
+      // When restaurant marks order ready for pickup -> trigger delivery dispatch and notifications!
+      // Do NOT notify delivery partners on 'confirmed' or 'preparing' — delivery should only ring when food is ready.
       if (
-        String(orderStatus) === "ready_for_pickup" &&
-        String(from) !== "ready_for_pickup"
+        (String(orderStatus) === "ready_for_pickup" || String(orderStatus) === "ready") &&
+        (String(from) !== "ready_for_pickup" && String(from) !== "ready")
       ) {
         console.log(
-          `[DEBUG] Order ${order.orderId} status changed to '${orderStatus}'. Triggering delivery dispatch.`,
+          `[DEBUG] Order ${order.orderId} marked ready for pickup! Triggering delivery dispatch.`,
         );
-        // If auto dispatch, try assign now.
+
+        // 1. If unassigned, trigger auto-assign to find best delivery partner
         if (
           order.dispatch?.status === "unassigned" &&
-          order.dispatch?.modeAtCreation === "auto"
+          (order.dispatch?.modeAtCreation === "auto" || !order.dispatch?.deliveryPartnerId)
         ) {
           try {
-            console.log(`[DEBUG] Auto-assigning order ${order.orderId}`);
+            console.log(`[DEBUG] Auto-assigning order ${order.orderId} on ready_for_pickup`);
             await tryAutoAssign(order._id);
-            // Refresh order state from DB after auto-assignment
-            order = await FoodOrder.findById(order._id); 
+            order = await FoodOrder.findById(order._id);
           } catch (err) {
             console.error(
               `[DEBUG] Auto-assign failed for order ${order.orderId}:`,
@@ -4578,13 +4566,13 @@ export async function updateOrderStatusRestaurant(
           .lean();
         const payload = buildDeliverySocketPayload(order, restaurant);
 
-        // If assigned, notify assigned partner only.
         const assignedId =
           order.dispatch?.deliveryPartnerId?.toString?.() ||
           order.dispatch?.deliveryPartnerId;
+
         if (assignedId && order.dispatch?.status === "assigned") {
           console.log(
-            `[DEBUG] Order ${order.orderId} assigned to ${assignedId}. Notifying.`,
+            `[DEBUG] Order ${order.orderId} assigned to ${assignedId}. Notifying delivery partner.`,
           );
           io.to(rooms.delivery(assignedId)).emit("new_order", payload);
           io.to(rooms.delivery(assignedId)).emit("play_notification_sound", {
@@ -4596,13 +4584,18 @@ export async function updateOrderStatusRestaurant(
           await notifyOwnerSafely(
             { ownerType: "DELIVERY_PARTNER", ownerId: assignedId },
             {
-              title: "New delivery task",
-              body: `Order ${payload.orderId} is assigned to you.`,
+              title: "Order Ready For Pickup! 🛍️",
+              body: `Order ${payload.orderId} is ready at ${restaurant?.restaurantName || "the restaurant"}. Tap to accept.`,
               data: {
                 type: "new_order",
                 audience: "delivery",
                 orderId: payload.orderId,
                 orderMongoId: payload.orderMongoId,
+                restaurantName: payload.restaurantName || restaurant?.restaurantName || "Restaurant",
+                pickupAddress: payload.restaurantAddress || "",
+                dropAddress: payload.customerAddress || "",
+                price: String(payload.riderEarning || payload.earnings || ""),
+                distance: String(payload.distanceKm || payload.deliveryDistanceKm || ""),
                 link: "/food/delivery",
                 targetUrl: "/food/delivery",
               },
@@ -4612,16 +4605,16 @@ export async function updateOrderStatusRestaurant(
           if (isSplitDispatchOrder(order)) {
             await notifySplitDispatchOffers(order, { restaurantDoc: restaurant });
           } else {
-            // Broadcast to nearby online partners so someone can accept/claim.
+            // Broadcast to nearby online partners so they can accept/claim
             console.log(
-              `[DEBUG] Searching for nearby partners for order ${order.orderId}`,
+              `[DEBUG] Searching for nearby partners for ready order ${order.orderId}`,
             );
             const { partners } = await listNearbyOnlineDeliveryPartners(
               order.restaurantId,
               { maxKm: 15, limit: 25 },
             );
             console.log(
-              `[DEBUG] Found ${partners.length} partners: ${JSON.stringify(partners)}`,
+              `[DEBUG] Found ${partners.length} partners for ready order: ${JSON.stringify(partners)}`,
             );
             for (const p of partners) {
               const targetRoom = rooms.delivery(p.partnerId);
@@ -4632,67 +4625,41 @@ export async function updateOrderStatusRestaurant(
                 ...payload,
                 pickupDistanceKm: p.distanceKm,
               });
-            }
-            await notifyOwnersSafely(
-              partners.slice(0, 5).map((p) => ({
-                ownerType: "DELIVERY_PARTNER",
-                ownerId: p.partnerId,
-              })),
-              {
-                title: "New delivery order available",
-                body: `Order ${payload.orderId} is available near ${restaurant?.restaurantName || "your area"}.`,
-                data: {
-                  type: "new_order_available",
-                  audience: "delivery",
-                  orderId: payload.orderId,
-                  orderMongoId: payload.orderMongoId,
-                  link: "/food/delivery",
-                  targetUrl: "/food/delivery",
-                },
-              },
-            );
-            // Also trigger a generic sound event for the first few partners.
-            for (const p of partners.slice(0, 5)) {
-              io.to(rooms.delivery(p.partnerId)).emit("play_notification_sound", {
+              io.to(targetRoom).emit("play_notification_sound", {
                 audience: "delivery",
                 type: "new_order_available",
                 orderId: payload.orderId,
                 orderMongoId: payload.orderMongoId,
               });
             }
+            if (partners.length > 0) {
+              await notifyOwnersSafely(
+                partners.slice(0, 10).map((p) => ({
+                  ownerType: "DELIVERY_PARTNER",
+                  ownerId: p.partnerId,
+                })),
+                {
+                  title: "Order Ready For Pickup! 🛍️",
+                  body: `Order ${payload.orderId} is ready at ${restaurant?.restaurantName || "the restaurant"}. Tap to accept!`,
+                  data: {
+                    type: "new_order_available",
+                    audience: "delivery",
+                    orderId: payload.orderId,
+                    orderMongoId: payload.orderMongoId,
+                    restaurantName: restaurant?.restaurantName || payload.restaurantName || "Restaurant",
+                    pickupAddress: payload.restaurantAddress || "",
+                    dropAddress: payload.customerAddress || "",
+                    price: String(payload.riderEarning || payload.earnings || ""),
+                    distance: String(payload.distanceKm || payload.deliveryDistanceKm || ""),
+                    link: "/food/delivery",
+                    targetUrl: "/food/delivery",
+                  },
+                },
+              );
+            }
           }
         }
       }
-
-            // When ready for pickup -> ping assigned delivery partner.
-            if (String(orderStatus) === 'ready_for_pickup' && String(from) !== 'ready_for_pickup') {
-                console.log(`[DEBUG] Order ${order.orderId} changed to 'ready_for_pickup'.`);
-                const assignedId = order.dispatch?.deliveryPartnerId?.toString?.() || order.dispatch?.deliveryPartnerId;
-                if (assignedId) {
-                    console.log(`[DEBUG] Notifying assigned partner ${assignedId} that order is ready.`);
-                    const restaurant = await FoodRestaurant.findById(order.restaurantId).select('restaurantName location addressLine1 area city state primaryContactNumber ownerPhone').lean();
-                    const payload = buildDeliverySocketPayload(order, restaurant);
-                    io.to(rooms.delivery(assignedId)).emit('order_ready', payload);
-                    // FCM + inbox (socket alone is not enough if app is backgrounded)
-                    await notifyOwnerSafely(
-                      { ownerType: "DELIVERY_PARTNER", ownerId: assignedId },
-                      {
-                        title: "Order ready for pickup 🛍️",
-                        body: `Order #${order.orderId} is ready at the restaurant.`,
-                        data: {
-                          type: "order_ready",
-                          audience: "delivery",
-                          orderId: order.orderId,
-                          orderMongoId: order._id?.toString?.() || "",
-                          link: "/food/delivery",
-                          targetUrl: "/food/delivery",
-                        },
-                      },
-                    );
-                } else {
-                    console.log(`[DEBUG] Order ${order.orderId} is ready but no partner assigned.`);
-                }
-            }
         }
     } catch (err) {
         console.error('[DEBUG] Error in delivery notification logic:', err);
@@ -4929,10 +4896,10 @@ export async function resendDeliveryNotificationRestaurant(orderId, restaurantId
 
     if (!order) throw new NotFoundError('Order not found');
 
-    // Only allow if order is still active and not already terminal
-    const activeStatuses = ['confirmed', 'preparing', 'ready_for_pickup', 'ready'];
+    // Only allow if order is marked ready for pickup (delivery should not be dispatched while restaurant is preparing)
+    const activeStatuses = ['ready_for_pickup', 'ready'];
     if (!activeStatuses.includes(order.orderStatus)) {
-        throw new ValidationError(`Cannot resend notification for order in status: ${order.orderStatus}`);
+        throw new ValidationError(`Cannot resend notification for order in status: ${order.orderStatus}. Food must be marked ready for pickup first.`);
     }
 
     // Guard: don't disrupt an active assignment that was already accepted
@@ -4997,7 +4964,7 @@ export async function listOrdersAvailableDelivery(deliveryPartnerId, query) {
     $or: [
       {
         "dispatch.status": "unassigned",
-        orderStatus: { $in: ["confirmed", "preparing", "ready_for_pickup"] },
+        orderStatus: { $in: ["ready_for_pickup", "ready"] },
       },
       {
         "dispatch.deliveryPartnerId": partnerObjectId,
@@ -5065,7 +5032,7 @@ export async function listOrdersAvailableDelivery(deliveryPartnerId, query) {
     const isMarketplaceOrder = isSplitDispatchOrder(order)
       ? eligibleLegs.length > 0
       : order?.dispatch?.status === "unassigned" &&
-        ["confirmed", "preparing", "ready_for_pickup"].includes(order?.orderStatus);
+        ["ready_for_pickup", "ready"].includes(order?.orderStatus);
 
     if (assignedLeg) {
       docs.push(
@@ -5138,11 +5105,11 @@ export async function acceptOrderDelivery(orderId, deliveryPartnerId, body = {})
   if (!order) throw new NotFoundError("Order not found");
 
   if (
-    !["confirmed", "preparing", "ready_for_pickup", "picked_up"].includes(
+    !["ready_for_pickup", "ready", "picked_up"].includes(
       order.orderStatus,
     )
   ) {
-    throw new ValidationError("Order not ready for delivery assignment");
+    throw new ValidationError("Order is not ready for delivery assignment yet. Please wait until the restaurant marks it ready.");
   }
 
   // Prevent COD accept when order collect amount exceeds remaining cash limit

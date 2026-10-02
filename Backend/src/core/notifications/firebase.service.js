@@ -147,17 +147,28 @@ const buildMessagePayload = (payload = {}, token) => {
     };
     const rawData = { ...(payload.data || {}) };
     const audience = sanitizeString(rawData.audience).toLowerCase();
+    const type = sanitizeString(rawData.type).toLowerCase();
     // Restaurant/delivery/seller alerts must NOT use FCM auto-display on web.
     // Chrome shows webpush/top-level notification globally (visible while User tab is focused).
     // SW + page code filter by audience and show only on the matching role tab.
     const isActorScopedWebAlert = ['restaurant', 'delivery', 'seller'].includes(audience);
     const omitWebAutoDisplay = Boolean(payload.dataOnly) || isActorScopedWebAlert;
 
-    // Ensure SW/page can render title/body from data when notification block is omitted for web.
-    if (omitWebAutoDisplay) {
-        if (!rawData.title) rawData.title = notification.title;
-        if (!rawData.body) rawData.body = notification.body;
-    }
+    // Delivery new order / assignment alerts must be DATA-ONLY on Android so that
+    // Android OS wakes NewOrderMessagingService & Flutter background handler, which
+    // display the full-screen heads-up notification with Accept & Reject action buttons
+    // and custom ringtone outside the app!
+    const isDeliveryOrderAlert = audience === 'delivery' && (
+        ['new_order', 'new_order_available', 'order_assigned', 'delivery_partner_assigned'].includes(type) ||
+        Boolean(rawData.pickupAddress) ||
+        Boolean(rawData.orderMongoId) ||
+        Boolean(rawData.orderId)
+    );
+    const omitAndroidNotification = Boolean(payload.dataOnly) || isDeliveryOrderAlert;
+
+    // Ensure SW/page/native handlers can render title/body from data
+    if (!rawData.title) rawData.title = notification.title;
+    if (!rawData.body) rawData.body = notification.body;
 
     const data = normalizeDataMap(rawData);
     const image =
@@ -165,8 +176,8 @@ const buildMessagePayload = (payload = {}, token) => {
 
     const message = { token };
 
-    // Top-level notification triggers Chrome OS auto-display. Skip for actor-scoped web alerts.
-    if (!omitWebAutoDisplay) {
+    // Top-level notification triggers Chrome OS auto-display. Skip for actor-scoped web alerts & delivery alerts.
+    if (!omitWebAutoDisplay && !omitAndroidNotification) {
         message.notification = notification;
         if (image) {
             message.notification.image = image;
@@ -179,18 +190,21 @@ const buildMessagePayload = (payload = {}, token) => {
 
     message.android = {
         priority: 'high',
-        notification: {
+    };
+
+    if (!omitAndroidNotification) {
+        message.android.notification = {
             title: notification.title,
             body: notification.body,
-            channel_id: 'default',
+            channel_id: 'orders_channel',
             sound: 'default',
             default_vibrate_timings: true,
             default_light_settings: true,
             click_action: 'FLUTTER_NOTIFICATION_CLICK',
+        };
+        if (image) {
+            message.android.notification.image = image;
         }
-    };
-    if (image) {
-        message.android.notification.image = image;
     }
 
     message.apns = {
