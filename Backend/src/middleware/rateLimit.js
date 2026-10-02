@@ -1,6 +1,7 @@
 import rateLimit from 'express-rate-limit';
 import { config } from '../config/env.js';
 import { logger } from '../utils/logger.js';
+import { verifyAccessToken } from '../core/auth/token.util.js';
 
 // NODE_ENV controls how generous each limiter's dev floor is (see `isProduction ?
 // x : Math.max(x, devFloor)` below on every limiter). This is deliberate, documented
@@ -30,6 +31,38 @@ const normalizeIp = (raw) => {
 };
 
 const ipKey = (req) => normalizeIp(req.ip || req.socket?.remoteAddress);
+
+/**
+ * Indian mobile carriers route huge numbers of phones through a handful of CGNAT
+ * public IPs, so keying the general limiter by raw IP lets one carrier's traffic
+ * (many unrelated delivery partners/customers/restaurants polling independently)
+ * collide into a single shared budget - this is what produced widespread 429s on
+ * delivery polling (/orders/current, /orders/available) even though no individual
+ * user was over-calling. For any request carrying a valid access token, bucket by
+ * the authenticated identity instead so each logged-in user gets their own budget;
+ * only genuinely anonymous traffic falls back to the IP bucket. Computed once per
+ * request and cached on `req` since both keyGenerator and limit need it.
+ */
+const authIdentity = (req) => {
+    if (req._rlAuthChecked) return req._rlAuthKey;
+    req._rlAuthChecked = true;
+    const authHeader = req.headers.authorization || '';
+    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    if (token) {
+        try {
+            const decoded = verifyAccessToken(token);
+            if (decoded?.userId) req._rlAuthKey = `user:${decoded.role || 'unknown'}:${decoded.userId}`;
+        } catch {
+            // invalid/expired token - fall through to the IP bucket
+        }
+    }
+    return req._rlAuthKey || null;
+};
+
+/** Authenticated clients (app polling, dashboards) get a larger shared-bucket budget
+ *  than anonymous IP traffic, since they're individually identified and no longer
+ *  share a budget with every other user behind the same carrier-grade NAT IP. */
+const AUTHENTICATED_LIMIT_MULTIPLIER = 5;
 
 /** Key OTP/login limits by the identity being targeted, so one IP cannot spam many
  *  numbers and one number cannot be spammed from many IPs. */
@@ -121,9 +154,12 @@ const baseOptions = {
 export const apiRateLimiter = rateLimit({
     ...baseOptions,
     windowMs: config.rateLimitWindowMinutes * 60 * 1000,
-    limit: isProduction ? config.rateLimitMaxRequests : Math.max(config.rateLimitMaxRequests, 5000),
+    limit: (req) => {
+        const base = isProduction ? config.rateLimitMaxRequests : Math.max(config.rateLimitMaxRequests, 5000);
+        return authIdentity(req) ? base * AUTHENTICATED_LIMIT_MULTIPLIER : base;
+    },
     store: createStore('api'),
-    keyGenerator: ipKey,
+    keyGenerator: (req) => authIdentity(req) || ipKey(req),
     skip: skipUnmetered,
     handler: buildHandler('api', 'Too many requests, please try again later.'),
     validate: { ip: false },
