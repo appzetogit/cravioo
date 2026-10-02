@@ -11,7 +11,8 @@ import orderUserRoutes from '../modules/food/orders/routes/order.routes.user.js'
 import paymentRoutes from '../core/payments/payment.routes.js';
 import fcmRoutes from '../core/notifications/fcm.routes.js';
 import notificationRoutes from '../core/notifications/notification.routes.js';
-import { authMiddleware } from '../core/auth/auth.middleware.js';
+import { authMiddleware, optionalAuthMiddleware } from '../core/auth/auth.middleware.js';
+import { getMembersLeaderboardController } from '../modules/food/user/controllers/userLeaderboard.controller.js';
 
 import { requireRoles } from '../core/roles/role.middleware.js';
 import { getQueuesController } from '../controllers/admin.controller.js';
@@ -48,6 +49,9 @@ router.use('/v1/food/subscriptions', requireEnabledModule('food'), subscriptionR
 // Public dining discovery (mounted before the catch-all /v1/food landing router)
 router.use('/v1/food/dining', requireEnabledModule('food'), diningPublicRoutes);
 
+// Cravioo Members Leaderboard (Public / Guest with optional auth)
+router.get('/v1/food/members/leaderboard', requireEnabledModule('food'), optionalAuthMiddleware, getMembersLeaderboardController);
+
 // Landing & hero-banners for Food user app (paths start with /food/hero-banners/...)
 router.use('/v1/food', requireEnabledModule('food'), landingRoutes);
 router.use('/v1/food/search', requireEnabledModule('food'), searchRoutes);
@@ -70,6 +74,8 @@ router.use('/v1/food/payments', requireEnabledModule('food'), authMiddleware, pa
 router.use('/v1/payments/webhook', webhookRoutes);
 router.use('/v1/fcm-tokens', fcmRoutes);
 router.use('/fcm-tokens', fcmRoutes);
+router.use('/v1/food/fcm-tokens', fcmRoutes);
+router.use('/food/fcm-tokens', fcmRoutes);
 
 
 // router.get('/v1/env/public', getPublicEnvController);
