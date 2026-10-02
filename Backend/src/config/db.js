@@ -139,6 +139,21 @@ export const connectDB = async () => {
             const { UserMembership } = await import(
                 '../modules/food/membership/models/userMembership.model.js'
             );
+            const umCollections = await conn.connection.db
+                .listCollections({ name: 'food_user_memberships' })
+                .toArray();
+            if (umCollections.length > 0) {
+                const umCol = conn.connection.db.collection('food_user_memberships');
+                const indexes = await umCol.indexes();
+                // Legacy plain (non-unique, non-partial) index from the old `userId: { index: true }`
+                // schema option shares the default name 'userId_1' with the new partial-unique
+                // index below, so it must be dropped before createIndexes() can build the real one.
+                const legacyUserIdIndex = indexes.find((idx) => idx.name === 'userId_1');
+                if (legacyUserIdIndex && !legacyUserIdIndex.unique) {
+                    logger.info("Dropping legacy plain index 'userId_1' on 'food_user_memberships'...");
+                    await umCol.dropIndex('userId_1');
+                }
+            }
             await UserMembership.createIndexes();
         } catch (idxErr) {
             logger.warn(`Failed to ensure UserMembership cashfree indexes: ${idxErr.message}`);

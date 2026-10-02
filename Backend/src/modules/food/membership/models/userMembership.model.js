@@ -11,7 +11,7 @@ export const MEMBERSHIP_STATUS = Object.freeze({
 
 const userMembershipSchema = new mongoose.Schema(
     {
-        userId: { type: mongoose.Schema.Types.ObjectId, ref: 'FoodUser', required: true, index: true },
+        userId: { type: mongoose.Schema.Types.ObjectId, ref: 'FoodUser', required: true },
         planId: { type: mongoose.Schema.Types.ObjectId, ref: 'MembershipPlan', required: true },
 
         // Snapshot of the plan at purchase time so later plan edits never change past records.
