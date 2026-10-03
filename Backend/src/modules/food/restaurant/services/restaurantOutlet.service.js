@@ -144,3 +144,36 @@ export const addOutlet = async (user, { restaurantName }) => {
     }),
   };
 };
+
+/** Admin view: one owner account with every outlet under it. */
+export const getOwnerWithOutlets = async (ownerId) => {
+  if (!mongoose.Types.ObjectId.isValid(String(ownerId || ""))) {
+    throw new ValidationError("Invalid owner id");
+  }
+  const owner = await RestaurantOwner.findById(ownerId).lean();
+  if (!owner) throw new NotFoundError("Owner not found");
+  const outlets = await FoodRestaurant.find({ ownerId: owner._id, isDeleted: { $ne: true } })
+    .select("restaurantName status isActive area city commissionPercentage createdAt")
+    .sort({ createdAt: 1 })
+    .lean();
+  return {
+    owner: {
+      id: String(owner._id),
+      ownerName: owner.ownerName || "",
+      ownerPhone: owner.ownerPhone || "",
+      ownerEmail: owner.ownerEmail || "",
+      accountHolderName: owner.accountHolderName || "",
+      accountNumber: owner.accountNumber ? `XXXX${String(owner.accountNumber).slice(-4)}` : "",
+      ifscCode: owner.ifscCode || "",
+    },
+    outlets: outlets.map((o) => ({
+      id: String(o._id),
+      restaurantName: o.restaurantName,
+      status: o.status,
+      isActive: o.isActive !== false,
+      area: o.area || "",
+      city: o.city || "",
+      commissionPercentage: o.commissionPercentage ?? null,
+    })),
+  };
+};
