@@ -1,5 +1,6 @@
 import { sendResponse } from '../../../../utils/response.js';
 import * as orderService from '../services/order.service.js';
+import { getOwnerOutletIds } from '../../restaurant/services/restaurantOutlet.service.js';
 import * as foodOrderPaymentService from '../services/foodOrderPayment.service.js';
 import {
     validateCalculateOrderDto,
@@ -265,7 +266,11 @@ export async function updateDispatchSettingsController(req, res, next) {
 export async function listOrdersRestaurantController(req, res, next) {
     try {
         const restaurantId = req.user?.userId;
-        const result = await orderService.listOrdersRestaurant(restaurantId, req.query);
+        const wantsAllOutlets = String(req.query?.scope || '').toLowerCase() === 'all';
+        const restaurantIds = wantsAllOutlets && req.user?.ownerId
+            ? await getOwnerOutletIds(req.user.ownerId)
+            : null;
+        const result = await orderService.listOrdersRestaurant(restaurantId, req.query, { restaurantIds });
         return sendResponse(res, 200, 'Orders retrieved', mapRestaurantOrderListResult(result));
     } catch (err) {
         next(err);

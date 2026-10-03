@@ -21,6 +21,7 @@ import {
 } from '../services/restaurantReferral.service.js';
 import { validateRestaurantRegisterDto, validateOnboardingStepDto } from '../validators/restaurant.validator.js';
 import { sendResponse } from '../../../../utils/response.js';
+import { listOwnerOutlets, switchOutlet, addOutlet } from '../services/restaurantOutlet.service.js';
 
 export const registerRestaurantController = async (req, res, next) => {
     try {
@@ -36,7 +37,10 @@ export const registerRestaurantController = async (req, res, next) => {
             });
         }
 
-        const restaurant = await registerRestaurant(validated, req.files, null);
+        const restaurant = await registerRestaurant(validated, req.files, null, {
+            outletId: req.registrationOutletId,
+            ownerId: req.registrationOwnerId,
+        });
         const { issueRestaurantSession } = await import('../../../../core/auth/auth.service.js');
         const session = await issueRestaurantSession(restaurant);
         return sendResponse(res, 201, 'Restaurant registered successfully', {
@@ -64,7 +68,10 @@ export const saveOnboardingStepController = async (req, res, next) => {
             });
         }
 
-        const restaurant = await saveOnboardingStep(stepNum, validated, req.files);
+        const restaurant = await saveOnboardingStep(stepNum, validated, req.files, {
+            outletId: req.registrationOutletId,
+            ownerId: req.registrationOwnerId,
+        });
         return sendResponse(res, 200, 'Onboarding step saved successfully', { restaurant });
     } catch (error) {
         next(error);
@@ -254,3 +261,30 @@ export const getRestaurantReferralDetailsController = async (req, res, next) => 
 
 
 
+
+export const listOwnerOutletsController = async (req, res, next) => {
+    try {
+        const data = await listOwnerOutlets(req.user);
+        return sendResponse(res, 200, 'Outlets retrieved', data);
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const switchOutletController = async (req, res, next) => {
+    try {
+        const session = await switchOutlet(req.user, req.body?.outletId);
+        return sendResponse(res, 200, 'Switched outlet', session);
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const addOutletController = async (req, res, next) => {
+    try {
+        const data = await addOutlet(req.user, req.body || {});
+        return sendResponse(res, 201, 'Outlet created. Complete its onboarding.', data);
+    } catch (error) {
+        next(error);
+    }
+};

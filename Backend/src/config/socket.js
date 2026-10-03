@@ -1,6 +1,7 @@
 import { Server } from 'socket.io';
 import { config } from './env.js';
 import { isOriginAllowed } from './cors.js';
+import mongoose from 'mongoose';
 import { logger } from '../utils/logger.js';
 import { verifyAccessToken } from '../core/auth/token.util.js';
 import { getFirebaseDB } from './firebase.js';
@@ -131,7 +132,12 @@ export const initSocket = async (server) => {
                 }
             }
 
-            socket.user = { userId, role: decoded.role, authType: 'food' };
+            socket.user = {
+                userId,
+                role: decoded.role,
+                authType: 'food',
+                ...(decoded.ownerId ? { ownerId: String(decoded.ownerId) } : {}),
+            };
             socket.auth = {
                 sub: userId,
                 role: String(decoded.role || '').toLowerCase(),
@@ -179,7 +185,15 @@ export const initSocket = async (server) => {
         // Auto-join role rooms (lets us emit without a custom join).
         if (userId && role) {
             if (role === 'ADMIN' || role === 'EMPLOYEE') socket.join(roomNames.admin(userId));
-            if (role === 'RESTAURANT') socket.join(roomNames.restaurant(userId));
+            if (role === 'RESTAURANT') {
+                socket.join(roomNames.restaurant(userId));
+                if (socket.user?.ownerId) {
+                    import('../modules/food/restaurant/services/restaurantOutlet.service.js')
+                        .then(({ getOwnerOutletIds }) => getOwnerOutletIds(socket.user.ownerId))
+                        .then((outletIds) => outletIds.forEach((id) => socket.join(roomNames.restaurant(id))))
+                        .catch((err) => logger.warn(`Owner outlet room join failed: ${err.message}`));
+                }
+            }
             if (role === 'USER') socket.join(roomNames.user(userId));
             if (role === 'SELLER') socket.join(roomNames.seller(userId));
             if (role === 'DELIVERY_PARTNER') {
@@ -196,9 +210,18 @@ export const initSocket = async (server) => {
         socket.on('join-restaurant', (restaurantId) => {
             if (socket.user?.role !== 'RESTAURANT') return;
             // Security: only join your own restaurant room.
-            if (String(socket.user?.userId) !== String(restaurantId)) return;
-            socket.join(roomNames.restaurant(restaurantId));
-            socket.emit('restaurant-room-joined', { room: roomNames.restaurant(restaurantId), restaurantId: String(restaurantId) });
+            const requested = String(restaurantId || '');
+            const joinRoom = () => {
+                socket.join(roomNames.restaurant(requested));
+                socket.emit('restaurant-room-joined', { room: roomNames.restaurant(requested), restaurantId: requested });
+            };
+            if (String(socket.user?.userId) === requested) return joinRoom();
+            // Multi-outlet owner: sibling outlets are allowed only when they share the same owner.
+            if (!socket.user?.ownerId || !mongoose.Types.ObjectId.isValid(requested)) return;
+            import('../modules/food/restaurant/services/restaurantOutlet.service.js')
+                .then(({ getOwnerOutletIds }) => getOwnerOutletIds(socket.user.ownerId))
+                .then((outletIds) => { if (outletIds.includes(requested)) joinRoom(); })
+                .catch((err) => logger.warn(`Sibling outlet join failed: ${err.message}`));
         });
 
         // Explicit join (used by existing delivery client hook).

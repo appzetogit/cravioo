@@ -139,6 +139,25 @@ export const connectDB = async () => {
             const { UserMembership } = await import(
                 '../modules/food/membership/models/userMembership.model.js'
             );
+            // Multi-outlet owners: one owner phone may back several restaurants, so the
+            // legacy unique index on ownerPhoneLast10 must go before the new plain index is used.
+            const frCollections = await conn.connection.db
+                .listCollections({ name: 'food_restaurants' })
+                .toArray();
+            if (frCollections.length > 0) {
+                const frCol = conn.connection.db.collection('food_restaurants');
+                const frIndexes = await frCol.indexes();
+                const legacyPhoneIndex = frIndexes.find((idx) => idx.name === 'ownerPhoneLast10_1');
+                if (legacyPhoneIndex && legacyPhoneIndex.unique) {
+                    logger.info("Dropping legacy unique index 'ownerPhoneLast10_1' on 'food_restaurants' for multi-outlet owners...");
+                    await frCol.dropIndex('ownerPhoneLast10_1');
+                }
+                const { FoodRestaurant } = await import(
+                    '../modules/food/restaurant/models/restaurant.model.js'
+                );
+                await FoodRestaurant.createIndexes();
+            }
+
             const umCollections = await conn.connection.db
                 .listCollections({ name: 'food_user_memberships' })
                 .toArray();

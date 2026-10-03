@@ -79,6 +79,8 @@ export const requireRestaurantRegistrationToken = (req, res, next) => {
         }
         req.registrationPhone = phoneLast10;
         req.registrationPhoneDigits = String(decoded.phone || phoneLast10).replace(/\D/g, '');
+        req.registrationOutletId = decoded.outletId || null;
+        req.registrationOwnerId = decoded.ownerId || null;
         next();
     } catch {
         return sendError(res, 401, 'Invalid or expired registration token. Please verify OTP again.');
@@ -103,7 +105,8 @@ export const authMiddleware = (req, res, next) => {
         }
         req.user = {
             userId: decoded.userId,
-            role: decoded.role
+            role: decoded.role,
+            ...(decoded.ownerId ? { ownerId: decoded.ownerId } : {}),
         };
         if (decoded.role === 'USER') {
             // Enforce active status in real-time - deactivated users are logged out on next request.

@@ -40,6 +40,7 @@ import RestaurantNavbar from "@food/components/restaurant/RestaurantNavbar";
 import OrderDetails from "./OrderDetails";
 import notificationSound from "@food/assets/audio/alert.mp3";
 import { restaurantAPI } from "@food/api";
+import { getRestaurantOrdersScope } from "@food/utils/restaurantOrdersScope";
 import { getCancellationDisplayLabel, getCancellationDisplayReason } from "@food/utils/cancellationDisplay";
 
 /** Dashboard list: one source of truth via restaurantAPI.getOrders (limit=50, 2.5s TTL). */
@@ -49,7 +50,7 @@ function invalidateRestaurantOrdersCache() {
 
 async function fetchRestaurantOrdersShared({ force = false } = {}) {
   if (force) invalidateRestaurantOrdersCache();
-  return restaurantAPI.getOrders();
+  return restaurantAPI.getOrders(getRestaurantOrdersScope() === "all" ? { scope: "all" } : {});
 }
 import {
   formatScheduledAtShort,

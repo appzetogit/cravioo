@@ -1295,6 +1295,15 @@ export const restaurantAPI = {
     return authService.verifyRestaurantOtp(phone, otp, fcmToken, platform);
   },
   getMe: () => authService.getMe("restaurant"),
+  /** Multi-outlet owner: outlets under this account plus the currently active one. */
+  listOutlets: () =>
+    apiClient.get("/food/restaurant/outlets", { contextModule: "restaurant" }),
+  /** Switch the session to another outlet of the same owner (returns a fresh session). */
+  switchOutlet: (outletId) =>
+    apiClient.post("/food/restaurant/outlets/switch", { outletId }, { contextModule: "restaurant" }),
+  /** Create a new outlet under the same owner account. */
+  addOutlet: (restaurantName) =>
+    apiClient.post("/food/restaurant/outlets", { restaurantName }, { contextModule: "restaurant" }),
   /** Restaurant dashboard: fetch current restaurant profile (deduped + short-cached). */
   getCurrentRestaurant: () => getRestaurantCurrentOnce(),
   /**
