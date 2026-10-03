@@ -77,6 +77,12 @@ const restaurantSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    // Set by the owner migration. Links outlets that belong to the same owner account.
+    ownerId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "RestaurantOwner",
+      default: null,
+    },
     // Normalized fields for fast lookup + uniqueness guarantees.
     // These are derived from restaurantName/ownerPhone at write time.
     restaurantNameNormalized: {
