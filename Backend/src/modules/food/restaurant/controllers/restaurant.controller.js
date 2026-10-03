@@ -85,7 +85,10 @@ export const getOnboardingDraftController = async (req, res, next) => {
         if (!phone) {
             return res.status(400).json({ success: false, message: 'Phone is required' });
         }
-        const restaurant = await getOnboardingDraftByPhone(phone);
+        const restaurant = await getOnboardingDraftByPhone(phone, {
+            outletId: req.registrationOutletId,
+            ownerId: req.registrationOwnerId,
+        });
         if (!restaurant) {
             return res.status(404).json({ success: false, message: 'No onboarding draft found' });
         }

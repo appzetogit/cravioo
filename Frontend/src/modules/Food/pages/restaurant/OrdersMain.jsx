@@ -40,7 +40,8 @@ import RestaurantNavbar from "@food/components/restaurant/RestaurantNavbar";
 import OrderDetails from "./OrderDetails";
 import notificationSound from "@food/assets/audio/alert.mp3";
 import { restaurantAPI } from "@food/api";
-import { getRestaurantOrdersScope } from "@food/utils/restaurantOrdersScope";
+import { getRestaurantOrdersScope, getOutletNameById } from "@food/utils/restaurantOrdersScope";
+
 import { getCancellationDisplayLabel, getCancellationDisplayReason } from "@food/utils/cancellationDisplay";
 
 /** Dashboard list: one source of truth via restaurantAPI.getOrders (limit=50, 2.5s TTL). */
@@ -50,7 +51,7 @@ function invalidateRestaurantOrdersCache() {
 
 async function fetchRestaurantOrdersShared({ force = false } = {}) {
   if (force) invalidateRestaurantOrdersCache();
-  return restaurantAPI.getOrders(getRestaurantOrdersScope() === "all" ? { scope: "all" } : {});
+  return restaurantAPI.getOrders();
 }
 import {
   formatScheduledAtShort,
@@ -416,6 +417,9 @@ function CompletedOrders({ onSelectOrder, refreshToken = 0, searchQuery = "" }) 
                         </p>
                         <p className="text-[11px] text-gray-500 mt-1">
                           {order.customerName}
+                          {getRestaurantOrdersScope() === "all" && getOutletNameById(order.restaurantId) && (
+                            <span className="block text-[10px] font-semibold text-[#32C45A]">{getOutletNameById(order.restaurantId)}</span>
+                          )}
                         </p>
                       </div>
 
@@ -647,6 +651,9 @@ function CancelledOrders({ onSelectOrder, refreshToken = 0, searchQuery = "" }) 
                         </p>
                         <p className="text-[11px] text-gray-500 mt-1">
                           {order.customerName}
+                          {getRestaurantOrdersScope() === "all" && getOutletNameById(order.restaurantId) && (
+                            <span className="block text-[10px] font-semibold text-[#32C45A]">{getOutletNameById(order.restaurantId)}</span>
+                          )}
                         </p>
                       </div>
 

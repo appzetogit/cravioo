@@ -1,3 +1,4 @@
+import { getRestaurantOrdersScope } from "@food/utils/restaurantOrdersScope";
 import { useEffect, useRef, useState } from 'react';
 import io from 'socket.io-client';
 import { API_BASE_URL } from '@food/api/config';
@@ -596,6 +597,14 @@ export const useRestaurantNotifications = (options = {}) => {
     // Listen for new order notifications
     socketRef.current.on('new_order', (orderData) => {
       debugLog('?? New order received:', orderData);
+
+      // Owner sockets receive every outlet's orders; in "This outlet" view only the active outlet alerts.
+      const otherOutlet =
+        getRestaurantOrdersScope() !== 'all' &&
+        orderData?.restaurantId &&
+        restaurantId &&
+        String(orderData.restaurantId) !== String(restaurantId);
+      if (otherOutlet) return;
 
       setNewOrder(orderData);
 
