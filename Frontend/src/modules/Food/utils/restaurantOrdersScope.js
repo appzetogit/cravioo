@@ -15,3 +15,23 @@ export function setRestaurantOrdersScope(scope) {
     /* storage unavailable: fall back to per-outlet view */
   }
 }
+
+const OUTLET_NAMES_KEY = "restaurant_outlet_names";
+
+export function cacheOutletNames(outlets = []) {
+  try {
+    const map = Object.fromEntries(outlets.map((o) => [String(o.id), o.restaurantName || ""]));
+    localStorage.setItem(OUTLET_NAMES_KEY, JSON.stringify(map));
+  } catch {
+    /* storage unavailable: outlet labels are simply omitted */
+  }
+}
+
+export function getOutletNameById(outletId) {
+  try {
+    const map = JSON.parse(localStorage.getItem(OUTLET_NAMES_KEY) || "{}");
+    return map[String(outletId)] || "";
+  } catch {
+    return "";
+  }
+}

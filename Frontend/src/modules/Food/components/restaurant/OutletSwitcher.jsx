@@ -3,6 +3,7 @@ import { toast } from "react-hot-toast";
 import { restaurantAPI } from "@food/api";
 import { setAuthData } from "@food/utils/auth";
 import {
+  cacheOutletNames,
   getRestaurantOrdersScope,
   setRestaurantOrdersScope,
 } from "@food/utils/restaurantOrdersScope";
@@ -19,7 +20,9 @@ export default function OutletSwitcher() {
       .listOutlets()
       .then((res) => {
         if (cancelled) return;
-        setOutlets(res?.data?.data?.outlets || []);
+        const list = res?.data?.data?.outlets || [];
+        setOutlets(list);
+        cacheOutletNames(list);
         setActiveOutletId(res?.data?.data?.activeOutletId || "");
       })
       .catch(() => {});
@@ -58,10 +61,18 @@ export default function OutletSwitcher() {
     try {
       setBusy(true);
       const res = await restaurantAPI.addOutlet(name.trim());
-      const newOutletId = res?.data?.data?.outlet?.id;
-      if (!newOutletId) throw new Error("Could not create outlet");
+      const created = res?.data?.data;
+      if (!created?.outlet?.id || !created?.registrationToken) {
+        throw new Error("Could not create outlet");
+      }
+      const session = await restaurantAPI.switchOutlet(created.outlet.id);
+      const sessionData = session?.data?.data;
+      if (!sessionData?.accessToken) throw new Error("Could not open the new outlet");
+      setAuthData("restaurant", sessionData.accessToken, sessionData.user, sessionData.refreshToken);
+      // Onboarding for the new outlet authenticates with the outlet-scoped registration token.
+      sessionStorage.setItem("restaurant_registrationToken", created.registrationToken);
       toast.success("Outlet created. Complete its onboarding.");
-      await handleSwitch(newOutletId);
+      window.location.href = "/food/restaurant/onboarding?step=2";
     } catch (err) {
       toast.error(err?.response?.data?.message || err.message || "Could not add outlet");
       setBusy(false);

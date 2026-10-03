@@ -2,6 +2,7 @@ import express from 'express';
 import { AuthError } from '../../../../core/auth/errors.js';
 import { invalidateCategoryCaches } from '../../shared/categoryCache.js';
 import * as adminController from '../controllers/admin.controller.js';
+import { getOwnerWithOutlets } from '../../restaurant/services/restaurantOutlet.service.js';
 import * as advertisementController from '../controllers/advertisement.controller.js';
 import roleRoutes from './role.routes.js';
 import diningAdminRoutes from '../../dining/routes/adminDining.routes.js';
@@ -94,6 +95,22 @@ router.get('/reports/transactions', checkPermission('food::report_management::tr
 router.get('/reports/tax', checkPermission('food::report_management::tax', 'view'), adminController.getTaxReport);
 router.get('/reports/tax/:id', checkPermission('food::report_management::tax', 'view'), adminController.getTaxReportDetail);
 router.get('/restaurants/pending', checkPermission('food::restaurant_management::restaurants::joining_request', 'view'), adminController.getPendingRestaurants);
+router.get('/restaurant-owners/:ownerId', checkPermission('food::restaurant_management::restaurants::joining_request', 'view'), async (req, res, next) => {
+    try {
+        const data = await getOwnerWithOutlets(req.params.ownerId);
+        return res.status(200).json({ success: true, message: 'Owner outlets retrieved', data });
+    } catch (err) {
+        next(err);
+    }
+});
+router.get('/restaurant-owners/:ownerId', checkPermission('food::restaurant_management::restaurants::joining_request', 'view'), async (req, res, next) => {
+    try {
+        const data = await getOwnerWithOutlets(req.params.ownerId);
+        return sendResponse(res, 200, 'Owner outlets retrieved', data);
+    } catch (err) {
+        next(err);
+    }
+});
 router.get('/restaurants/reviews', checkPermission('food::restaurant_management::restaurants::reviews', 'view'), adminController.getRestaurantReviews);
 router.get('/restaurants/:id', checkPermission('food::restaurant_management::restaurants::list', 'view'), adminController.getRestaurantById);
 router.get('/pos-analytics/search', checkPermission('food::restaurant_management::restaurants::list', 'view'), adminController.searchPosAnalytics);

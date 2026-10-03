@@ -20,3 +20,5 @@ fudron_user/
 *.aab
 **/build/
 
+config.bat
+node_modules
