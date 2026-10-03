@@ -3,6 +3,7 @@ import { sendResponse, sendError } from '../../../../utils/response.js';
 import { FoodRestaurantWithdrawal } from '../models/foodRestaurantWithdrawal.model.js';
 import { FoodRestaurantWallet } from '../models/restaurantWallet.model.js';
 import { FoodRestaurant } from '../models/restaurant.model.js';
+import { RestaurantOwner } from '../models/restaurantOwner.model.js';
 import { getRestaurantAvailableWithdrawalBalance, selfHealRestaurantFinanceLedger } from '../services/restaurantFinance.service.js';
 import { getRestaurantWithdrawalLimitSettings, getRestaurantWithdrawalDayStatus } from '../../admin/services/admin.service.js';
 
@@ -85,11 +86,23 @@ export const createWithdrawalRequestController = async (req, res, next) => {
 
         const [restaurant, limitSettings] = await Promise.all([
             FoodRestaurant.findById(rid)
-                .select('restaurantName accountNumber ifscCode bankName accountHolderName')
+                .select('restaurantName accountNumber ifscCode bankName accountHolderName ownerId')
                 .lean(),
             getRestaurantWithdrawalLimitSettings()
         ]);
         if (!restaurant) return sendError(res, 404, 'Restaurant not found');
+        // Multi-outlet owners keep one payout account on the owner; outlets without their own use it.
+        if (!restaurant.accountNumber && restaurant.ownerId) {
+            const owner = await RestaurantOwner.findById(restaurant.ownerId)
+                .select('accountNumber ifscCode bankName accountHolderName')
+                .lean();
+            if (owner?.accountNumber) {
+                restaurant.accountNumber = owner.accountNumber;
+                restaurant.ifscCode = owner.ifscCode;
+                restaurant.bankName = owner.bankName;
+                restaurant.accountHolderName = owner.accountHolderName;
+            }
+        }
 
         const dayStatus = getRestaurantWithdrawalDayStatus(limitSettings.restaurantWithdrawalDay);
         if (!dayStatus.allowed) {

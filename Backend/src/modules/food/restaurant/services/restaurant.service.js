@@ -875,13 +875,17 @@ const notifyAdminsAboutRestaurantProfileReview = async (restaurantId, restaurant
 
 // };
 
-export const getOnboardingDraftByPhone = async (phone) => {
+export const getOnboardingDraftByPhone = async (phone, scope = {}) => {
     const { digits: ownerPhoneDigits, last10: ownerPhoneLast10 } = normalizePhone(phone);
     if (!ownerPhoneLast10) return null;
 
+    const outletScope = scope.outletId && scope.ownerId
+        ? { _id: scope.outletId, ownerId: scope.ownerId }
+        : { $or: buildPhoneConflictConditions(ownerPhoneLast10, ownerPhoneDigits) };
+
     const doc = await FoodRestaurant.findOne({
         status: 'onboarding',
-        $or: buildPhoneConflictConditions(ownerPhoneLast10, ownerPhoneDigits)
+        ...outletScope,
     }).lean();
 
     if (!doc) return null;

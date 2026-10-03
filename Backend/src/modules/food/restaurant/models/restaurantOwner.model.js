@@ -14,6 +14,7 @@ const restaurantOwnerSchema = new mongoose.Schema(
     accountHolderName: { type: String, trim: true },
     accountNumber: { type: String, trim: true },
     ifscCode: { type: String, trim: true },
+    bankName: { type: String, trim: true },
     accountType: { type: String, trim: true },
     upiId: { type: String, trim: true },
     upiQrImage: { type: String },
