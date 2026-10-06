@@ -82,7 +82,9 @@ const triggerWebViewNativeNotification = async (orderData = {}) => {
  * @returns {object} - { newOrder, playSound, isConnected }
  */
 export const useRestaurantNotifications = (options = {}) => {
-  const { enableSound = true } = options;
+  const { enableSound = true, onOrderStatusUpdate } = options;
+  const onOrderStatusUpdateRef = useRef(onOrderStatusUpdate);
+  onOrderStatusUpdateRef.current = onOrderStatusUpdate;
   const socketRef = useRef(null);
   const [newOrder, setNewOrder] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
@@ -628,6 +630,18 @@ export const useRestaurantNotifications = (options = {}) => {
     // Listen for order status updates
     socketRef.current.on('order_status_update', (data) => {
       debugLog('?? Order status update:', data);
+
+      // Any status change reaching this socket (self-initiated, another tab/device,
+      // or a delayed delivery after a reconnect) must refresh the visible order lists -
+      // previously only a self-initiated REST accept/reject triggered a refresh, so a
+      // status change arriving purely via socket never updated the dashboard until a
+      // manual page reload.
+      try {
+        onOrderStatusUpdateRef.current?.(data);
+      } catch {
+        // Non-blocking: list refresh is best-effort from this listener.
+      }
+
       const updatedIds = [
         String(data?.orderId || '').trim(),
         String(data?.orderMongoId || '').trim(),

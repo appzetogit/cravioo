@@ -1663,8 +1663,20 @@ export default function OrdersMain() {
   }, []);
 
   // Restaurant notifications hook for real-time orders
+  const [ordersRefreshToken, setOrdersRefreshToken] = useState(0);
+  const refreshDebounceRef = useRef(null);
+  const requestOrdersRefresh = useCallback(() => {
+    if (refreshDebounceRef.current) clearTimeout(refreshDebounceRef.current);
+    refreshDebounceRef.current = setTimeout(() => {
+      invalidateRestaurantOrdersCache();
+      setOrdersRefreshToken((t) => t + 1);
+      refreshDebounceRef.current = null;
+    }, 400);
+  }, []);
+
   const { newOrder, clearNewOrder, isConnected } = useRestaurantNotifications({
     enableSound: false,
+    onOrderStatusUpdate: requestOrdersRefresh,
   });
 
   const rejectReasons = [
@@ -1882,17 +1894,6 @@ export default function OrdersMain() {
       window.removeEventListener("pointerdown", unlockAudio);
       window.removeEventListener("keydown", unlockAudio);
     };
-  }, []);
-
-  const [ordersRefreshToken, setOrdersRefreshToken] = useState(0);
-  const refreshDebounceRef = useRef(null);
-  const requestOrdersRefresh = useCallback(() => {
-    if (refreshDebounceRef.current) clearTimeout(refreshDebounceRef.current);
-    refreshDebounceRef.current = setTimeout(() => {
-      invalidateRestaurantOrdersCache();
-      setOrdersRefreshToken((t) => t + 1);
-      refreshDebounceRef.current = null;
-    }, 400);
   }, []);
 
   useEffect(() => {

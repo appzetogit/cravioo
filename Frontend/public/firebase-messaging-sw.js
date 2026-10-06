@@ -107,19 +107,6 @@ function clientMatchesPayloadAudience(client, audience, payload = {}) {
   }
 }
 
-async function hasOpenClientForAudience(payload = {}) {
-  const audience = getAudienceFromPayload(payload);
-  const windowClients = await clients.matchAll({ type: "window", includeUncontrolled: true });
-  const matching = windowClients.find((client) =>
-    clientMatchesPayloadAudience(client, audience, payload),
-  );
-  pushDebugLog(PUSH_DEBUG_PREFIX, "Open audience client check", {
-    audience,
-    hasOpenClient: Boolean(matching),
-  });
-  return Boolean(matching);
-}
-
 async function hasVisibleClientForAudience(payload = {}) {
   const audience = getAudienceFromPayload(payload);
   const windowClients = await clients.matchAll({ type: "window", includeUncontrolled: true });
@@ -184,16 +171,17 @@ async function loadFirebaseWebConfig() {
     pushDebugLog(PUSH_DEBUG_PREFIX, "Received Firebase background message", { payload });
 
     const audience = getAudienceFromPayload(payload);
-    // CRITICAL: If ANY matching-role tab exists (even backgrounded / not focused),
-    // do NOT show a system notification. OS notifications are global and would
-    // appear while the User tab is focused — looking like the User app received
-    // "New order received". Socket + page relay handle the restaurant/delivery tab.
-    const openAudienceClient = await hasOpenClientForAudience(payload);
-    const visibleClient = openAudienceClient
-      ? await hasVisibleClientForAudience(payload)
-      : false;
+    // Only suppress the OS notification when a matching-role tab is actually VISIBLE
+    // (foreground) right now — the live socket + in-app relay reliably reach that tab.
+    // A matching-role tab that merely exists but is minimized/backgrounded (e.g. a
+    // restaurant dashboard left open on a secondary screen) can have its JS timers and
+    // socket connection throttled or suspended by the browser, so checking only
+    // "open" (not "visible") silently dropped the alert with no OS notification and no
+    // live socket update to fall back on. Falling back to "open" here would reproduce
+    // that bug — do not change this back without re-reading the comment above.
+    const visibleClient = await hasVisibleClientForAudience(payload);
 
-    if (!openAudienceClient) {
+    if (!visibleClient) {
       const title = payload?.notification?.title || payload?.data?.title || "New Notification";
       const body = payload?.notification?.body || payload?.data?.body || "";
       const image =
