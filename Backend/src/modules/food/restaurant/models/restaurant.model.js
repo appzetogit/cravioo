@@ -588,16 +588,10 @@ restaurantSchema.index(
     },
   },
 );
-// Unique index for owner phone last 10 digits
-restaurantSchema.index(
-  { ownerPhoneLast10: 1 },
-  {
-    unique: true,
-    partialFilterExpression: {
-      ownerPhoneLast10: { $type: "string" },
-    },
-  },
-);
+// One owner phone can now back several outlets (see RestaurantOwner). Outlets of the
+// same owner are looked up by ownerId; the phone itself is no longer unique per outlet.
+restaurantSchema.index({ ownerPhoneLast10: 1 });
+restaurantSchema.index({ ownerId: 1 });
 // Unique index for primary contact number last 10 digits
 restaurantSchema.index(
   { primaryContactNumberLast10: 1 },

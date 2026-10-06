@@ -124,7 +124,7 @@ const buildPhoneConflictConditions = (phoneLast10, phoneDigits = '') => {
     return conditions;
 };
 
-const findRestaurantUsingPhoneLast10 = async (phoneLast10, excludeRestaurantId = null, phoneDigits = '') => {
+const findRestaurantUsingPhoneLast10 = async (phoneLast10, excludeRestaurantId = null, phoneDigits = '', ownerId = null) => {
     if (!phoneLast10) return null;
 
     const query = {
@@ -133,6 +133,11 @@ const findRestaurantUsingPhoneLast10 = async (phoneLast10, excludeRestaurantId =
 
     if (excludeRestaurantId && mongoose.Types.ObjectId.isValid(String(excludeRestaurantId))) {
         query._id = { $ne: new mongoose.Types.ObjectId(String(excludeRestaurantId)) };
+    }
+
+    // Outlets of the same owner share a phone by design; only other owners conflict.
+    if (ownerId && mongoose.Types.ObjectId.isValid(String(ownerId))) {
+        query.ownerId = { $ne: new mongoose.Types.ObjectId(String(ownerId)) };
     }
 
     const duplicateRestaurant = await FoodRestaurant.findOne(query).select('_id').lean();
@@ -146,7 +151,8 @@ export const validateRestaurantPhoneUniqueness = async ({
     ownerPhone,
     primaryContactNumber,
     restaurantId = null,
-    currentRestaurant = null
+    currentRestaurant = null,
+    ownerId = null
 }) => {
     console.log('VALIDATE PHONE', ownerPhone, primaryContactNumber);
     const currentOwnerLast10 =
@@ -164,7 +170,7 @@ export const validateRestaurantPhoneUniqueness = async ({
             throw new ValidationError('Owner phone is invalid');
         }
         if (last10 && last10 !== currentOwnerLast10) {
-            const conflict = await findRestaurantUsingPhoneLast10(last10, restaurantId, digits);
+            const conflict = await findRestaurantUsingPhoneLast10(last10, restaurantId, digits, ownerId);
             if (conflict) {
                 throw new ValidationError(DUPLICATE_OWNER_PHONE_MESSAGE);
             }
@@ -869,13 +875,17 @@ const notifyAdminsAboutRestaurantProfileReview = async (restaurantId, restaurant
 
 // };
 
-export const getOnboardingDraftByPhone = async (phone) => {
+export const getOnboardingDraftByPhone = async (phone, scope = {}) => {
     const { digits: ownerPhoneDigits, last10: ownerPhoneLast10 } = normalizePhone(phone);
     if (!ownerPhoneLast10) return null;
 
+    const outletScope = scope.outletId && scope.ownerId
+        ? { _id: scope.outletId, ownerId: scope.ownerId }
+        : { $or: buildPhoneConflictConditions(ownerPhoneLast10, ownerPhoneDigits) };
+
     const doc = await FoodRestaurant.findOne({
         status: 'onboarding',
-        $or: buildPhoneConflictConditions(ownerPhoneLast10, ownerPhoneDigits)
+        ...outletScope,
     }).lean();
 
     if (!doc) return null;
@@ -889,6 +899,15 @@ const findRestaurantByOwnerPhone = async (ownerPhone) => {
     return FoodRestaurant.findOne({
         $or: buildPhoneConflictConditions(ownerPhoneLast10, ownerPhoneDigits)
     });
+};
+
+/** Multi-outlet owners onboard a specific outlet via its registration token; phone lookup is only for the first outlet. */
+const findRestaurantForOnboardingScope = async (ownerPhone, scope = {}) => {
+    if (scope.outletId && scope.ownerId) {
+        if (!mongoose.Types.ObjectId.isValid(String(scope.outletId))) return null;
+        return FoodRestaurant.findOne({ _id: scope.outletId, ownerId: scope.ownerId });
+    }
+    return findRestaurantByOwnerPhone(ownerPhone);
 };
 
 const buildStep1Data = (payload) => {
@@ -978,7 +997,7 @@ const buildStep1Data = (payload) => {
     };
 };
 
-export const saveOnboardingStep = async (stepNum, payload, files) => {
+export const saveOnboardingStep = async (stepNum, payload, files, scope = {}) => {
     console.log('SERVICE HIT');
     const step = Number(stepNum);
     if (![1, 2, 3].includes(step)) {
@@ -990,7 +1009,7 @@ export const saveOnboardingStep = async (stepNum, payload, files) => {
         throw new ValidationError('Owner phone is required');
     }
 
-    const existingRestaurant = await findRestaurantByOwnerPhone(ownerPhone);
+    const existingRestaurant = await findRestaurantForOnboardingScope(ownerPhone, scope);
     const onboardingRestaurant =
         existingRestaurant && existingRestaurant.status === 'onboarding' ? existingRestaurant : null;
 
@@ -999,6 +1018,7 @@ export const saveOnboardingStep = async (stepNum, payload, files) => {
         primaryContactNumber: payload.primaryContactNumber || ownerPhone,
         restaurantId: onboardingRestaurant?._id || null,
         currentRestaurant: onboardingRestaurant || null,
+        ownerId: scope.ownerId || null,
     });
 
     if (existingRestaurant) {
@@ -1158,7 +1178,7 @@ export const saveOnboardingStep = async (stepNum, payload, files) => {
 };
 
 // new code
-export const registerRestaurant = async (payload, files, authUserId) => {
+export const registerRestaurant = async (payload, files, authUserId, scope = {}) => {
     const {
         restaurantName,
         ownerName,
@@ -1216,7 +1236,7 @@ export const registerRestaurant = async (payload, files, authUserId) => {
     // Normalize primary contact number
     const { digits: primaryContactDigits, last10: primaryContactLast10 } = normalizePhone(primaryContactNumber || ownerPhone);
 
-    let existingRestaurant = await findRestaurantByOwnerPhone(ownerPhone);
+    let existingRestaurant = await findRestaurantForOnboardingScope(ownerPhone, scope);
 
     if (!existingRestaurant && authUserId) {
         existingRestaurant = await FoodRestaurant.findById(authUserId);
@@ -1235,6 +1255,7 @@ export const registerRestaurant = async (payload, files, authUserId) => {
         primaryContactNumber: primaryContactNumber || ownerPhone,
         restaurantId: excludeRestaurant?._id || null,
         currentRestaurant: excludeRestaurant || null,
+        ownerId: scope.ownerId || null,
     });
 
     if (existingRestaurant && authUserId && String(existingRestaurant._id) !== String(authUserId)) {
@@ -1885,6 +1906,7 @@ export const updateRestaurantProfile = async (restaurantId, body = {}) => {
             primaryContactNumber: body.primaryContactNumber,
             restaurantId,
             currentRestaurant,
+            ownerId: currentRestaurant?.ownerId || null,
         });
     }
 

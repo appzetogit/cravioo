@@ -535,6 +535,7 @@ function omitNullish(value) {
  */
 export const RESTAURANT_ORDER_LIST_SELECT = [
   "orderId",
+  "restaurantId",
   "orderStatus",
   "createdAt",
   "updatedAt",

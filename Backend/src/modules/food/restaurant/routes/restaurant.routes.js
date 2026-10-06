@@ -19,7 +19,10 @@ import {
     deleteRestaurantAccountController,
     getRestaurantReferralStatsController,
     getRestaurantReferralDetailsController,
-    checkSubscriptionEligibilityController
+    checkSubscriptionEligibilityController,
+    listOwnerOutletsController,
+    switchOutletController,
+    addOutletController
 } from '../controllers/restaurant.controller.js';
 import {
     createRestaurantSupportTicketController,
@@ -181,6 +184,11 @@ router.get('/restaurants/:id/outlet-timings', cacheResponse(600, 'restaurant_tim
 router.get('/offers', optionalAuthMiddleware, listPublicOffersController);
 // Public: categories list (zone-aware; returns zone categories + global)
 router.get('/categories/public', cacheResponse(600, 'categories'), listCategoriesController);
+
+// Multi-outlet owner: list, switch active outlet, add a new outlet under the same owner.
+router.get('/outlets', authMiddleware, requireRestaurant, listOwnerOutletsController);
+router.post('/outlets/switch', authMiddleware, requireRestaurant, switchOutletController);
+router.post('/outlets', authMiddleware, requireRestaurant, requireApprovedRestaurant, addOutletController);
 
 // Restaurant dashboard/profile (Bearer token + RESTAURANT role)
 // /current stays open for first-time pending status polling; privileged routes need approval.

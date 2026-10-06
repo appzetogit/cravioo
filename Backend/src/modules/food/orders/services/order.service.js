@@ -4211,10 +4211,13 @@ export async function submitOrderRatings(orderId, userId, dto) {
 }
 
 // ----- Restaurant -----
-export async function listOrdersRestaurant(restaurantId, query) {
+export async function listOrdersRestaurant(restaurantId, query, { restaurantIds = null } = {}) {
   const { page, limit, skip } = buildPaginationOptions(query);
+  const outletFilter = restaurantIds?.length
+    ? { restaurantId: { $in: restaurantIds.map((id) => new mongoose.Types.ObjectId(id)) } }
+    : { restaurantId: new mongoose.Types.ObjectId(restaurantId) };
   const filter = {
-    restaurantId: new mongoose.Types.ObjectId(restaurantId),
+    ...outletFilter,
     $or: [
       { "payment.method": { $in: ["cash", "wallet"] } },
       { "payment.status": { $in: ["paid", "authorized", "captured", "settled", "refunded"] } },

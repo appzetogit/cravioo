@@ -25,13 +25,15 @@ const REGISTRATION_PURPOSE = 'restaurant_onboarding';
 const SELLER_REGISTRATION_PURPOSE = 'seller_onboarding';
 
 /** Short-lived proof that a phone completed OTP (for onboarding draft/step APIs). */
-export const signRestaurantRegistrationToken = (phone) => {
+export const signRestaurantRegistrationToken = (phone, { outletId = null, ownerId = null } = {}) => {
     const digits = String(phone || '').replace(/\D/g, '');
     return jwt.sign(
         {
             purpose: REGISTRATION_PURPOSE,
             phone: digits,
             phoneLast10: digits.slice(-10),
+            ...(outletId ? { outletId: String(outletId) } : {}),
+            ...(ownerId ? { ownerId: String(ownerId) } : {}),
         },
         config.jwtAccessSecret,
         { expiresIn: '2h' }

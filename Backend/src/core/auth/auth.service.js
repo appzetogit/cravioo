@@ -52,6 +52,7 @@ const rotateRefreshTokenSession = async (stored, payload) => {
   const refreshToken = signRefreshToken({
     userId: payload.userId,
     role: payload.role,
+    ...(payload.ownerId ? { ownerId: payload.ownerId } : {}),
     familyId,
   });
   const ttlMs = ms(config.jwtRefreshExpiresIn || "7d");
@@ -556,12 +557,18 @@ export const verifyRestaurantOtpAndLogin = async (phone, otp, fcmToken, platform
     ...(last10 ? [{ [field]: { $regex: new RegExp(last10 + "$") } }] : []),
   ];
 
-  const restaurant = await FoodRestaurant.findOne({
+  // One owner phone can back several outlets. Log in to the most useful one:
+  // an approved outlet first, otherwise the earliest created.
+  const outletCandidates = await FoodRestaurant.find({
     $or: [
       ...phoneOrFields("ownerPhone"),
       ...phoneOrFields("primaryContactNumber"),
     ],
-  });
+  })
+    .sort({ createdAt: 1 })
+    .limit(50);
+  const restaurant =
+    outletCandidates.find((r) => r.status === "approved") || outletCandidates[0] || null;
   if (!restaurant) {
     // Phone has been successfully verified, but no restaurant exists yet.
     // Frontend will use this to redirect into registration/onboarding.
@@ -634,7 +641,11 @@ export const issueRestaurantSession = async (restaurant) => {
     throw new ValidationError("Restaurant is required");
   }
 
-  const payload = { userId: restaurant._id.toString(), role: ROLES.RESTAURANT };
+  const payload = {
+    userId: restaurant._id.toString(),
+    role: ROLES.RESTAURANT,
+    ...(restaurant.ownerId ? { ownerId: String(restaurant.ownerId) } : {}),
+  };
   const accessToken = signAccessToken(payload);
   const { refreshToken } = await createRefreshTokenSession(restaurant._id, payload);
 
@@ -1346,10 +1357,12 @@ export const refreshAccessToken = async (token) => {
     }
   }
 
-  const newAccessToken = signAccessToken({
+  const carriedClaims = {
     userId: payload.userId,
     role: payload.role,
-  });
+    ...(payload.ownerId ? { ownerId: payload.ownerId } : {}),
+  };
+  const newAccessToken = signAccessToken(carriedClaims);
   const newRefreshToken = await rotateRefreshTokenSession(stored, payload);
 
   return { accessToken: newAccessToken, refreshToken: newRefreshToken };

@@ -4,6 +4,7 @@
 
 import apiClient from "./axios.js";
 import { getWithDedupe } from "@core/api/dedupe";
+import { getRestaurantOrdersScope } from "../../modules/Food/utils/restaurantOrdersScope.js";
 import { API_ENDPOINTS } from "./config.js";
 import * as authService from "./auth.js";
 
@@ -1295,6 +1296,15 @@ export const restaurantAPI = {
     return authService.verifyRestaurantOtp(phone, otp, fcmToken, platform);
   },
   getMe: () => authService.getMe("restaurant"),
+  /** Multi-outlet owner: outlets under this account plus the currently active one. */
+  listOutlets: () =>
+    apiClient.get("/food/restaurant/outlets", { contextModule: "restaurant" }),
+  /** Switch the session to another outlet of the same owner (returns a fresh session). */
+  switchOutlet: (outletId) =>
+    apiClient.post("/food/restaurant/outlets/switch", { outletId }, { contextModule: "restaurant" }),
+  /** Create a new outlet under the same owner account. */
+  addOutlet: (restaurantName) =>
+    apiClient.post("/food/restaurant/outlets", { restaurantName }, { contextModule: "restaurant" }),
   /** Restaurant dashboard: fetch current restaurant profile (deduped + short-cached). */
   getCurrentRestaurant: () => getRestaurantCurrentOnce(),
   /**
@@ -1640,7 +1650,12 @@ export const restaurantAPI = {
 
     const buildKey = (p = {}) => JSON.stringify({ ...DASHBOARD_DEFAULTS, ...p });
 
-    const getOrders = (params = {}) => {
+    const getOrders = (requestedParams = {}) => {
+      // "All outlets" view applies everywhere the dashboard list is read, unless a caller pins a scope.
+      const params =
+        getRestaurantOrdersScope() === "all" && !requestedParams.scope
+          ? { ...requestedParams, scope: "all" }
+          : requestedParams;
       const key = buildKey(params);
       const now = Date.now();
 
