@@ -126,8 +126,9 @@ export const addOutlet = async (user, { restaurantName }) => {
       ownerName: owner.ownerName || current.ownerName,
       ownerEmail: owner.ownerEmail || current.ownerEmail,
       ...pickOwnerFields(owner),
+      zoneId: current.zoneId || undefined,
       status: "onboarding",
-      onboardingStep: 2,
+      onboardingStep: 1,
     });
   } catch (err) {
     if (err?.code === 11000 && err?.keyPattern?.restaurantNameNormalized) {

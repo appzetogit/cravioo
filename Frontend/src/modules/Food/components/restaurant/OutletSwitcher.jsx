@@ -85,7 +85,7 @@ export default function OutletSwitcher() {
       // Onboarding for the new outlet authenticates with the outlet-scoped registration token.
       sessionStorage.setItem("restaurant_registrationToken", created.registrationToken);
       toast.success("Outlet created. Complete its onboarding.");
-      window.location.href = "/food/restaurant/onboarding?step=2";
+      window.location.href = "/food/restaurant/onboarding?step=1";
     } catch (err) {
       toast.error(err?.response?.data?.message || err.message || "Could not add outlet");
       setBusy(false);
