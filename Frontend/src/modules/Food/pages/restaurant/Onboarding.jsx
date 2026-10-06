@@ -561,6 +561,7 @@ export default function RestaurantOnboarding() {
   )
   const [keyboardInset, setKeyboardInset] = useState(0)
   const [isEditing, setIsEditing] = useState(true)
+  const [isAdditionalOutlet, setIsAdditionalOutlet] = useState(false)
   const [isFssaiCalendarOpen, setIsFssaiCalendarOpen] = useState(false)
   const [zones, setZones] = useState([])
   const [zonesLoading, setZonesLoading] = useState(false)
@@ -866,6 +867,7 @@ export default function RestaurantOnboarding() {
         // 2. Overlay Server Data
         if (serverData) {
           onboardingDraftRef.current = serverData
+          setIsAdditionalOutlet(Boolean(serverData.isAdditionalOutlet))
           setIsEditing(serverData.status === "rejected" || serverData.status === "pending" || serverData.status === "onboarding")
 
           if (serverData.status === "rejected") {
@@ -1239,10 +1241,16 @@ export default function RestaurantOnboarding() {
     let validationErrors = {}
     if (step === 1) {
       validationErrors = validateOnboardingStep1(step1, zones)
+      if (isAdditionalOutlet) {
+        for (const key of ['ownerName', 'ownerEmail', 'ownerPhone', 'zoneId']) delete validationErrors[key]
+      }
     } else if (step === 2) {
       validationErrors = validateOnboardingStep2(step2)
     } else if (step === 3) {
       validationErrors = validateOnboardingStep3(step3, getTodayLocalYMD)
+      if (isAdditionalOutlet) {
+        for (const key of ['panNumber', 'nameOnPan', 'panImage', 'accountNumber', 'confirmAccountNumber', 'ifscCode', 'accountHolderName', 'accountType']) delete validationErrors[key]
+      }
     } else if (step === 4) {
       validationErrors = validateOnboardingStep4(step4)
     }
@@ -1609,6 +1617,7 @@ export default function RestaurantOnboarding() {
         </div>
       </section>
 
+      {!isAdditionalOutlet && (
       <section className={ONBOARDING_SECTION}>
         <h2 className={ONBOARDING_SECTION_TITLE}>Owner details</h2>
         <p className={ONBOARDING_SECTION_DESC}>
@@ -1688,6 +1697,7 @@ export default function RestaurantOnboarding() {
           </div>
         </div>
       </section>
+      )}
 
       <section className={`${ONBOARDING_SECTION} space-y-4`}>
         <h2 className={ONBOARDING_SECTION_TITLE}>Restaurant contact & location</h2>
@@ -1734,6 +1744,7 @@ export default function RestaurantOnboarding() {
             zoneId={step1.zoneId}
             zones={zones}
             zonesLoading={zonesLoading}
+            zoneLocked={isAdditionalOutlet}
             isEditing={isEditing}
             location={step1.location}
             onZoneChange={handleZoneChange}
@@ -2158,6 +2169,7 @@ export default function RestaurantOnboarding() {
 
   const renderStep3 = () => (
     <div className="space-y-5 lg:space-y-6">
+      {!isAdditionalOutlet && (
       <section className={`${ONBOARDING_SECTION} space-y-4`}>
         <h2 className={ONBOARDING_SECTION_TITLE}>PAN details</h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -2255,6 +2267,7 @@ export default function RestaurantOnboarding() {
           <FieldErrorMsg message={fieldErrors.panImage} />
         </div>
       </section>
+      )}
 
       <section className={`${ONBOARDING_SECTION} space-y-4`}>
         <h2 className={ONBOARDING_SECTION_TITLE}>GST details</h2>
@@ -2503,6 +2516,7 @@ export default function RestaurantOnboarding() {
         </div>
       </section>
 
+      {!isAdditionalOutlet && (
       <section className={`${ONBOARDING_SECTION} space-y-4`}>
         <h2 className={ONBOARDING_SECTION_TITLE}>Bank account details</h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -2583,6 +2597,7 @@ export default function RestaurantOnboarding() {
         />
         <FieldErrorMsg message={fieldErrors.accountHolderName} />
       </section>
+      )}
     </div>
   )
 

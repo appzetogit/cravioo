@@ -125,6 +125,7 @@ export default function OnboardingLocationSection({
   onZoneChange,
   onLocationChange,
   zoneError = "",
+  zoneLocked = false,
   locationError = "",
 }) {
   const mapContainerRef = useRef(null)
@@ -537,7 +538,7 @@ export default function OnboardingLocationSection({
         <Select
           value={zoneId || ""}
           onValueChange={handleZoneSelect}
-          disabled={zonesLoading || !isEditing}
+          disabled={zonesLoading || !isEditing || zoneLocked}
         >
           <SelectTrigger className={zoneTriggerClass}>
             <SelectValue

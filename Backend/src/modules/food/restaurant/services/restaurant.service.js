@@ -323,6 +323,7 @@ const toRestaurantProfile = (doc) => {
         name: doc.restaurantName || '',
         restaurantName: doc.restaurantName || '',
         zoneId: doc.zoneId ? String(doc.zoneId) : '',
+        isAdditionalOutlet: Boolean(doc.ownerId),
         cuisines: Array.isArray(doc.cuisines) ? doc.cuisines : [],
         location,
         ownerName: doc.ownerName || '',
