@@ -145,35 +145,43 @@ export default function OutletSwitcher() {
       </Button>
 
       <Dialog open={showAddDialog} onOpenChange={(open) => !busy && setShowAddDialog(open)}>
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <div className="mx-auto sm:mx-0 mb-1 flex h-10 w-10 items-center justify-center rounded-full bg-[#32C45A]/10 text-[#32C45A]">
+        <DialogContent className="sm:max-w-md p-6 flex flex-col gap-5">
+          <DialogHeader className="gap-3 pr-8">
+            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#32C45A]/10 text-[#32C45A]">
               <Store className="h-5 w-5" />
             </div>
-            <DialogTitle>Add a new outlet</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="text-xl">Add a new outlet</DialogTitle>
+            <DialogDescription className="text-sm leading-relaxed">
               Your existing restaurant details, PAN and bank account carry over automatically.
               You'll only need to fill in this outlet's own location, menu and documents.
             </DialogDescription>
           </DialogHeader>
 
-          <Input
-            autoFocus
-            value={newOutletName}
-            onChange={(e) => setNewOutletName(e.target.value)}
-            placeholder="Outlet name (e.g. Sweet Jain - Andheri)"
-            disabled={busy}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") handleAddOutlet();
-            }}
-          />
+          <div className="flex flex-col gap-2">
+            <label htmlFor="new-outlet-name" className="text-sm font-semibold text-slate-700">
+              Outlet name
+            </label>
+            <Input
+              id="new-outlet-name"
+              autoFocus
+              value={newOutletName}
+              onChange={(e) => setNewOutletName(e.target.value)}
+              placeholder="e.g. Sweet Jain - Andheri"
+              disabled={busy}
+              className="h-11"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleAddOutlet();
+              }}
+            />
+          </div>
 
-          <DialogFooter>
+          <DialogFooter className="gap-3 sm:gap-3">
             <Button
               type="button"
               variant="outline"
               onClick={() => setShowAddDialog(false)}
               disabled={busy}
+              className="h-11 w-full sm:w-auto sm:min-w-28"
             >
               Cancel
             </Button>
@@ -181,7 +189,7 @@ export default function OutletSwitcher() {
               type="button"
               onClick={handleAddOutlet}
               disabled={busy || !newOutletName.trim()}
-              className="bg-[#32C45A] hover:bg-[#28A047] text-white"
+              className="h-11 w-full sm:w-auto sm:min-w-36 bg-[#32C45A] hover:bg-[#28A047] text-white"
             >
               {busy ? "Creating..." : "Create outlet"}
             </Button>
