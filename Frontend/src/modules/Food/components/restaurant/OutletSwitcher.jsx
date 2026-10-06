@@ -1,7 +1,18 @@
 import { useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
+import { Plus, Store } from "lucide-react";
 import { restaurantAPI } from "@food/api";
 import { setAuthData } from "@food/utils/auth";
+import { Button } from "@food/components/ui/button";
+import { Input } from "@food/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@food/components/ui/dialog";
 import {
   cacheOutletNames,
   getRestaurantOrdersScope,
@@ -13,6 +24,8 @@ export default function OutletSwitcher() {
   const [activeOutletId, setActiveOutletId] = useState("");
   const [scope, setScope] = useState(getRestaurantOrdersScope());
   const [busy, setBusy] = useState(false);
+  const [showAddDialog, setShowAddDialog] = useState(false);
+  const [newOutletName, setNewOutletName] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -56,11 +69,11 @@ export default function OutletSwitcher() {
   };
 
   const handleAddOutlet = async () => {
-    const name = window.prompt("New outlet name");
-    if (!name || !name.trim() || busy) return;
+    const name = newOutletName.trim();
+    if (!name || busy) return;
     try {
       setBusy(true);
-      const res = await restaurantAPI.addOutlet(name.trim());
+      const res = await restaurantAPI.addOutlet(name);
       const created = res?.data?.data;
       if (!created?.outlet?.id || !created?.registrationToken) {
         throw new Error("Could not create outlet");
@@ -117,14 +130,64 @@ export default function OutletSwitcher() {
         </div>
       )}
 
-      <button
+      <Button
         type="button"
-        onClick={handleAddOutlet}
+        size="sm"
+        onClick={() => {
+          setNewOutletName("");
+          setShowAddDialog(true);
+        }}
         disabled={busy}
-        className="ml-auto rounded-lg bg-[#32C45A] px-3 py-1 font-semibold text-white disabled:opacity-50"
+        className="ml-auto bg-[#32C45A] hover:bg-[#28A047] text-white gap-1.5"
       >
-        + Add outlet
-      </button>
+        <Plus className="w-4 h-4" />
+        Add outlet
+      </Button>
+
+      <Dialog open={showAddDialog} onOpenChange={(open) => !busy && setShowAddDialog(open)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <div className="mx-auto sm:mx-0 mb-1 flex h-10 w-10 items-center justify-center rounded-full bg-[#32C45A]/10 text-[#32C45A]">
+              <Store className="h-5 w-5" />
+            </div>
+            <DialogTitle>Add a new outlet</DialogTitle>
+            <DialogDescription>
+              Your existing restaurant details, PAN and bank account carry over automatically.
+              You'll only need to fill in this outlet's own location, menu and documents.
+            </DialogDescription>
+          </DialogHeader>
+
+          <Input
+            autoFocus
+            value={newOutletName}
+            onChange={(e) => setNewOutletName(e.target.value)}
+            placeholder="Outlet name (e.g. Sweet Jain - Andheri)"
+            disabled={busy}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleAddOutlet();
+            }}
+          />
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShowAddDialog(false)}
+              disabled={busy}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={handleAddOutlet}
+              disabled={busy || !newOutletName.trim()}
+              className="bg-[#32C45A] hover:bg-[#28A047] text-white"
+            >
+              {busy ? "Creating..." : "Create outlet"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
