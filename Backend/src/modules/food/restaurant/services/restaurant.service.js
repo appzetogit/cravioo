@@ -912,7 +912,14 @@ const findRestaurantForOnboardingScope = async (ownerPhone, scope = {}) => {
         if (!mongoose.Types.ObjectId.isValid(String(scope.outletId))) return null;
         return FoodRestaurant.findOne({ _id: scope.outletId, ownerId: scope.ownerId });
     }
-    return findRestaurantByOwnerPhone(ownerPhone);
+    // Without an outlet-scoped token, the outlet being onboarded is the in-progress one.
+    // Prefer it over an approved sibling that shares the phone.
+    const { digits, last10 } = normalizePhone(ownerPhone);
+    if (!last10) return null;
+    const matches = await FoodRestaurant.find({ $or: buildPhoneConflictConditions(last10, digits) })
+        .sort({ createdAt: -1 })
+        .limit(20);
+    return matches.find((m) => m.status === 'onboarding') || matches[0] || null;
 };
 
 const buildStep1Data = (payload) => {
