@@ -1303,8 +1303,12 @@ export const restaurantAPI = {
   switchOutlet: (outletId) =>
     apiClient.post("/food/restaurant/outlets/switch", { outletId }, { contextModule: "restaurant" }),
   /** Create a new outlet under the same owner account. */
-  addOutlet: (restaurantName) =>
-    apiClient.post("/food/restaurant/outlets", { restaurantName }, { contextModule: "restaurant" }),
+  /** Create several outlets in one request; each becomes its own onboarding record. */
+  addOutlets: (outletNames) =>
+    apiClient.post("/food/restaurant/outlets", { outlets: outletNames }, { contextModule: "restaurant" }),
+  /** Fresh onboarding token for one of this owner's outlets still being onboarded. */
+  getOutletOnboardingToken: (outletId) =>
+    apiClient.post(`/food/restaurant/outlets/${String(outletId)}/onboarding-token`, {}, { contextModule: "restaurant" }),
   /** Restaurant dashboard: fetch current restaurant profile (deduped + short-cached). */
   getCurrentRestaurant: () => getRestaurantCurrentOnce(),
   /**

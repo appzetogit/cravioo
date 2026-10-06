@@ -22,7 +22,8 @@ import {
     checkSubscriptionEligibilityController,
     listOwnerOutletsController,
     switchOutletController,
-    addOutletController
+    addOutletController,
+    outletOnboardingTokenController
 } from '../controllers/restaurant.controller.js';
 import {
     createRestaurantSupportTicketController,
@@ -189,6 +190,7 @@ router.get('/categories/public', cacheResponse(600, 'categories'), listCategorie
 router.get('/outlets', authMiddleware, requireRestaurant, listOwnerOutletsController);
 router.post('/outlets/switch', authMiddleware, requireRestaurant, switchOutletController);
 router.post('/outlets', authMiddleware, requireRestaurant, requireApprovedRestaurant, addOutletController);
+router.post('/outlets/:outletId/onboarding-token', authMiddleware, requireRestaurant, outletOnboardingTokenController);
 
 // Restaurant dashboard/profile (Bearer token + RESTAURANT role)
 // /current stays open for first-time pending status polling; privileged routes need approval.

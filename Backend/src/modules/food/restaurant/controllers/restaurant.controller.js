@@ -21,7 +21,7 @@ import {
 } from '../services/restaurantReferral.service.js';
 import { validateRestaurantRegisterDto, validateOnboardingStepDto } from '../validators/restaurant.validator.js';
 import { sendResponse } from '../../../../utils/response.js';
-import { listOwnerOutlets, switchOutlet, addOutlet, prefillAdditionalOutletBody } from '../services/restaurantOutlet.service.js';
+import { listOwnerOutlets, switchOutlet, createAdditionalOutlets, issueOutletOnboardingToken, prefillAdditionalOutletBody } from '../services/restaurantOutlet.service.js';
 
 export const registerRestaurantController = async (req, res, next) => {
     try {
@@ -293,8 +293,18 @@ export const switchOutletController = async (req, res, next) => {
 
 export const addOutletController = async (req, res, next) => {
     try {
-        const data = await addOutlet(req.user, req.body || {});
-        return sendResponse(res, 201, 'Outlet created. Complete its onboarding.', data);
+        const { outlets, restaurantName } = req.body || {};
+        const data = await createAdditionalOutlets(req.user, outlets ?? [restaurantName]);
+        return sendResponse(res, 201, 'Outlets created. Each one is onboarded separately.', data);
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const outletOnboardingTokenController = async (req, res, next) => {
+    try {
+        const data = await issueOutletOnboardingToken(req.user, req.params.outletId);
+        return sendResponse(res, 200, 'Onboarding token issued', data);
     } catch (error) {
         next(error);
     }

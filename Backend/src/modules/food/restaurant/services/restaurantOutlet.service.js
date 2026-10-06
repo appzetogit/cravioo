@@ -108,41 +108,68 @@ export const switchOutlet = async (user, targetOutletId) => {
 };
 
 /** Creates a new outlet under the caller's owner and returns a registration token scoped to it. */
-export const addOutlet = async (user, { restaurantName }) => {
-  const name = String(restaurantName || "").trim();
-  if (!name) throw new ValidationError("Outlet name is required");
+/**
+ * Creates one onboarding outlet per name under the caller's owner, in a single request.
+ * Every outlet is its own restaurant record and goes to admin separately once submitted.
+ */
+export const createAdditionalOutlets = async (user, rawNames) => {
+  const names = [
+    ...new Set((Array.isArray(rawNames) ? rawNames : [rawNames]).map((n) => String(n || "").trim()).filter(Boolean)),
+  ];
+  if (!names.length) throw new ValidationError("At least one outlet name is required");
+  if (names.length > 20) throw new ValidationError("You can add up to 20 outlets at once");
 
   const current = await loadCurrentOutlet(user.userId);
   const ownerId = await ensureOwnerForOutlet(current);
   const owner = await RestaurantOwner.findById(ownerId).lean();
 
-  let outlet;
-  try {
-    outlet = await FoodRestaurant.create({
-      restaurantName: name,
-      ownerId: owner._id,
-      ownerPhone: owner.ownerPhone,
-      primaryContactNumber: owner.ownerPhone,
-      ownerName: owner.ownerName || current.ownerName,
-      ownerEmail: owner.ownerEmail || current.ownerEmail,
-      ...pickOwnerFields(owner),
-      zoneId: current.zoneId || undefined,
-      isAdditionalOutlet: true,
-      status: "onboarding",
-      onboardingStep: 1,
-    });
-  } catch (err) {
-    if (err?.code === 11000 && err?.keyPattern?.restaurantNameNormalized) {
-      throw new ValidationError("An outlet with this name already exists on your account");
+  const created = [];
+  const failed = [];
+  for (const name of names) {
+    try {
+      const outlet = await FoodRestaurant.create({
+        restaurantName: name,
+        ownerId: owner._id,
+        ownerPhone: owner.ownerPhone,
+        primaryContactNumber: owner.ownerPhone,
+        ownerName: owner.ownerName || current.ownerName,
+        ownerEmail: owner.ownerEmail || current.ownerEmail,
+        ...pickOwnerFields(owner),
+        zoneId: current.zoneId || undefined,
+        isAdditionalOutlet: true,
+        status: "onboarding",
+        onboardingStep: 1,
+      });
+      created.push({ id: String(outlet._id), restaurantName: outlet.restaurantName, status: outlet.status });
+    } catch (err) {
+      const message =
+        err?.code === 11000 && err?.keyPattern?.restaurantNameNormalized
+          ? "An outlet with this name already exists on your account"
+          : "Could not create this outlet";
+      failed.push({ name, message });
     }
-    if (err?.code === 11000) {
-      throw new ValidationError("Could not create this outlet. Please try again or contact support.");
-    }
-    throw err;
   }
+  return { created, failed };
+};
 
+/** Fresh onboarding token for one of the caller's outlets that is still being onboarded. */
+export const issueOutletOnboardingToken = async (user, outletId) => {
+  if (!mongoose.Types.ObjectId.isValid(String(outletId || ""))) {
+    throw new ValidationError("Invalid outlet id");
+  }
+  const current = await loadCurrentOutlet(user.userId);
+  const ownerId = await ensureOwnerForOutlet(current);
+  const outlet = await FoodRestaurant.findOne({
+    _id: outletId,
+    ownerId: new mongoose.Types.ObjectId(ownerId),
+  }).lean();
+  if (!outlet) throw new ForbiddenError("This outlet does not belong to your account");
+  if (outlet.status !== "onboarding") {
+    throw new ValidationError("This outlet is no longer in onboarding");
+  }
+  const owner = await RestaurantOwner.findById(ownerId).lean();
   return {
-    outlet: { id: String(outlet._id), restaurantName: outlet.restaurantName, status: outlet.status },
+    outletId: String(outlet._id),
     registrationToken: signRestaurantRegistrationToken(owner.ownerPhone, {
       outletId: outlet._id,
       ownerId,
