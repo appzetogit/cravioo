@@ -1648,6 +1648,8 @@ export const getCurrentRestaurantProfile = async (restaurantId) => {
                 'upiQrImage',
                 'pureVegRestaurant',
                 'zoneId',
+                'ownerId',
+                'isAdditionalOutlet',
                 'profileImage',
                 'coverImages',
                 'menuImages',
