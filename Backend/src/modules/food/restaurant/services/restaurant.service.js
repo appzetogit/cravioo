@@ -187,7 +187,7 @@ export const validateRestaurantPhoneUniqueness = async ({
             throw new ValidationError('Primary contact number is invalid');
         }
         if (last10 && last10 !== currentPrimaryLast10) {
-            const conflict = await findRestaurantUsingPhoneLast10(last10, restaurantId, digits);
+            const conflict = await findRestaurantUsingPhoneLast10(last10, restaurantId, digits, ownerId);
             if (conflict) {
                 throw new ValidationError(DUPLICATE_PRIMARY_CONTACT_MESSAGE);
             }

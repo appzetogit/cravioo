@@ -130,8 +130,11 @@ export const addOutlet = async (user, { restaurantName }) => {
       onboardingStep: 2,
     });
   } catch (err) {
-    if (err?.code === 11000) {
+    if (err?.code === 11000 && err?.keyPattern?.restaurantNameNormalized) {
       throw new ValidationError("An outlet with this name already exists on your account");
+    }
+    if (err?.code === 11000) {
+      throw new ValidationError("Could not create this outlet. Please try again or contact support.");
     }
     throw err;
   }

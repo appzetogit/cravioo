@@ -152,6 +152,11 @@ export const connectDB = async () => {
                     logger.info("Dropping legacy unique index 'ownerPhoneLast10_1' on 'food_restaurants' for multi-outlet owners...");
                     await frCol.dropIndex('ownerPhoneLast10_1');
                 }
+                const legacyContactIndex = frIndexes.find((idx) => idx.name === 'primaryContactNumberLast10_1');
+                if (legacyContactIndex && legacyContactIndex.unique) {
+                    logger.info("Dropping legacy unique index 'primaryContactNumberLast10_1' on 'food_restaurants' for multi-outlet owners...");
+                    await frCol.dropIndex('primaryContactNumberLast10_1');
+                }
                 const { FoodRestaurant } = await import(
                     '../modules/food/restaurant/models/restaurant.model.js'
                 );

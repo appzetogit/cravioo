@@ -593,15 +593,8 @@ restaurantSchema.index(
 restaurantSchema.index({ ownerPhoneLast10: 1 });
 restaurantSchema.index({ ownerId: 1 });
 // Unique index for primary contact number last 10 digits
-restaurantSchema.index(
-  { primaryContactNumberLast10: 1 },
-  {
-    unique: true,
-    partialFilterExpression: {
-      primaryContactNumberLast10: { $type: "string" },
-    },
-  },
-);
+// Not unique: outlets of one owner share the owner's contact number.
+restaurantSchema.index({ primaryContactNumberLast10: 1 });
 restaurantSchema.index({ status: 1, createdAt: -1 });
 
 export const FoodRestaurant = mongoose.model(
