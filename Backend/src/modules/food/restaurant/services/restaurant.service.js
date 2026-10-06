@@ -1402,14 +1402,8 @@ export const registerRestaurant = async (payload, files, authUserId, scope = {})
 
         console.log("Looking for existing restaurant with:", { ownerPhoneDigits, ownerPhoneLast10, authUserId });
 
-        // FIX: Search by phone first so a previously-rejected restaurant is always
-        // found, regardless of whether authUserId resolves to a different document.
-        let existingRestaurant = await FoodRestaurant.findOne({
-            $or: [
-                { ownerPhoneDigits },
-                ...(ownerPhoneLast10 ? [{ ownerPhoneLast10 }] : [])
-            ]
-        });
+        // Outlet-scoped token: the outlet being finished. Otherwise the in-progress outlet for this phone.
+        let existingRestaurant = await findRestaurantForOnboardingScope(ownerPhone, scope);
 
         // Only fall back to authUserId when there is no phone match at all.
         if (!existingRestaurant && authUserId) {
