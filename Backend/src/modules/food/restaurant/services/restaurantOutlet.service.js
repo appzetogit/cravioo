@@ -127,6 +127,7 @@ export const addOutlet = async (user, { restaurantName }) => {
       ownerEmail: owner.ownerEmail || current.ownerEmail,
       ...pickOwnerFields(owner),
       zoneId: current.zoneId || undefined,
+      isAdditionalOutlet: true,
       status: "onboarding",
       onboardingStep: 1,
     });
@@ -180,4 +181,45 @@ export const getOwnerWithOutlets = async (ownerId) => {
       commissionPercentage: o.commissionPercentage ?? null,
     })),
   };
+};
+
+const OWNER_TEXT_FIELDS = [
+  "ownerName",
+  "ownerEmail",
+  "ownerPhone",
+  "panNumber",
+  "nameOnPan",
+  "accountHolderName",
+  "accountNumber",
+  "ifscCode",
+  "accountType",
+  "upiId",
+];
+
+/**
+ * Additional outlets never re-enter owner-level details or zone: those come from the
+ * owner account and the outlet's own zone, whatever the client sent.
+ */
+export const prefillAdditionalOutletBody = async (body = {}, { outletId, ownerId } = {}) => {
+  if (!outletId || !ownerId || !mongoose.Types.ObjectId.isValid(String(outletId))) return body;
+  const outlet = await FoodRestaurant.findById(outletId).select("isAdditionalOutlet zoneId ownerId").lean();
+  if (!outlet?.isAdditionalOutlet || String(outlet.ownerId) !== String(ownerId)) return body;
+
+  const owner = (await RestaurantOwner.findById(ownerId).lean()) || {};
+  const sibling =
+    (await FoodRestaurant.findOne({
+      ownerId: outlet.ownerId,
+      isAdditionalOutlet: { $ne: true },
+      isDeleted: { $ne: true },
+    })
+      .sort({ createdAt: 1 })
+      .lean()) || {};
+
+  const next = { ...body };
+  for (const field of OWNER_TEXT_FIELDS) {
+    const value = owner[field] || sibling[field];
+    if (value) next[field] = String(value);
+  }
+  if (outlet.zoneId) next.zoneId = String(outlet.zoneId);
+  return next;
 };

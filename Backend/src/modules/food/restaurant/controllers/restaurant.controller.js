@@ -21,12 +21,16 @@ import {
 } from '../services/restaurantReferral.service.js';
 import { validateRestaurantRegisterDto, validateOnboardingStepDto } from '../validators/restaurant.validator.js';
 import { sendResponse } from '../../../../utils/response.js';
-import { listOwnerOutlets, switchOutlet, addOutlet } from '../services/restaurantOutlet.service.js';
+import { listOwnerOutlets, switchOutlet, addOutlet, prefillAdditionalOutletBody } from '../services/restaurantOutlet.service.js';
 
 export const registerRestaurantController = async (req, res, next) => {
     try {
         console.log("REGISTER RESTAURANT PAYLOAD:", req.body);
-        const validated = validateRestaurantRegisterDto(req.body);
+        const body = await prefillAdditionalOutletBody(req.body || {}, {
+            outletId: req.registrationOutletId,
+            ownerId: req.registrationOwnerId,
+        });
+        const validated = validateRestaurantRegisterDto(body);
 
         const tokenPhone = String(req.registrationPhone || '').replace(/\D/g, '').slice(-10);
         const payloadPhone = String(validated.ownerPhone || '').replace(/\D/g, '').slice(-10);
@@ -57,7 +61,11 @@ export const saveOnboardingStepController = async (req, res, next) => {
         console.log('CONTROLLER HIT');
         console.log('REQUEST RECEIVED', req.body);
         const stepNum = req.params.step;
-        const validated = validateOnboardingStepDto(stepNum, req.body);
+        const body = await prefillAdditionalOutletBody(req.body || {}, {
+            outletId: req.registrationOutletId,
+            ownerId: req.registrationOwnerId,
+        });
+        const validated = validateOnboardingStepDto(stepNum, body);
 
         const tokenPhone = String(req.registrationPhone || '').replace(/\D/g, '').slice(-10);
         const payloadPhone = String(validated.ownerPhone || '').replace(/\D/g, '').slice(-10);

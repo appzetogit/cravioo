@@ -135,12 +135,16 @@ const findRestaurantUsingPhoneLast10 = async (phoneLast10, excludeRestaurantId =
         query._id = { $ne: new mongoose.Types.ObjectId(String(excludeRestaurantId)) };
     }
 
-    // Outlets of the same owner share a phone by design; only other owners conflict.
-    if (ownerId && mongoose.Types.ObjectId.isValid(String(ownerId))) {
-        query.ownerId = { $ne: new mongoose.Types.ObjectId(String(ownerId)) };
+    // A phone belongs to one owner account. Outlets of the same owner share it, so they never conflict.
+    const matches = await FoodRestaurant.find(query).select('_id ownerId').limit(20).lean();
+    if (!matches.length) return null;
+    const requestingOwner = ownerId && mongoose.Types.ObjectId.isValid(String(ownerId)) ? String(ownerId) : null;
+    if (requestingOwner) {
+        return matches.find((m) => String(m.ownerId || '') !== requestingOwner) || null;
     }
-
-    const duplicateRestaurant = await FoodRestaurant.findOne(query).select('_id').lean();
+    const owners = new Set(matches.map((m) => (m.ownerId ? String(m.ownerId) : '')));
+    if (owners.size === 1 && !owners.has('')) return null;
+    const duplicateRestaurant = matches[0];
     console.log('QUERY RESULT', duplicateRestaurant);
     return duplicateRestaurant;
 };
@@ -323,7 +327,7 @@ const toRestaurantProfile = (doc) => {
         name: doc.restaurantName || '',
         restaurantName: doc.restaurantName || '',
         zoneId: doc.zoneId ? String(doc.zoneId) : '',
-        isAdditionalOutlet: Boolean(doc.ownerId),
+        isAdditionalOutlet: Boolean(doc.isAdditionalOutlet),
         cuisines: Array.isArray(doc.cuisines) ? doc.cuisines : [],
         location,
         ownerName: doc.ownerName || '',

@@ -77,6 +77,8 @@ const restaurantSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    /** True for outlets added under an existing owner: owner details, PAN, bank and zone come from the owner. */
+    isAdditionalOutlet: { type: Boolean, default: false },
     // Set by the owner migration. Links outlets that belong to the same owner account.
     ownerId: {
       type: mongoose.Schema.Types.ObjectId,
