@@ -57,10 +57,11 @@ const sendSmsViaIndiaHub = async (phone, otp) => {
         }
         const msisdn = `91${local10}`;
 
-        // EXACT DLT TEMPLATE provided by user:
-        // "Welcome to the ##var## powered by SMSINDIAHUB. Your OTP for registration is ##var##"
+        // EXACT DLT TEMPLATE approved for sender BGADEC (DLT Template ID 1007282516644508833):
+        // "Welcome to the ##var## powered by Appzeto.Your OTP for registration is ##var##.BGADEC"
+        // Must match byte-for-byte or SMS India Hub rejects with ErrorCode 006.
         const branding = await getGlobalBranding();
-        const message = `Welcome to the ${branding.companyName} powered by SMSINDIAHUB. Your OTP for registration is ${otp}`;
+        const message = `Welcome to the ${branding.companyName} powered by Appzeto.Your OTP for registration is ${otp}.BGADEC`;
 
         // SMS India Hub HTTP GET API — query param names are case-sensitive per SOP
         const url = new URL('http://cloud.smsindiahub.in/vendorsms/pushsms.aspx');
