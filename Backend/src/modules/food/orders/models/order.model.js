@@ -437,6 +437,14 @@ const orderSchema = new mongoose.Schema(
             type: paymentSchema,
             required: true
         },
+        /** Set when the restaurant is PetPooja-connected (admin-controlled) and this order was pushed for billing/KOT. */
+        petpooja: {
+            synced: { type: Boolean, default: false },
+            orderId: { type: String, default: '' },
+            status: { type: String, default: '' },
+            syncedAt: { type: Date, default: null },
+            error: { type: String, default: '' },
+        },
         orderStatus: {
             type: String,
             enum: [

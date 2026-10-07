@@ -3,6 +3,7 @@ import { AuthError } from '../../../../core/auth/errors.js';
 import { invalidateCategoryCaches } from '../../shared/categoryCache.js';
 import * as adminController from '../controllers/admin.controller.js';
 import { getOwnerWithOutlets } from '../../restaurant/services/restaurantOutlet.service.js';
+import { listPetpoojaRestaurants, updatePetpoojaConfig } from '../services/petpoojaAdmin.service.js';
 import * as advertisementController from '../controllers/advertisement.controller.js';
 import roleRoutes from './role.routes.js';
 import diningAdminRoutes from '../../dining/routes/adminDining.routes.js';
@@ -21,6 +22,7 @@ import * as employeeController from '../controllers/employee.controller.js';
 import { upload } from '../../../../middleware/upload.js';
 import * as membershipController from '../../membership/controllers/membership.controller.js';
 import { checkPermission } from '../../../../core/auth/auth.middleware.js';
+import { sendResponse } from '../../../../utils/response.js';
 import * as taxesReportController from '../controllers/taxesReport.controller.js';
 
 const router = express.Router();
@@ -98,15 +100,25 @@ router.get('/restaurants/pending', checkPermission('food::restaurant_management:
 router.get('/restaurant-owners/:ownerId', checkPermission('food::restaurant_management::restaurants::joining_request', 'view'), async (req, res, next) => {
     try {
         const data = await getOwnerWithOutlets(req.params.ownerId);
-        return res.status(200).json({ success: true, message: 'Owner outlets retrieved', data });
+        return sendResponse(res, 200, 'Owner outlets retrieved', data);
     } catch (err) {
         next(err);
     }
 });
-router.get('/restaurant-owners/:ownerId', checkPermission('food::restaurant_management::restaurants::joining_request', 'view'), async (req, res, next) => {
+
+// PetPooja: admin controls which restaurants are connected and their credentials.
+router.get('/petpooja/restaurants', checkPermission('food::restaurant_management::restaurants::petpooja', 'view'), async (req, res, next) => {
     try {
-        const data = await getOwnerWithOutlets(req.params.ownerId);
-        return sendResponse(res, 200, 'Owner outlets retrieved', data);
+        const data = await listPetpoojaRestaurants(req.query);
+        return sendResponse(res, 200, 'Restaurants retrieved', data);
+    } catch (err) {
+        next(err);
+    }
+});
+router.patch('/petpooja/restaurants/:id', checkPermission('food::restaurant_management::restaurants::petpooja', 'edit'), async (req, res, next) => {
+    try {
+        const data = await updatePetpoojaConfig(req.params.id, req.body || {});
+        return sendResponse(res, 200, 'PetPooja settings updated', data);
     } catch (err) {
         next(err);
     }

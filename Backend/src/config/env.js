@@ -103,6 +103,12 @@ export const config = {
     cashfreeEnv: (process.env.CASHFREE_ENV || 'sandbox').toLowerCase(),
     cashfreeApiVersion: process.env.CASHFREE_API_VERSION || '2025-01-01',
 
+    // PetPooja (per-restaurant POS billing sync). Credentials themselves are per-restaurant,
+    // set by admin — only the shared API base URL lives in env.
+    petpoojaOrdersApiUrl:
+        process.env.PETPOOJA_ORDERS_API_URL ||
+        'https://47pfzh5sf2.execute-api.ap-southeast-1.amazonaws.com/V1',
+
     // Google Maps (server-side distance matrix, directions, geocoding)
     googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAP_API_KEY || '',
 

@@ -95,6 +95,7 @@ import {
 import { deductWalletBalance, refundWalletBalance } from '../../user/services/userWallet.service.js';
 import { getGlobalBranding } from '../../../common/services/globalBranding.service.js';
 import { roadDistanceKm, PAYMENT_QUEUE_ACTIONS, enqueueOrderEvent, notifyRestaurantNewOrder, canExposeOrderToRestaurant, enrichRestaurantQuickPricing, watchdogCancellationReason } from './order.helpers.js';
+import { isPetpoojaConfigured, pushOrderToPetpooja } from '../helpers/petpooja.helper.js';
 import { scorePointsByRoadDistance } from '../../../../services/roadDistance.service.js';
 import { assertDeliveryPartnerCodHeadroom } from '../../delivery/services/deliveryFinance.service.js';
 import { getDeliveryCashLimitSettings } from '../../admin/services/admin.service.js';
@@ -4409,6 +4410,35 @@ export async function updateOrderStatusRestaurant(
   }
 
   await order.save();
+
+  // PetPooja: push to the restaurant's POS for billing/KOT once accepted (admin opt-in per
+  // restaurant). Fire-and-forget — a PetPooja outage must never block the accept flow.
+  if (!isCancelRequest && orderStatus === "preparing" && !order.petpooja?.synced) {
+    (async () => {
+      try {
+        const petpoojaRestaurant = await FoodRestaurant.findById(restaurantId)
+          .select("petpooja restaurantName addressLine1 addressLine2 city primaryContactNumber ownerPhone")
+          .lean();
+        if (!isPetpoojaConfigured(petpoojaRestaurant)) return;
+        await order.populate({ path: "userId", select: "name phone email" });
+        const result = await pushOrderToPetpooja(order, petpoojaRestaurant);
+        await FoodOrder.updateOne(
+          { _id: order._id },
+          {
+            $set: {
+              "petpooja.synced": Boolean(result.success),
+              "petpooja.orderId": result.petpoojaOrderId || "",
+              "petpooja.status": result.success ? "pushed" : "failed",
+              "petpooja.syncedAt": new Date(),
+              "petpooja.error": result.success ? "" : result.error || result.reason || "",
+            },
+          },
+        );
+      } catch (err) {
+        logger.error(`PetPooja sync failed for order ${order.orderId}: ${err?.message || err}`);
+      }
+    })();
+  }
 
   // Real-time: status update to restaurant room.
   try {

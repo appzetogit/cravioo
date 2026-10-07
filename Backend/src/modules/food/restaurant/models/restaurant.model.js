@@ -407,6 +407,15 @@ const restaurantSchema = new mongoose.Schema(
       min: 0,
       max: 100
     },
+    /** Admin-only: which restaurants are connected to PetPooja for POS billing/invoices. */
+    petpooja: {
+      enabled: { type: Boolean, default: false },
+      restId: { type: String, default: '', trim: true },
+      appKey: { type: String, default: '', trim: true },
+      appSecret: { type: String, default: '', trim: true },
+      accessToken: { type: String, default: '', trim: true },
+      connectedAt: { type: Date, default: null },
+    },
     isDeleted: {
       type: Boolean,
       default: false

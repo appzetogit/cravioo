@@ -291,6 +291,11 @@ const adminZonesListCache = (() => {
 export const adminAPI = {
   getSidebarBadges: () =>
     apiClient.get("/food/admin/sidebar-badges", { contextModule: "admin" }),
+  /** PetPooja integration: which restaurants are connected and their credentials (secrets masked). */
+  getPetpoojaRestaurants: (params = {}) =>
+    apiClient.get("/food/admin/petpooja/restaurants", { params, contextModule: "admin" }),
+  updatePetpoojaConfig: (restaurantId, body) =>
+    apiClient.patch(`/food/admin/petpooja/restaurants/${restaurantId}`, body, { contextModule: "admin" }),
   getPublicRoles: () => apiClient.get("/auth/admin/roles"),
   login: (email, password, roleId) => authService.adminLogin(email, password, roleId),
   /** POST /auth/admin/forgot-password/request-otp – only accepts registered admin email */
