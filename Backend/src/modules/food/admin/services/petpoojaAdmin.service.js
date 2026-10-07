@@ -26,7 +26,8 @@ const toListItem = (doc) => ({
 
 /** Lists restaurants with their PetPooja connection status, for the admin integration screen. */
 export const listPetpoojaRestaurants = async ({ search = '', onlyConnected = false, page = 1, limit = 20 } = {}) => {
-  const filter = { isDeleted: { $ne: true } };
+  // Only approved, live outlets can actually take orders, so only they're eligible for PetPooja.
+  const filter = { isDeleted: { $ne: true }, status: 'approved' };
   if (search.trim()) {
     filter.restaurantName = { $regex: search.trim(), $options: 'i' };
   }
