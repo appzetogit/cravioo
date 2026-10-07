@@ -570,6 +570,19 @@ async function runDispatchHunt({
     return { notifiedCount: notifyTargets.length, payload, dispatchAudit };
   }
 
+  // Delivery alerts are data-only (no FCM `notification` block — see firebase.service.js
+  // isDeliveryOrderAlert), so the app's full order card is built entirely from these fields.
+  // Previously only price/distance were sent, so items/order value/collect amount always
+  // rendered blank regardless of what the app does with the data.
+  const pickItems = Array.isArray(payload.items) ? payload.items : [];
+  const itemsSummary = pickItems
+    .map((i) => `${i?.quantity ?? 1}x ${i?.name || "Item"}`)
+    .join(", ");
+  const orderTotal = Number(payload.total ?? payload.pricing?.total ?? 0);
+  const normalizedPaymentMethod = String(payload.paymentMethod || payload.payment?.method || "").toLowerCase();
+  const isPrepaid = ["cashfree", "cashfree_qr", "wallet"].includes(normalizedPaymentMethod);
+  const amountToCollect = isPrepaid ? 0 : Number(payload.payment?.amountDue ?? orderTotal);
+
   const dispatchPushData = {
     type: "new_order_available",
     audience: "delivery",
@@ -579,12 +592,22 @@ async function runDispatchHunt({
     restaurantName: payload.restaurantName || "Restaurant",
     pickupAddress: payload.restaurantAddress || "",
     dropAddress: payload.customerAddress || "",
+    customerName: payload.customerName || "Customer",
     price: String(payload.riderEarning || payload.earnings || ""),
+    riderEarning: String(payload.riderEarning || payload.earnings || ""),
     distance: String(payload.distanceKm || payload.deliveryDistanceKm || ""),
     offerTimeoutSeconds: String(Math.round(offerTimeoutMs / 1000)),
     tripType: payload.tripType || "forward",
     deliveryMode: payload.deliveryMode || "basic",
     isFoodQuickDelivery: payload.isFoodQuickDelivery === true,
+    itemsSummary,
+    itemsCount: String(pickItems.length),
+    orderValue: String(orderTotal),
+    total: String(orderTotal),
+    paymentMethod: normalizedPaymentMethod || "cod",
+    isPrepaid: String(isPrepaid),
+    amountToCollect: String(amountToCollect),
+    cashToCollect: String(amountToCollect),
     link: "/food/delivery",
     targetUrl: "/food/delivery",
   };

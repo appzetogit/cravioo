@@ -899,6 +899,10 @@ export async function registerWebPushForCurrentModule(pathname = window.location
       if (!supported) return;
 
       const registration = await navigator.serviceWorker.register("/firebase-messaging-sw.js");
+      // Browsers only re-check the SW script for changes roughly once a day by default,
+      // and this tab is often left open for hours (restaurant/delivery dashboards) — force
+      // an immediate check so a shipped SW fix activates on this load, not a day later.
+      registration.update().catch(() => {});
       pushDebugLog(PUSH_DEBUG_PREFIX, "Service worker registered for push", {
         scope: registration.scope,
         moduleName,

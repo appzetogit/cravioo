@@ -2,6 +2,17 @@
 importScripts("https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js");
 importScripts("https://www.gstatic.com/firebasejs/10.13.2/firebase-messaging-compat.js");
 
+// Without this, a fixed/updated service worker sits in "waiting" state until every tab
+// using the OLD one is fully closed (not just refreshed) - and the restaurant/delivery
+// dashboards most affected by push bugs are exactly the tabs kept open all day, so they
+// would never actually receive a shipped fix. Activate every new version immediately.
+self.addEventListener("install", () => {
+  self.skipWaiting();
+});
+self.addEventListener("activate", (event) => {
+  event.waitUntil(self.clients.claim());
+});
+
 const sanitize = (value) => String(value || "").trim().replace(/^['"]|['"]$/g, "");
 const PUSH_DEBUG_PREFIX = "[push-sw]";
 const pushDebugLog = () => { };
