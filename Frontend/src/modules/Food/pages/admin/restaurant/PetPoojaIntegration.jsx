@@ -151,7 +151,7 @@ export default function PetPoojaIntegration() {
                 <thead>
                   <tr className="bg-slate-50/70 border-b border-slate-200 text-xs font-bold text-slate-600 uppercase tracking-wider">
                     <th className="px-6 py-4">Restaurant</th>
-                    <th className="px-6 py-4">City</th>
+                    <th className="px-6 py-4">Zone</th>
                     <th className="px-6 py-4">PetPooja restID</th>
                     <th className="px-6 py-4">Status</th>
                     <th className="px-6 py-4 text-center w-48">Action</th>
@@ -161,7 +161,7 @@ export default function PetPoojaIntegration() {
                   {restaurants.map((r) => (
                     <tr key={r.id} className="hover:bg-slate-50/50 transition-colors text-sm text-slate-800">
                       <td className="px-6 py-4 font-semibold text-slate-900">{r.restaurantName}</td>
-                      <td className="px-6 py-4 text-slate-600">{r.city || "—"}</td>
+                      <td className="px-6 py-4 text-slate-600">{r.zone || "—"}</td>
                       <td className="px-6 py-4 font-mono text-xs text-slate-600">{r.petpooja.restId || "—"}</td>
                       <td className="px-6 py-4">
                         <span

@@ -7,11 +7,13 @@ const maskSecret = (value) => {
   return v.length <= 4 ? '••••' : `••••${v.slice(-4)}`;
 };
 
+const getZoneName = (zone) => zone?.name || zone?.zoneName || zone?.serviceLocation || '';
+
 const toListItem = (doc) => ({
   id: String(doc._id),
   restaurantName: doc.restaurantName,
   status: doc.status,
-  city: doc.city || '',
+  zone: typeof doc.zoneId === 'object' ? getZoneName(doc.zoneId) : '',
   petpooja: {
     enabled: Boolean(doc.petpooja?.enabled),
     restId: doc.petpooja?.restId || '',
@@ -37,7 +39,8 @@ export const listPetpoojaRestaurants = async ({ search = '', onlyConnected = fal
 
   const [docs, total] = await Promise.all([
     FoodRestaurant.find(filter)
-      .select('restaurantName status city petpooja')
+      .select('restaurantName status zoneId petpooja')
+      .populate('zoneId', 'name zoneName serviceLocation')
       .sort({ restaurantName: 1 })
       .skip((pageNum - 1) * limitNum)
       .limit(limitNum)
@@ -78,5 +81,6 @@ export const updatePetpoojaConfig = async (restaurantId, body = {}) => {
   }
 
   await restaurant.save();
+  await restaurant.populate('zoneId', 'name zoneName serviceLocation');
   return toListItem(restaurant.toObject());
 };
