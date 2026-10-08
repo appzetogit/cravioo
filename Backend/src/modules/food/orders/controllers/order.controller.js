@@ -1,6 +1,29 @@
 import { sendResponse } from '../../../../utils/response.js';
 import * as orderService from '../services/order.service.js';
 import { getOwnerOutletIds } from '../../restaurant/services/restaurantOutlet.service.js';
+
+/**
+ * Picks which outlet id to scope a restaurant-side order lookup/mutation to.
+ * A multi-outlet owner's session is always scoped to ONE active outlet, but an order
+ * notification can be for a sibling outlet of the same owner - so if the order's real
+ * outlet belongs to the caller's own owner account, use that; otherwise fall back to
+ * the session's outlet (which correctly 404s/403s for anything outside the account).
+ */
+async function resolveOutletForOrder(req, orderId) {
+    const sessionOutletId = req.user?.userId;
+    const ownerId = req.user?.ownerId;
+    if (!ownerId) return sessionOutletId;
+
+    try {
+        const orderOutletId = await orderService.getOrderRestaurantId(orderId);
+        if (!orderOutletId || orderOutletId === String(sessionOutletId)) return sessionOutletId;
+
+        const ownedOutletIds = await getOwnerOutletIds(ownerId);
+        return ownedOutletIds.includes(orderOutletId) ? orderOutletId : sessionOutletId;
+    } catch {
+        return sessionOutletId;
+    }
+}
 import * as foodOrderPaymentService from '../services/foodOrderPayment.service.js';
 import {
     validateCalculateOrderDto,
@@ -279,8 +302,8 @@ export async function listOrdersRestaurantController(req, res, next) {
 
 export async function getOrderByIdRestaurantController(req, res, next) {
     try {
-        const restaurantId = req.user?.userId;
         const orderId = req.params.orderId;
+        const restaurantId = await resolveOutletForOrder(req, orderId);
         const order = await orderService.getOrderById(orderId, { restaurantId });
         return sendResponse(res, 200, 'Order retrieved', {
             order: toOrderDetailDto(order, { role: 'RESTAURANT' }),
@@ -292,8 +315,8 @@ export async function getOrderByIdRestaurantController(req, res, next) {
 
 export async function updateOrderStatusRestaurantController(req, res, next) {
     try {
-        const restaurantId = req.user?.userId;
         const orderId = req.params.orderId;
+        const restaurantId = await resolveOutletForOrder(req, orderId);
         const dto = validateOrderStatusDto(req.body);
         const order = await orderService.updateOrderStatusRestaurant(
             orderId,
@@ -560,8 +583,8 @@ export async function deleteOrderAdminController(req, res, next) {
 
 export async function resendDeliveryNotificationRestaurantController(req, res, next) {
     try {
-        const restaurantId = req.user?.userId;
         const orderId = req.params.orderId;
+        const restaurantId = await resolveOutletForOrder(req, orderId);
         const result = await orderService.resendDeliveryNotificationRestaurant(orderId, restaurantId);
         return sendResponse(res, 200, 'Notification resent successfully', result);
     } catch (err) {

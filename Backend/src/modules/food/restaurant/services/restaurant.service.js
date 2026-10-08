@@ -324,6 +324,7 @@ const toRestaurantProfile = (doc) => {
         id: doc._id,
         _id: doc._id,
         restaurantId: doc.restaurantId || undefined,
+        referralCode: doc.referralCode || '',
         name: doc.restaurantName || '',
         restaurantName: doc.restaurantName || '',
         zoneId: doc.zoneId ? String(doc.zoneId) : '',
@@ -1628,6 +1629,7 @@ export const getCurrentRestaurantProfile = async (restaurantId) => {
             [
                 'restaurantId',
                 'restaurantName',
+                'referralCode',
                 'cuisines',
                 'location',
                 'addressLine1',

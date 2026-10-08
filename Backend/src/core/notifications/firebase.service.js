@@ -164,7 +164,11 @@ const buildMessagePayload = (payload = {}, token) => {
         Boolean(rawData.orderMongoId) ||
         Boolean(rawData.orderId)
     );
-    const omitAndroidNotification = Boolean(payload.dataOnly) || isDeliveryOrderAlert;
+    // Same reasoning as delivery above: with android.notification present, Android auto-displays
+    // the message from the system tray when the app is backgrounded/killed and never calls the
+    // app's onMessageReceived — so the native ring + full-screen Accept/Reject overlay never runs.
+    const isRestaurantNewOrderAlert = audience === 'restaurant' && type === 'new_order';
+    const omitAndroidNotification = Boolean(payload.dataOnly) || isDeliveryOrderAlert || isRestaurantNewOrderAlert;
 
     // Ensure SW/page/native handlers can render title/body from data
     if (!rawData.title) rawData.title = notification.title;

@@ -16,6 +16,27 @@ const getOwnerContext = (req) => ({
     ownerId: req.user?.userId
 });
 
+/**
+ * A device token belongs to a person, not a single outlet - a multi-outlet owner
+ * switches their active outlet but keeps the same phone/browser. Pushes for ANY of
+ * their outlets are only sent to the outlet that owns the order (see
+ * notifyRestaurantNewOrder), so the token must be saved/removed on every outlet of
+ * the owner account, not just whichever one the session happens to be scoped to.
+ */
+const getFcmTargetOwnerIds = async (req) => {
+    const activeId = String(req.user?.userId || '');
+    if (req.user?.role !== 'RESTAURANT' || !req.user?.ownerId) return [activeId];
+    try {
+        const { getOwnerOutletIds } = await import(
+            '../../modules/food/restaurant/services/restaurantOutlet.service.js'
+        );
+        const outletIds = await getOwnerOutletIds(req.user.ownerId);
+        return outletIds.length ? outletIds : [activeId];
+    } catch {
+        return [activeId];
+    }
+};
+
 // Public health check for fcm-tokens service
 router.get('/check', (req, res) => {
     res.status(200).json({ 
@@ -138,11 +159,14 @@ router.post('/save', authMiddleware, async (req, res, next) => {
             return sendError(res, 401, 'Authentication required');
         }
 
-        await upsertFirebaseDeviceToken({ ownerType, ownerId, token, platform });
+        const targetIds = await getFcmTargetOwnerIds(req);
+        await Promise.all(
+            targetIds.map((id) => upsertFirebaseDeviceToken({ ownerType, ownerId: id, token, platform })),
+        );
         return res.status(200).json({
             success: true,
             message: 'FCM token saved',
-            data: { ownerType, ownerId, platform }
+            data: { ownerType, ownerId, platform, outletsUpdated: targetIds.length }
         });
     } catch (error) {
         next(error);
@@ -162,11 +186,14 @@ router.post('/mobile/save', authMiddleware, async (req, res, next) => {
             return sendError(res, 400, 'FCM token is required');
         }
 
-        await upsertFirebaseDeviceToken({ ownerType, ownerId, token, platform: 'mobile' });
+        const targetIds = await getFcmTargetOwnerIds(req);
+        await Promise.all(
+            targetIds.map((id) => upsertFirebaseDeviceToken({ ownerType, ownerId: id, token, platform: 'mobile' })),
+        );
         return res.status(200).json({
             success: true,
             message: 'Mobile FCM token saved successfully',
-            data: { ownerType, ownerId, platform: 'mobile' }
+            data: { ownerType, ownerId, platform: 'mobile', outletsUpdated: targetIds.length }
         });
     } catch (error) {
         next(error);
@@ -183,7 +210,13 @@ const handleRemoveToken = async (req, res, next) => {
             return sendError(res, 401, 'Authentication required');
         }
 
-        await removeFirebaseDeviceToken({ ownerType, ownerId, token, platform });
+        // Logout must clear this device from every outlet it was registered on, not just
+        // the one the session happened to be scoped to - otherwise a stale token keeps
+        // receiving pushes for sibling outlets after the owner logs out.
+        const targetIds = await getFcmTargetOwnerIds(req);
+        await Promise.all(
+            targetIds.map((id) => removeFirebaseDeviceToken({ ownerType, ownerId: id, token, platform })),
+        );
         return res.status(200).json({
             success: true,
             message: 'FCM token removed'

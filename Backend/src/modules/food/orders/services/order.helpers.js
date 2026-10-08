@@ -7,6 +7,7 @@ import { FoodFeeSettings } from '../../admin/models/feeSettings.model.js';
 import { splitQuickDeliveryCharge } from './quick-eligibility.service.js';
 import { normalizeQuickDeliverySettings } from '../utils/quickDeliveryConstants.js';
 import { resolveRestaurantPhone } from '../../shared/restaurantContact.js';
+import { FoodRestaurant } from '../../restaurant/models/restaurant.model.js';
 
 /** Actions that must be processed by the payment worker (wallet credits / refunds). */
 export const PAYMENT_QUEUE_ACTIONS = [
@@ -792,18 +793,35 @@ export async function notifyRestaurantNewOrder(orderDoc) {
   try {
     const isFoodQuick =
       String(orderDoc.deliveryMode || "").toLowerCase() === "quick";
+
+    // Multi-outlet owners need to know WHICH of their outlets this order is for.
+    // Keep the outlet name out of the title - the app treats a title containing
+    // "update"/"cancel" as an order withdrawal, so only the body is safe to prefix.
+    let outletName = "";
+    try {
+      const outlet = await FoodRestaurant.findById(orderDoc.restaurantId)
+        .select("restaurantName")
+        .lean();
+      outletName = outlet?.restaurantName || "";
+    } catch (_nameErr) {
+      // Non-fatal: push still goes out without the outlet-name prefix.
+    }
+    const outletPrefix = outletName ? `[${outletName}] ` : "";
+
     await notifyOwnersSafely(
       [{ ownerType: "RESTAURANT", ownerId: orderDoc.restaurantId }],
       {
         title: isFoodQuick ? "New Quick Delivery order" : "New order received",
         body: isFoodQuick
-          ? `PRIORITY: Quick order #${orderDoc.orderId || orderDoc.order_id || orderDoc._id} — prep ASAP.`
-          : `Order #${orderDoc.order_id || orderDoc._id} is waiting for review.`,
+          ? `${outletPrefix}PRIORITY: Quick order #${orderDoc.orderId || orderDoc.order_id || orderDoc._id} — prep ASAP.`
+          : `${outletPrefix}Order #${orderDoc.order_id || orderDoc._id} is waiting for review.`,
         data: {
           type: "new_order",
           audience: "restaurant",
           orderId: orderDoc._id.toString(),
           orderMongoId: orderDoc._id?.toString?.() || "",
+          restaurantId: orderDoc.restaurantId?.toString?.() || String(orderDoc.restaurantId || ""),
+          restaurantName: outletName,
           deliveryMode: String(orderDoc.deliveryMode || "basic"),
           isFoodQuickDelivery: isFoodQuick,
           link: `/food/restaurant/orders/${orderDoc._id?.toString?.() || ""}`,

@@ -3690,6 +3690,18 @@ export async function listOrdersUser(userId, query) {
   });
 }
 
+/**
+ * The order's actual owning outlet, independent of which outlet the caller is
+ * currently logged in as. Used to let a multi-outlet owner reach an order placed
+ * at a sibling outlet without widening access to orders outside their account.
+ */
+export async function getOrderRestaurantId(orderId) {
+  const identity = buildOrderIdentityFilter(orderId);
+  if (!identity) return null;
+  const order = await FoodOrder.findOne(identity).select("restaurantId").lean();
+  return order?.restaurantId ? String(order.restaurantId) : null;
+}
+
 export async function getOrderById(
   orderId,
   { userId, restaurantId, deliveryPartnerId, admin } = {},
