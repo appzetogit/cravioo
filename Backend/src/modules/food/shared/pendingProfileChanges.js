@@ -20,7 +20,6 @@ export const REVIEWABLE_PROFILE_FIELDS = [
     'state',
     'pincode',
     'landmark',
-    'profileImage',
     'coverImages',
     'menuImages',
     'accountHolderName',

@@ -164,12 +164,13 @@ const buildMessagePayload = (payload = {}, token) => {
         Boolean(rawData.orderMongoId) ||
         Boolean(rawData.orderId)
     );
-    // Unlike delivery, the restaurant mobile client has no native ring/overlay handler of its
-    // own — it's a plain FCM listener (or WebView) that relies on Android auto-displaying the
-    // notification from the system tray when backgrounded. Omitting android.notification here
-    // (as delivery needs) left restaurant pushes with nothing to show on native/mobile tokens.
-    // Keep Android notification for restaurant; only delivery needs android data-only.
-    const omitAndroidNotification = Boolean(payload.dataOnly) || isDeliveryOrderAlert;
+    // Same reasoning as delivery above: the restaurant app has its own native FCM service
+    // (NewOrderMessagingService.kt) that rings in a loop, posts the Accept/Reject notification,
+    // and draws the order overlay. With android.notification present, Android auto-displays the
+    // message from the system tray when backgrounded/killed and never calls that native service —
+    // so the ring loop, overlay, and Accept/Reject buttons never run.
+    const isRestaurantNewOrderAlert = audience === 'restaurant' && type === 'new_order';
+    const omitAndroidNotification = Boolean(payload.dataOnly) || isDeliveryOrderAlert || isRestaurantNewOrderAlert;
 
     // Ensure SW/page/native handlers can render title/body from data
     if (!rawData.title) rawData.title = notification.title;

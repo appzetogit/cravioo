@@ -71,7 +71,7 @@ import { getIO, rooms } from '../../../../config/socket.js';
 import { isPointInPolygon } from '../../../../utils/geo.js';
 import { addOrderJob, removeOrderJob, getOrderJobMeta } from '../../../../queues/producers/order.producer.js';
 import { addPaymentJob } from '../../../../queues/producers/payment.producer.js';
-import { fetchPolyline } from '../utils/googleMaps.js';
+import { fetchPolyline, fetchRoute } from '../utils/googleMaps.js';
 import { getFirebaseDB } from '../../../../config/firebase.js';
 import {
   SCHEDULE_ACTIVATE_LEAD_MINUTES,
@@ -5301,7 +5301,10 @@ export async function acceptOrderDelivery(orderId, deliveryPartnerId, body = {})
 
           const db = getFirebaseDB();
           if (db) {
-              const orderRef = db.ref(`active_orders/${order.orderId}`);
+              // Use the Mongo _id, matching what the rider app sends as orderId on
+              // location-update — using order.orderId (human number) here instead
+              // meant accept and location-update wrote to two different RTDB nodes.
+              const orderRef = db.ref(`active_orders/${order._id}`);
               await orderRef.set({
                   polyline,
                   lat: restLoc[1],
@@ -6003,6 +6006,154 @@ export async function createCollectQr(
 }
 
 /**
+ * Cash counterpart to createCollectQr — confirms the delivery partner physically
+ * collected cash for a COD order. Unlike QR (which must wait on a Cashfree webhook),
+ * cash collection is immediate: mark payment method/status now, same guard clauses as QR.
+ */
+export async function collectCashPayment(orderId, deliveryPartnerId) {
+  const query = mongoose.Types.ObjectId.isValid(orderId) ? { _id: orderId } : { orderId };
+  const order = await FoodOrder.findOne(query);
+  if (!order) throw new NotFoundError("Order not found");
+  if (
+    order.dispatch.deliveryPartnerId?.toString() !==
+    deliveryPartnerId.toString()
+  )
+    throw new ForbiddenError("Not your order");
+  if (order.payment.method !== "cash" && order.payment.status === "paid")
+    throw new ValidationError("Order already paid");
+  if (
+    order.financialsLocked ||
+    String(order.orderStatus || "").toLowerCase() === "delivered"
+  ) {
+    throw new ValidationError("Order financials are locked after delivery");
+  }
+  const amountDue = order.payment.amountDue ?? order.pricing?.total ?? 0;
+  if (amountDue < 1) throw new ValidationError("No amount due");
+
+  const cashWrite = await FoodOrder.updateOne(
+    {
+      _id: order._id,
+      financialsLocked: { $ne: true },
+      orderStatus: { $ne: "delivered" },
+    },
+    {
+      $set: {
+        "payment.method": "cash",
+        "payment.status": "paid",
+        "payment.collectedAt": new Date(),
+      },
+    },
+  );
+  if (!cashWrite?.modifiedCount) {
+    throw new ValidationError("Order financials are locked after delivery");
+  }
+
+  await foodTransactionService.updateTransactionStatus(order._id, 'cod_collect_cash_confirmed', {
+    recordedByRole: 'DELIVERY_PARTNER',
+    recordedById: deliveryPartnerId,
+    note: 'Cash collection confirmed by delivery partner',
+  });
+
+  enqueueOrderEvent('collect_cash_confirmed', {
+    orderMongoId: String(order._id),
+    orderId: order.orderId || null,
+    deliveryPartnerId,
+    amount: amountDue,
+  });
+
+  return { amount: amountDue, status: "paid" };
+}
+
+/**
+ * Current-leg route snapshot for live tracking (rider app + customer tracking screen).
+ * Target is the restaurant until pickup, then the customer's delivery address.
+ * Origin is the rider's last known position (Redis hot buffer, falling back to the
+ * Firebase RTDB node socket.js keeps live) — the Mongo _id, matching the id socket.js
+ * now uses consistently for both order-accept and location-update RTDB writes.
+ */
+export async function getOrderRouteSnapshot(orderId, requester = {}) {
+  const identity = buildOrderIdentityFilter(orderId);
+  const order = await FoodOrder.findOne(identity)
+    .populate('restaurantId', 'restaurantName location')
+    .lean();
+  if (!order) throw new NotFoundError('Order not found');
+
+  const { role, userId: requesterId } = requester;
+  const isOwner =
+    (role === 'USER' && String(order.userId) === String(requesterId)) ||
+    (role === 'DELIVERY_PARTNER' && String(order.dispatch?.deliveryPartnerId || '') === String(requesterId)) ||
+    (role === 'RESTAURANT' && String(order.restaurantId?._id || order.restaurantId) === String(requesterId)) ||
+    role === 'ADMIN';
+  if (!isOwner) throw new ForbiddenError('Not your order');
+
+  const restLoc = order.restaurantId?.location?.coordinates;
+  const userLoc = order.deliveryAddress?.location?.coordinates;
+  const pickedUp = ['picked_up', 'delivered'].includes(String(order.orderStatus || ''));
+  const target = pickedUp ? userLoc : restLoc;
+  if (!Array.isArray(target) || !Number.isFinite(target[0]) || !Number.isFinite(target[1])) {
+    throw new ValidationError('Target location is not available for this order');
+  }
+  const targetPoint = { lat: target[1], lng: target[0] };
+
+  const deliveryPartnerId = order.dispatch?.deliveryPartnerId ? String(order.dispatch.deliveryPartnerId) : null;
+  let origin = null;
+
+  if (deliveryPartnerId) {
+    try {
+      const { getRedisClient } = await import('../../../../config/redis.js');
+      const redis = getRedisClient();
+      if (redis) {
+        const raw = await redis.hGet('rider:locations:hot', deliveryPartnerId);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Number.isFinite(parsed?.lat) && Number.isFinite(parsed?.lng)) {
+            origin = { lat: parsed.lat, lng: parsed.lng };
+          }
+        }
+      }
+    } catch {
+      // Fall through to Firebase.
+    }
+  }
+
+  if (!origin && deliveryPartnerId) {
+    try {
+      const db = getFirebaseDB();
+      if (db) {
+        const snap = await db.ref(`delivery_boys/${deliveryPartnerId}`).once('value');
+        const val = snap.val();
+        if (Number.isFinite(val?.lat) && Number.isFinite(val?.lng)) {
+          origin = { lat: val.lat, lng: val.lng };
+        }
+      }
+    } catch {
+      // Fall through to restaurant fallback below.
+    }
+  }
+
+  // Before pickup with no rider position yet, the rider hasn't started — fall back
+  // to the restaurant as the origin so the UI still has a route to show.
+  if (!origin && Array.isArray(restLoc) && Number.isFinite(restLoc[0])) {
+    origin = { lat: restLoc[1], lng: restLoc[0] };
+  }
+  if (!origin) {
+    throw new ValidationError('Rider location is not available yet');
+  }
+
+  const { polyline, durationMinutes } = await fetchRoute(origin, targetPoint);
+
+  return {
+    orderId: order.orderId,
+    orderMongoId: String(order._id),
+    leg: pickedUp ? 'to_customer' : 'to_restaurant',
+    origin,
+    target: targetPoint,
+    polyline,
+    durationMinutes,
+  };
+}
+
+/**
  * Cashfree QR auto-verify:
  * - Fetch payment-link status from Cashfree
  * - Update `order.payment.status` to `paid` when Cashfree marks it paid
@@ -6361,8 +6512,8 @@ export async function deleteOrderAdmin(orderId, adminId) {
   // Remove realtime tracking node if present.
   try {
     const db = getFirebaseDB();
-    if (db && order?.orderId) {
-      await db.ref(`active_orders/${order.orderId}`).remove();
+    if (db && order?._id) {
+      await db.ref(`active_orders/${order._id}`).remove();
     }
   } catch (err) {
     logger.warn(`Delete order firebase cleanup failed: ${err?.message || err}`);

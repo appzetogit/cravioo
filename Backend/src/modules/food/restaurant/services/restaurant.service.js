@@ -2403,7 +2403,9 @@ export const uploadRestaurantProfileImage = async (restaurantId, file) => {
 
     if (!doc) throw new ValidationError('Restaurant not found');
 
-    if (notifyAdmin && (staged || currentRestaurant.status !== 'pending')) {
+    // Logo is no longer a reviewable field (goes live immediately) — only notify admin
+    // when it was actually staged (e.g. restaurant not yet first-approved).
+    if (notifyAdmin && staged) {
         void notifyAdminsAboutRestaurantProfileReview(restaurantId, currentRestaurant.restaurantName || doc.restaurantName);
     }
 

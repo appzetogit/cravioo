@@ -37,3 +37,43 @@ export async function fetchPolyline(origin, destination) {
 
     return '';
 }
+
+/**
+ * Like fetchPolyline, but also returns the route duration (for server-computed ETA).
+ * @param {Object} origin - { lat, lng }
+ * @param {Object} destination - { lat, lng }
+ * @returns {Promise<{ polyline: string, durationMinutes: number|null }>}
+ */
+export async function fetchRoute(origin, destination) {
+    const apiKey = config.googleMapsApiKey;
+    if (!apiKey) {
+        logger.warn('Google Maps API key missing. Route fetch skipped.');
+        return { polyline: '', durationMinutes: null };
+    }
+
+    try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 5000);
+        const originStr = `${origin.lat},${origin.lng}`;
+        const destStr = `${destination.lat},${destination.lng}`;
+        const url = `https://maps.googleapis.com/maps/api/directions/json?origin=${originStr}&destination=${destStr}&departure_time=now&key=${apiKey}`;
+
+        const res = await fetch(url, { signal: controller.signal });
+        clearTimeout(timeout);
+        const data = await res.json();
+
+        if (data.status === 'OK' && data.routes?.length > 0) {
+            const leg = data.routes[0].legs?.[0];
+            const seconds = leg?.duration_in_traffic?.value ?? leg?.duration?.value ?? null;
+            return {
+                polyline: data.routes[0].overview_polyline?.points || '',
+                durationMinutes: Number.isFinite(seconds) ? Math.round(seconds / 60) : null,
+            };
+        }
+        logger.warn(`Google Directions API returned status: ${data.status}. Message: ${data.error_message || 'No routes found'}`);
+    } catch (err) {
+        logger.error(`Error fetching route from Google: ${err.message}`);
+    }
+
+    return { polyline: '', durationMinutes: null };
+}

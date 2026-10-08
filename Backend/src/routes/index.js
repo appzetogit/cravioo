@@ -21,6 +21,7 @@ import webhookRoutes from '../core/payments/routes/webhook.routes.js';
 import searchRoutes from '../modules/food/search/routes/search.routes.js';
 import diningPublicRoutes from '../modules/food/dining/routes/publicDining.routes.js';
 import subscriptionRoutes from '../modules/food/subscriptions/routes/subscription.routes.js';
+import chatRoutes from '../modules/food/chat/routes/chat.routes.js';
 import { requireEnabledModule } from '../middleware/moduleAccess.js';
 
 
@@ -70,6 +71,7 @@ router.use('/v1/food/admin', requireEnabledModule('food'), authMiddleware, requi
 router.use('/v1/food/user', requireEnabledModule('food'), authMiddleware, requireRoles('USER'), userRoutes);
 router.use('/v1/food/notifications', requireEnabledModule('food'), authMiddleware, requireRoles('USER', 'RESTAURANT', 'DELIVERY_PARTNER'), notificationRoutes);
 router.use('/v1/food/orders', requireEnabledModule('food'), authMiddleware, requireRoles('USER'), orderUserRoutes);
+router.use('/v1/food/chat', requireEnabledModule('food'), authMiddleware, requireRoles('USER', 'DELIVERY_PARTNER'), chatRoutes);
 router.use('/v1/food/payments', requireEnabledModule('food'), authMiddleware, paymentRoutes);
 router.use('/v1/payments/webhook', webhookRoutes);
 router.use('/v1/fcm-tokens', fcmRoutes);

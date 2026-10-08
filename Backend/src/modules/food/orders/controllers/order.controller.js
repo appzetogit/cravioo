@@ -487,6 +487,30 @@ export async function createCollectQrController(req, res, next) {
     }
 }
 
+export async function collectCashController(req, res, next) {
+    try {
+        const deliveryPartnerId = req.user?.userId;
+        const orderId = req.params.orderId;
+        const result = await orderService.collectCashPayment(orderId, deliveryPartnerId);
+        return sendResponse(res, 200, 'Cash collection confirmed', result);
+    } catch (err) {
+        next(err);
+    }
+}
+
+export async function getOrderRouteController(req, res, next) {
+    try {
+        const orderId = req.params.orderId;
+        const result = await orderService.getOrderRouteSnapshot(orderId, {
+            role: req.user?.role,
+            userId: req.user?.userId,
+        });
+        return sendResponse(res, 200, 'Route fetched', result);
+    } catch (err) {
+        next(err);
+    }
+}
+
 export async function getOrderByIdDeliveryController(req, res, next) {
     try {
         const deliveryPartnerId = req.user?.userId;

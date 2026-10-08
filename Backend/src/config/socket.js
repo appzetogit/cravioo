@@ -311,6 +311,26 @@ export const initSocket = async (server) => {
             if (now - lastTS < 2000) return;
             _lastLocationBroadcast[data.orderId] = now;
 
+            // Only estimate ETA when the rider app didn't send one — avoid calling the
+            // Directions API on every tick; a haversine + average-speed estimate is
+            // enough to keep the ETA field from always being null.
+            let etaMinutes = Number.isFinite(Number(data.eta)) ? Number(data.eta) : null;
+            if (etaMinutes === null && data.destLat != null && data.destLng != null) {
+                const destLat = Number(data.destLat);
+                const destLng = Number(data.destLng);
+                if (Number.isFinite(destLat) && Number.isFinite(destLng)) {
+                    const AVG_SPEED_KMH = 25;
+                    const R = 6371;
+                    const dLat = (destLat - lat) * Math.PI / 180;
+                    const dLng = (destLng - lng) * Math.PI / 180;
+                    const a =
+                        Math.sin(dLat / 2) ** 2 +
+                        Math.cos(lat * Math.PI / 180) * Math.cos(destLat * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+                    const distanceKm = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+                    etaMinutes = Math.max(1, Math.round((distanceKm / AVG_SPEED_KMH) * 60));
+                }
+            }
+
             const payload = {
                 orderId: String(data.orderId),
                 deliveryPartnerId: String(userId),
@@ -323,8 +343,10 @@ export const initSocket = async (server) => {
                 speed,
                 accuracy,
                 timestamp: now,
-                polyline: data.polyline || null,
-                eta: data.eta ?? null,
+                // Only set when actually provided — the rider app sends no polyline, and
+                // overwriting with null every tick erased the route line clients had drawn.
+                ...(data.polyline ? { polyline: data.polyline } : {}),
+                eta: etaMinutes,
                 status: data.status || 'on_the_way',
             };
 
@@ -397,8 +419,8 @@ export const initSocket = async (server) => {
                         heading,
                         speed,
                         accuracy,
-                        polyline: data.polyline || null,
-                        eta: data.eta ?? null,
+                        ...(data.polyline ? { polyline: data.polyline } : {}),
+                        eta: etaMinutes,
                         last_updated: now,
                         status: data.status || 'on_the_way'
                     }).catch(e => logger.error(`Firebase orderRef update error: ${e.message}`));
@@ -424,6 +446,54 @@ export const initSocket = async (server) => {
             if (!orderId) return;
             const room = roomNames.tracking(orderId);
             socket.leave(room);
+        });
+
+        // ─── Chat (customer ↔ delivery partner) ────────────────────────
+        // Real-time send path — persists + pushes the same way as the REST endpoint,
+        // so either path (socket or REST) works and both sides stay in sync.
+        socket.on('chat:message', async (data, ack) => {
+            try {
+                if (socket.user?.role !== 'USER' && socket.user?.role !== 'DELIVERY_PARTNER') {
+                    if (typeof ack === 'function') ack({ ok: false, error: 'Unauthorized' });
+                    return;
+                }
+                const { sendMessage } = await import('../modules/food/chat/services/chat.service.js');
+                const message = await sendMessage(data?.conversationId, {
+                    role: socket.user.role,
+                    userId: socket.user.userId,
+                }, data?.text);
+                if (typeof ack === 'function') ack({ ok: true, message });
+            } catch (err) {
+                logger.warn(`chat:message failed: ${err.message}`);
+                if (typeof ack === 'function') ack({ ok: false, error: err.message });
+            }
+        });
+
+        // Ephemeral typing indicator — no persistence, just relay to the other side.
+        socket.on('chat:typing', async (data) => {
+            try {
+                if (socket.user?.role !== 'USER' && socket.user?.role !== 'DELIVERY_PARTNER') return;
+                const conversationId = data?.conversationId;
+                if (!conversationId) return;
+                const { ChatConversation } = await import('../modules/food/chat/models/chatConversation.model.js');
+                const conversation = await ChatConversation.findById(conversationId).select('userId deliveryPartnerId').lean();
+                if (!conversation) return;
+
+                const isUser = socket.user.role === 'USER' && String(conversation.userId) === String(socket.user.userId);
+                const isPartner = socket.user.role === 'DELIVERY_PARTNER' && String(conversation.deliveryPartnerId) === String(socket.user.userId);
+                if (!isUser && !isPartner) return;
+
+                const recipientRoom = isUser
+                    ? roomNames.delivery(conversation.deliveryPartnerId)
+                    : roomNames.user(conversation.userId);
+                socket.to(recipientRoom).emit('chat:typing', {
+                    conversationId: String(conversationId),
+                    senderRole: socket.user.role,
+                    isTyping: Boolean(data?.isTyping),
+                });
+            } catch (err) {
+                logger.warn(`chat:typing failed: ${err.message}`);
+            }
         });
 
         socket.on('disconnect', (reason) => {

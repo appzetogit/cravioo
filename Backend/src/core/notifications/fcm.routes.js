@@ -8,6 +8,7 @@ import {
 } from './firebase.service.js';
 import { FoodUser } from '../users/user.model.js';
 import { FoodRestaurant } from '../../modules/food/restaurant/models/restaurant.model.js';
+import { RestaurantOwner } from '../../modules/food/restaurant/models/restaurantOwner.model.js';
 
 const router = express.Router();
 
@@ -94,12 +95,28 @@ router.get('/test-get-token/:phone', async (req, res, next) => {
     }
 });
 
-const findRestaurantByPhone = (phone) => {
+/**
+ * Looks up a restaurant by phone. Additional outlets under a multi-outlet owner don't
+ * carry their own owner/contact phone (those fields are locked to the first outlet), so
+ * a direct FoodRestaurant lookup misses them — fall back to RestaurantOwner and return
+ * its first outlet (the FCM token is synced to every outlet of the owner anyway, see
+ * getFcmTargetOwnerIds, so any one outlet reflects the same token state).
+ */
+const findRestaurantByPhone = async (phone) => {
     const last10 = String(phone || '').replace(/\D/g, '').slice(-10);
     if (!last10) return null;
-    return FoodRestaurant.findOne({
+
+    const direct = await FoodRestaurant.findOne({
         $or: [{ ownerPhoneLast10: last10 }, { primaryContactNumberLast10: last10 }]
     }).select('restaurantName fcmTokens fcmTokenMobile');
+    if (direct) return direct;
+
+    const owner = await RestaurantOwner.findOne({ ownerPhoneLast10: last10 }).select('_id');
+    if (!owner) return null;
+
+    return FoodRestaurant.findOne({ ownerId: owner._id, isDeleted: { $ne: true } })
+        .sort({ createdAt: 1 })
+        .select('restaurantName fcmTokens fcmTokenMobile');
 };
 
 // Diagnostic: confirm a restaurant's FCM mobile token is saved on this server (see
