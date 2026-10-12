@@ -124,6 +124,17 @@ const deliveryPartnerSchema = new mongoose.Schema(
             enum: ['online', 'offline'],
             default: 'offline'
         },
+        /**
+         * How many orders this partner may hold active at once. Default 1 keeps
+         * today's one-order-at-a-time behavior for everyone; admin raises it per
+         * partner to allow multi-order pickup/delivery.
+         */
+        maxConcurrentOrders: {
+            type: Number,
+            default: 1,
+            min: 1,
+            max: 10,
+        },
         lastLocation: {
             type: { type: String, enum: ['Point'] },
             coordinates: { type: [Number] }

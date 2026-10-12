@@ -8161,6 +8161,19 @@ export async function updateDeliveryPartnerActiveStatus(id, isActive) {
     return updated;
 }
 
+/** Admin-set cap on how many orders this partner may hold active at once (default 1). */
+export async function updateDeliveryPartnerConcurrencyLimit(id, maxConcurrentOrders) {
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) return null;
+    const limit = Math.min(Math.max(1, Math.round(Number(maxConcurrentOrders) || 1)), 10);
+
+    const updated = await FoodDeliveryPartner.findByIdAndUpdate(
+        id,
+        { $set: { maxConcurrentOrders: limit } },
+        { new: true },
+    ).select('name phone maxConcurrentOrders').lean();
+    return updated;
+}
+
 // ----- Zones CRUD -----
 const ZONE_LIST_SUMMARY_FIELDS = {
     _id: 1,

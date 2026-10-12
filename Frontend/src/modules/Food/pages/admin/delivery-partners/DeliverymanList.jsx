@@ -88,6 +88,8 @@ export default function DeliverymanList() {
   const [editValues, setEditValues] = useState({ pocketBalance: "", cashInHand: "" })
   const [savingDeliveryId, setSavingDeliveryId] = useState(null)
   const [activeUpdatingId, setActiveUpdatingId] = useState(null)
+  const [concurrencyLimitInput, setConcurrencyLimitInput] = useState("")
+  const [savingConcurrencyLimit, setSavingConcurrencyLimit] = useState(false)
   const fetchSeqRef = useRef(0)
   const [visibleColumns, setVisibleColumns] = useState({
     si: true,
@@ -234,6 +236,7 @@ bonus: deliveryman.bonus || 0,
 totalWithdrawn: deliveryman.totalWithdrawn || 0,
 availableCashLimit: deliveryman.availableCashLimit || 0,
         })
+        setConcurrencyLimitInput(String(response.data.data.delivery?.maxConcurrentOrders || 1))
         setIsViewOpen(true)
       } else {
         alert("Failed to load details")
@@ -447,6 +450,44 @@ availableCashLimit: deliveryman.availableCashLimit || 0,
       toast.error(err?.response?.data?.message || "Failed to update delivery partner status")
     } finally {
       setActiveUpdatingId(null)
+    }
+  }
+
+  const handleSaveConcurrencyLimit = async () => {
+    if (!canEdit) {
+      toast.error("Permission denied")
+      return
+    }
+    const deliverymanId = String(viewDetails?._id || "")
+    if (!deliverymanId) return
+
+    const parsed = parseInt(concurrencyLimitInput, 10)
+    if (!Number.isFinite(parsed) || parsed < 1 || parsed > 10) {
+      toast.error("Enter a limit between 1 and 10")
+      return
+    }
+
+    try {
+      setSavingConcurrencyLimit(true)
+      const response = await adminAPI.updateDeliveryPartnerConcurrencyLimit(deliverymanId, parsed)
+      if (!response?.data?.success) {
+        toast.error(response?.data?.message || "Failed to update concurrent order limit")
+        return
+      }
+      setViewDetails((prev) =>
+        prev && String(prev._id) === deliverymanId ? { ...prev, maxConcurrentOrders: parsed } : prev,
+      )
+      setDeliverymen((prev) =>
+        prev.map((item) =>
+          String(item._id) === deliverymanId ? { ...item, maxConcurrentOrders: parsed } : item,
+        ),
+      )
+      toast.success(response?.data?.message || "Concurrent order limit updated")
+    } catch (err) {
+      debugError("Error updating concurrency limit:", err)
+      toast.error(err?.response?.data?.message || "Failed to update concurrent order limit")
+    } finally {
+      setSavingConcurrencyLimit(false)
     }
   }
 
@@ -883,6 +924,34 @@ availableCashLimit: deliveryman.availableCashLimit || 0,
                       }`}>
                         {viewDetails.status === 'blocked' ? 'Rejected' : (viewDetails.status?.charAt(0).toUpperCase() + viewDetails.status?.slice(1) || "N/A")}
                       </span>
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-slate-500 uppercase">
+                        Concurrent Orders Limit
+                      </label>
+                      <p className="text-[11px] text-slate-400 mt-0.5">
+                        How many orders this partner can hold active at once (1 = today's normal behavior)
+                      </p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <input
+                          type="number"
+                          min="1"
+                          max="10"
+                          value={concurrencyLimitInput}
+                          onChange={(e) => setConcurrencyLimitInput(e.target.value)}
+                          disabled={!canEdit || savingConcurrencyLimit}
+                          className="w-20 rounded-lg border border-slate-300 px-2 py-1.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400 disabled:bg-slate-100"
+                        />
+                        {canEdit && (
+                          <button
+                            onClick={handleSaveConcurrencyLimit}
+                            disabled={savingConcurrencyLimit || String(viewDetails.maxConcurrentOrders || 1) === concurrencyLimitInput}
+                            className="px-3 py-1.5 rounded-lg bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800 transition-colors disabled:opacity-50"
+                          >
+                            {savingConcurrencyLimit ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save"}
+                          </button>
+                        )}
+                      </div>
                     </div>
                     {viewDetails.rejectionReason && (
                       <div className="col-span-2">

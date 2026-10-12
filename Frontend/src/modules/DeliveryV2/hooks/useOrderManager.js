@@ -9,8 +9,9 @@ import { refreshActiveTrip } from '@/modules/DeliveryV2/services/deliveryOrderSy
  * Connects directly to the backend API services.
  */
 export const useOrderManager = () => {
-  const { 
-    activeOrder, tripStatus, updateTripStatus, clearActiveOrder, setActiveOrder, riderLocation 
+  const {
+    activeOrder, tripStatus, updateTripStatus, clearActiveOrder, setActiveOrder, riderLocation,
+    queuedOrder, setQueuedOrder, clearQueuedOrder,
   } = useDeliveryStore();
 
   const acceptOrder = async (order) => {
@@ -85,9 +86,18 @@ export const useOrderManager = () => {
           sellerDropLocation: dropLocation,
         };
 
-        setActiveOrder(enrichReturnDeliveryOrder(mergedOrder));
+        const enriched = enrichReturnDeliveryOrder(mergedOrder);
 
-        updateTripStatus('PICKING_UP');
+        // Multi-order (admin-configurable limit > 1): if a trip is already live,
+        // this second order waits in queuedOrder instead of overwriting the active
+        // one — map/location-tracking keeps following only the current trip.
+        if (activeOrder) {
+          setQueuedOrder(enriched);
+          toast.success('Next order accepted — it will open once your current delivery is done.');
+        } else {
+          setActiveOrder(enriched);
+          updateTripStatus('PICKING_UP');
+        }
         void refreshActiveTrip('accept');
         // toast.success('Order Accepted! Opening Map...');
       } else {
@@ -261,6 +271,11 @@ export const useOrderManager = () => {
 
   const resetTrip = () => {
     clearActiveOrder();
+    if (queuedOrder) {
+      setActiveOrder(queuedOrder);
+      updateTripStatus('PICKING_UP');
+      clearQueuedOrder();
+    }
     void refreshActiveTrip('complete');
   };
 

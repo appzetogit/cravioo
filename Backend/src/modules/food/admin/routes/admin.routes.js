@@ -314,6 +314,7 @@ router.get('/delivery/:id', checkPermission('food::deliveryman_management::deliv
 router.patch('/delivery/:id/approve', checkPermission('food::deliveryman_management::deliveryman::join_request', 'edit'), adminController.approveDeliveryPartner);
 router.patch('/delivery/:id/reject', checkPermission('food::deliveryman_management::deliveryman::join_request', 'edit'), adminController.rejectDeliveryPartner);
 router.patch('/delivery/:id/active-status', checkPermission('food::deliveryman_management::deliveryman::list', 'edit'), adminController.updateDeliveryPartnerActiveStatus);
+router.patch('/delivery/:id/concurrency-limit', checkPermission('food::deliveryman_management::deliveryman::list', 'edit'), adminController.updateDeliveryPartnerConcurrencyLimit);
 
 // ----- Zones -----
 router.get('/zones', checkPermission('food::restaurant_management::zone_setup', 'view'), adminController.getZones);

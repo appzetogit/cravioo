@@ -466,9 +466,16 @@ export async function updateOrderStatusDeliveryController(req, res, next) {
 export async function getCurrentTripDeliveryController(req, res, next) {
     try {
         const deliveryPartnerId = req.user?.userId;
-        const order = await orderService.getCurrentTripDelivery(deliveryPartnerId);
+        // activeOrder stays as-is (most recently updated trip) so the existing app
+        // keeps working unchanged; activeOrders is the full list for multi-order
+        // partners (admin-set limit > 1) — additive, nothing removes the old field.
+        const [order, allActive] = await Promise.all([
+            orderService.getCurrentTripDelivery(deliveryPartnerId),
+            orderService.getActiveTripsDelivery(deliveryPartnerId),
+        ]);
         return sendResponse(res, 200, 'Current trip retrieved', {
             activeOrder: order ? toDeliveryTripDto(order) : null,
+            activeOrders: allActive.map((o) => toDeliveryTripDto(o)),
         });
     } catch (err) {
         next(err);

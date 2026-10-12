@@ -254,6 +254,7 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
     isOnline, setOnline, activeOrder, tripStatus, setRiderLocation, setActiveOrder,
     updateTripStatus, clearActiveOrder, setDriverVehicles, driverVehicles,
     hydratePartnerState, setActiveVehicleId, activeVehicleId,
+    queuedOrder, maxConcurrentOrders, setMaxConcurrentOrders,
   } = useDeliveryStore();
   useDeliveryPartnerHydration();
   const getActiveVehicle = useDeliveryStore(state => state.getActiveVehicle);
@@ -708,6 +709,7 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
         if (profileRes?.data?.success && profileRes.data.data?.profile) {
           const profile = profileRes.data.data.profile;
           setProfileImage(profile.profileImage?.url || profile.documents?.photo || null);
+          setMaxConcurrentOrders(profile.maxConcurrentOrders || 1);
         }
       } catch (err) { console.warn('Navbar Data Fetch Error:', err); }
     })();
@@ -969,12 +971,17 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
   }, [unavailableOfferKey]);
 
   // Locked into a trip: close the popup and drop anything still queued behind it,
-  // otherwise a stale offer would surface after the trip ends.
+  // otherwise a stale offer would surface after the trip ends. Exception: an
+  // admin-granted multi-order partner (maxConcurrentOrders > 1) who doesn't yet
+  // have a queued second order may still accept one — handled by acceptOrder,
+  // which routes it into queuedOrder instead of replacing the live trip.
   useEffect(() => {
     if (!activeOrder) return;
+    const canAcceptAnother = maxConcurrentOrders > 1 && !queuedOrder;
+    if (canAcceptAnother) return;
     setIncomingOrder(null);
     resetOfferQueue();
-  }, [activeOrder, resetOfferQueue]);
+  }, [activeOrder, queuedOrder, maxConcurrentOrders, resetOfferQueue]);
 
   // Available-order HTTP polling owned by deliveryOrderSync (not this component).
 
@@ -1511,6 +1518,22 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
                  <Plus className="w-5 h-5" />
               </div>
            </button>
+        </motion.div>
+      )}
+
+      {/* Queued next order indicator (multi-order partners only) — informational only,
+          doesn't affect the live trip above it. */}
+      {queuedOrder && !isModalMinimized && (
+        <motion.div
+           initial={{ y: 50, opacity: 0 }}
+           animate={{ y: 0, opacity: 1 }}
+           className="fixed bottom-[100px] inset-x-0 z-[290] px-6"
+        >
+          <div className="w-full bg-emerald-600/95 text-white rounded-2xl py-3 flex items-center justify-between px-5 shadow-2xl backdrop-blur-md border border-white/10">
+            <span className="text-xs font-bold uppercase tracking-wider">
+              Next order accepted — opens after this delivery
+            </span>
+          </div>
         </motion.div>
       )}
 

@@ -505,6 +505,12 @@ export const adminAPI = {
       { isActive: isActive !== false },
       { contextModule: "admin" },
     ),
+  updateDeliveryPartnerConcurrencyLimit: (id, maxConcurrentOrders) =>
+    apiClient.patch(
+      `/food/admin/delivery/${String(id)}/concurrency-limit`,
+      { maxConcurrentOrders: Number(maxConcurrentOrders) },
+      { contextModule: "admin" },
+    ),
   /** GET /food/admin/delivery/support-tickets - list all delivery support tickets (query: status, priority, search, page, limit). */
   getDeliverySupportTickets: (params) =>
     apiClient.get("/food/admin/delivery/support-tickets", {

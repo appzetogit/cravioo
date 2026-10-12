@@ -5026,63 +5026,146 @@ export async function getCurrentTripDelivery(deliveryPartnerId) {
   });
 }
 
+const ACTIVE_DELIVERY_ORDER_STATUSES = [
+  "confirmed",
+  "preparing",
+  "ready_for_pickup",
+  "picked_up",
+  "reached_pickup",
+  "reached_drop",
+];
+
+/** All of a partner's currently active (not yet delivered/cancelled) orders. */
+export async function getActiveTripsDelivery(deliveryPartnerId) {
+  const partnerId = new mongoose.Types.ObjectId(deliveryPartnerId);
+  const orders = await FoodOrder.find({
+    $or: [
+      { "dispatch.deliveryPartnerId": partnerId },
+      { "dispatchPlan.legs": { $elemMatch: { deliveryPartnerId: partnerId } } },
+    ],
+    orderStatus: { $in: ACTIVE_DELIVERY_ORDER_STATUSES },
+  })
+    .populate({ path: "restaurantId", select: "restaurantName name phone location addressLine1 area city state profileImage" })
+    .populate({ path: "userId", select: "name phone" })
+    .sort({ updatedAt: -1 })
+    .lean();
+
+  return orders.map((order) =>
+    buildDeliveryOrderView(order, deliveryPartnerId, {
+      assignedDispatchLeg: getAssignedDispatchLeg(order, deliveryPartnerId),
+    }),
+  );
+}
+
+/** Count only — used by accept/dispatch gating without the populate cost. */
+export async function countActiveOrdersForPartner(deliveryPartnerId) {
+  const partnerId = new mongoose.Types.ObjectId(deliveryPartnerId);
+  return FoodOrder.countDocuments({
+    $or: [
+      { "dispatch.deliveryPartnerId": partnerId },
+      { "dispatchPlan.legs": { $elemMatch: { deliveryPartnerId: partnerId } } },
+    ],
+    orderStatus: { $in: ACTIVE_DELIVERY_ORDER_STATUSES },
+  });
+}
+
+/**
+ * Enforces the partner's admin-set concurrent-order limit before they claim a NEW
+ * order. Default limit is 1 (today's one-at-a-time behavior for everyone); admin can
+ * raise it per partner. Only gates brand-new claims — re-confirming an order already
+ * assigned to this partner (retry, split-leg re-confirm) must never be blocked by it.
+ */
+async function assertDeliveryPartnerConcurrencyHeadroom(deliveryPartnerId, order) {
+  const alreadyTheirs =
+    toIdString(order?.dispatch?.deliveryPartnerId) === toIdString(deliveryPartnerId) ||
+    (order?.dispatchPlan?.legs || []).some(
+      (leg) => toIdString(leg?.deliveryPartnerId) === toIdString(deliveryPartnerId),
+    );
+  if (alreadyTheirs) return;
+
+  const partner = await FoodDeliveryPartner.findById(deliveryPartnerId).select("maxConcurrentOrders").lean();
+  const limit = Math.max(1, Number(partner?.maxConcurrentOrders) || 1);
+  const activeCount = await countActiveOrdersForPartner(deliveryPartnerId);
+  if (activeCount >= limit) {
+    throw new ValidationError(
+      limit === 1
+        ? "Finish your current order before accepting a new one."
+        : `You already have ${activeCount} active orders (limit ${limit}). Finish one before accepting another.`,
+    );
+  }
+}
+
 // ----- Delivery: available, accept, reject, status -----
 export async function listOrdersAvailableDelivery(deliveryPartnerId, query) {
   const { page, limit, skip } = buildPaginationOptions(query);
   const partnerObjectId = new mongoose.Types.ObjectId(deliveryPartnerId);
-  const filter = {
-    $or: [
-      {
-        "dispatch.status": "unassigned",
-        orderStatus: { $in: ["ready_for_pickup", "ready"] },
+
+  // Once a partner is at their concurrent-order limit (default 1), stop showing
+  // unclaimed marketplace orders — they can't accept another right now. Orders
+  // already theirs (assigned/dispatchPlan legs) still show regardless.
+  const partner = await FoodDeliveryPartner.findById(deliveryPartnerId).select("maxConcurrentOrders").lean();
+  const concurrencyLimit = Math.max(1, Number(partner?.maxConcurrentOrders) || 1);
+  const activeCount = await countActiveOrdersForPartner(deliveryPartnerId);
+  const hasHeadroom = activeCount < concurrencyLimit;
+
+  const ownOrderClauses = [
+    {
+      "dispatch.deliveryPartnerId": partnerObjectId,
+      orderStatus: {
+        $nin: [
+          "delivered",
+          "cancelled_by_user",
+          "cancelled_by_restaurant",
+          "cancelled_by_admin",
+        ],
       },
-      {
-        "dispatch.deliveryPartnerId": partnerObjectId,
-        orderStatus: {
-          $nin: [
-            "delivered",
-            "cancelled_by_user",
-            "cancelled_by_restaurant",
-            "cancelled_by_admin",
-          ],
+    },
+    {
+      "dispatchPlan.legs": {
+        $elemMatch: {
+          deliveryPartnerId: partnerObjectId,
         },
       },
-      {
-        "dispatchPlan.legs": {
-          $elemMatch: {
-            deliveryPartnerId: partnerObjectId,
-          },
-        },
-        orderStatus: {
-          $nin: [
-            "delivered",
-            "cancelled_by_user",
-            "cancelled_by_restaurant",
-            "cancelled_by_admin",
-          ],
-        },
+      orderStatus: {
+        $nin: [
+          "delivered",
+          "cancelled_by_user",
+          "cancelled_by_restaurant",
+          "cancelled_by_admin",
+        ],
       },
-      {
-        "dispatchPlan.legs": {
-          $elemMatch: {
-            deliveryPartnerId: null,
-            partnerCandidates: {
-              $elemMatch: {
-                partnerId: partnerObjectId,
-              },
+    },
+  ];
+
+  const marketplaceClauses = [
+    {
+      "dispatch.status": "unassigned",
+      orderStatus: { $in: ["ready_for_pickup", "ready"] },
+    },
+    {
+      "dispatchPlan.legs": {
+        $elemMatch: {
+          deliveryPartnerId: null,
+          partnerCandidates: {
+            $elemMatch: {
+              partnerId: partnerObjectId,
             },
           },
         },
-        orderStatus: {
-          $nin: [
-            "delivered",
-            "cancelled_by_user",
-            "cancelled_by_restaurant",
-            "cancelled_by_admin",
-          ],
-        },
       },
-    ],
+      orderStatus: {
+        $nin: [
+          "delivered",
+          "cancelled_by_user",
+          "cancelled_by_restaurant",
+          "cancelled_by_admin",
+        ],
+      },
+    },
+  ];
+
+  const filter = {
+    $or: hasHeadroom ? [...ownOrderClauses, ...marketplaceClauses] : ownOrderClauses,
   };
 
   const orders = await FoodOrder.find(filter)
@@ -5184,6 +5267,9 @@ export async function acceptOrderDelivery(orderId, deliveryPartnerId, body = {})
 
   // Prevent COD accept when order collect amount exceeds remaining cash limit
   await assertDeliveryPartnerCodHeadroom(deliveryPartnerId, order);
+
+  // Admin-configurable concurrent-order limit (default 1 = today's behavior).
+  await assertDeliveryPartnerConcurrencyHeadroom(deliveryPartnerId, order);
 
   if (isSplitDispatchOrder(order)) {
     const requestedLegId = String(body?.legId || "").trim();

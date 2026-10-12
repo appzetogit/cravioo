@@ -134,6 +134,42 @@ export async function updateDeliveryPartnerActiveStatus(req, res, next) {
     }
 }
 
+export async function updateDeliveryPartnerConcurrencyLimit(req, res, next) {
+    try {
+        const { id } = req.params;
+        if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid delivery partner id'
+            });
+        }
+
+        const maxConcurrentOrders = req.body?.maxConcurrentOrders;
+        if (!Number.isFinite(Number(maxConcurrentOrders))) {
+            return res.status(400).json({
+                success: false,
+                message: 'maxConcurrentOrders must be a number'
+            });
+        }
+
+        const partner = await adminService.updateDeliveryPartnerConcurrencyLimit(id, maxConcurrentOrders);
+        if (!partner) {
+            return res.status(404).json({
+                success: false,
+                message: 'Delivery partner not found'
+            });
+        }
+
+        res.status(200).json({
+            success: true,
+            message: `Concurrent order limit set to ${partner.maxConcurrentOrders}`,
+            data: partner
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
 export async function bulkUpdateCustomersCodAccess(req, res, next) {
     try {
         const ids = Array.isArray(req.body?.ids) ? req.body.ids : [];

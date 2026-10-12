@@ -17,6 +17,12 @@ export const useDeliveryStore = create(
 
       activeOrder: null,
       tripStatus: 'IDLE',
+      // Multi-order (admin-configurable, default 1 = unchanged behavior): a second
+      // order accepted while one is already active waits here — it does NOT touch
+      // activeOrder/tripStatus/map tracking, which stay exactly as they are today.
+      // It's promoted into activeOrder only once the current trip completes.
+      queuedOrder: null,
+      maxConcurrentOrders: 1,
 
       mapContext: {
         visibleZones: [],
@@ -82,6 +88,10 @@ export const useDeliveryStore = create(
         activeOrder: null,
         tripStatus: 'IDLE',
       }),
+
+      setQueuedOrder: (order) => set({ queuedOrder: order || null }),
+      clearQueuedOrder: () => set({ queuedOrder: null }),
+      setMaxConcurrentOrders: (n) => set({ maxConcurrentOrders: Math.max(1, Number(n) || 1) }),
 
       canAdvanceToPickup: () => {
         const { activeOrder, tripStatus } = get();

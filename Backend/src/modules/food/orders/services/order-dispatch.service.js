@@ -55,13 +55,26 @@ export async function filterEligiblePartners(partners) {
     ...activeSubs.map(s => s.deliveryBoyId.toString())
   ]);
 
+  // Concurrency limits (admin-set, default 1) — skip partners already at their limit
+  // so the auto-dispatch hunt never offers a brand-new order to someone who can't
+  // accept it anyway.
+  const limitDocs = await FoodDeliveryPartner.find({ _id: { $in: partnerIds } })
+    .select('maxConcurrentOrders')
+    .lean();
+  const limitById = new Map(limitDocs.map((d) => [String(d._id), Math.max(1, Number(d.maxConcurrentOrders) || 1)]));
+  const { countActiveOrdersForPartner } = await import('./order.service.js');
+
   // Use a bypassed subscription list if needed, or strictly use subEligibleIds.
   // For now, we apply both subscription eligibility AND cash limit eligibility.
   const fullyEligiblePartners = [];
-  
+
   for (const p of partners) {
     const isSubEligible = subEligibleIds.has(p.partnerId.toString());
-    
+
+    const limit = limitById.get(String(p.partnerId)) || 1;
+    const activeCount = await countActiveOrdersForPartner(p.partnerId);
+    if (activeCount >= limit) continue; // Already at their concurrent-order limit.
+
     // Check cash limit
     try {
       // Use the SAME wallet calculation as the frontend UI (getDeliveryPartnerWalletEnhanced)
