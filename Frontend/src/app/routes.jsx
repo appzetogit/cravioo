@@ -87,16 +87,8 @@ const FoodAppWrapper = () => {
 }
 
 const SharedFoodHomeRoute = () => {
-  const { settings, refetch } = useSettings()
+  const { settings } = useSettings()
   const location = useLocation()
-
-  // Force a fresh settings check on every visit to this entry point — settings
-  // are otherwise session-cached, which would let a stale "Coming Soon off"
-  // linger for a whole tab session after admin turns it on.
-  useEffect(() => {
-    refetch()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
 
   // This is a separate top-level entry for the bare /food/user path (kept so
   // /food/user <-> legacy /quick don't remount through different app trees) —
@@ -131,14 +123,9 @@ const SHARED_COMING_SOON_EXEMPT_PATHS = [
  * login itself is handled per-route by ProtectedRoute/FoodProtectedRoute.
  */
 const SharedCartProfileGate = () => {
-  const { settings, refetch } = useSettings()
+  const { settings } = useSettings()
   const location = useLocation()
   const isExempt = SHARED_COMING_SOON_EXEMPT_PATHS.includes(location.pathname)
-
-  useEffect(() => {
-    refetch()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
 
   return (
     <Suspense fallback={<PageLoader />}>
