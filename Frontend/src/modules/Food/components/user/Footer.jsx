@@ -55,7 +55,10 @@ const Footer = ({ themeColor: themeColorProp }) => {
     useEffect(() => {
         const fetchCategories = async () => {
             try {
-                const res = await getWithDedupe('/food/admin/categories/public', {}, { ttl: 60 * 1000 });
+                // Not /food/admin/categories/public — that path is mounted under the
+                // admin-only router (authMiddleware + requireRoles('ADMIN','EMPLOYEE'))
+                // regardless of its own "public" name, so it 403s for every real visitor.
+                const res = await getWithDedupe('/food/restaurant/categories/public', {}, { ttl: 60 * 1000 });
                 const cats = res?.data?.data?.categories || [];
                 const allCategories = Array.isArray(cats) ? cats : [];
                 if (allCategories.length > 0) {
