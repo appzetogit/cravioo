@@ -79,7 +79,13 @@ const globalSettingsSchema = new mongoose.Schema(
         },
         modules: {
             food: { type: Boolean, default: true },
-        }
+        },
+        /**
+         * Admin-controlled kill switch for the User (customer) app/website.
+         * When true, every logged-in user is shown a Coming Soon screen and
+         * cannot reach any other page until this is turned back off.
+         */
+        userComingSoonEnabled: { type: Boolean, default: false },
     },
     { timestamps: true }
 );

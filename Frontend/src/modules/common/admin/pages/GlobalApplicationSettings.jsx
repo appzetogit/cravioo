@@ -130,6 +130,7 @@ const GlobalApplicationSettings = () => {
     address: "",
     codEnabled: true,
     onlineEnabled: true,
+    userComingSoonEnabled: false,
   });
 
   const fetchSettings = async () => {
@@ -147,6 +148,7 @@ const GlobalApplicationSettings = () => {
           address: settings.address || "",
           codEnabled: settings.codEnabled !== false,
           onlineEnabled: settings.onlineEnabled !== false,
+          userComingSoonEnabled: settings.userComingSoonEnabled === true,
         });
 
         syncMediaStateFromSettings(settings);
@@ -215,6 +217,7 @@ const GlobalApplicationSettings = () => {
         address: formData.address,
         codEnabled: formData.codEnabled,
         onlineEnabled: formData.onlineEnabled,
+        userComingSoonEnabled: formData.userComingSoonEnabled,
         adminLogoUrl: buildMediaUrlPayload(adminLogoPreview, adminLogoFile),
         adminFaviconUrl: buildMediaUrlPayload(adminFaviconPreview, adminFaviconFile),
         userLogoUrl: buildMediaUrlPayload(userLogoPreview, userLogoFile),
@@ -344,6 +347,23 @@ const GlobalApplicationSettings = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
             <ImageUploadBox title="User Logo" size="200px x 50px" preview={userLogoPreview} onUpload={(file) => handleFileUpload(file, setUserLogoFile, setUserLogoPreview)} onClear={() => { setUserLogoPreview(null); setUserLogoFile(null); }} />
             <ImageUploadBox title="User Favicon" size="80px x 80px" preview={userFaviconPreview} onUpload={(file) => handleFileUpload(file, setUserFaviconFile, setUserFaviconPreview)} onClear={() => { setUserFaviconPreview(null); setUserFaviconFile(null); }} />
+          </div>
+          <div className="mt-8 pt-6 border-t border-gray-100">
+            <label className="flex items-center gap-3 p-4 rounded-xl border border-amber-200 bg-amber-50/50 cursor-pointer hover:border-amber-300 transition-colors">
+              <input
+                type="checkbox"
+                checked={formData.userComingSoonEnabled}
+                onChange={(e) => handleChange('userComingSoonEnabled', e.target.checked)}
+                className="w-4 h-4 text-amber-600 border-gray-200 rounded focus:ring-amber-500 cursor-pointer"
+              />
+              <div>
+                <span className="text-sm font-semibold text-gray-800">User App Coming Soon Mode</span>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  When enabled, every logged-in customer (website + app) is shown a Coming Soon
+                  screen and cannot reach any other page. Login itself is never blocked.
+                </p>
+              </div>
+            </label>
           </div>
         </SectionCard>
 

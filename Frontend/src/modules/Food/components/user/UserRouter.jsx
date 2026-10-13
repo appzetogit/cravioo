@@ -3,6 +3,27 @@ import UserLayout from "./UserLayout"
 import { Suspense, lazy } from "react"
 import Loader from "@food/components/Loader"
 import ProtectedRoute from "@food/components/ProtectedRoute"
+import { isModuleAuthenticated } from "@food/utils/auth"
+import { useSettings } from "@core/context/SettingsContext"
+
+const ComingSoon = lazy(() => import("@food/pages/user/ComingSoon"))
+
+/**
+ * Pages reachable without logging in at all — legal/support pages (linked from
+ * the login screen itself) and the in-app auth helper routes. Everything else
+ * under /food/user now requires login first.
+ */
+const LOGIN_EXEMPT_PATHS = [
+  /^\/food\/user\/profile\/(terms|privacy|refund|shipping|cancellation)$/,
+  /^\/food\/user\/support$/,
+  /^\/food\/user\/help(\/|$)/,
+  /^\/food\/user\/auth(\/|$)/,
+]
+
+/** Only logout stays reachable while Coming Soon mode is on, so a trapped session can exit. */
+const COMING_SOON_EXEMPT_PATHS = [
+  /^\/food\/user\/profile\/logout$/,
+]
 
 function RedirectWithState({ to }) {
   const location = useLocation()
@@ -88,6 +109,23 @@ const SubmitComplaint = lazy(() => import("@food/pages/user/complaints/SubmitCom
 
 export default function UserRouter() {
   const location = useLocation()
+  const { settings } = useSettings()
+  const pathname = location.pathname
+
+  const isLoginExempt = LOGIN_EXEMPT_PATHS.some((re) => re.test(pathname))
+  if (!isModuleAuthenticated("user") && !isLoginExempt) {
+    return <Navigate to="/user/auth/login" state={{ from: location }} replace />
+  }
+
+  const isComingSoonExempt = COMING_SOON_EXEMPT_PATHS.some((re) => re.test(pathname))
+  if (settings?.userComingSoonEnabled && !isComingSoonExempt && !isLoginExempt) {
+    return (
+      <Suspense fallback={<Loader />}>
+        <ComingSoon />
+      </Suspense>
+    )
+  }
+
   return (
     <Suspense fallback={<Loader />}>
       <Routes>

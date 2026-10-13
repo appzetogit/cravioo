@@ -12,6 +12,7 @@ import { useSettings } from '@core/context/SettingsContext'
 import FoodProtectedRoute from '../modules/Food/components/ProtectedRoute'
 import { AuthPageGuard } from '@core/guards/RouteGuard'
 import { applyNativeShellClasses } from '@/shared/utils/nativeShell'
+import { isModuleAuthenticated } from '@food/utils/auth'
 
 const NATIVE_LAST_ROUTE_KEY = 'native_last_route'
 
@@ -22,6 +23,7 @@ const AuthApp = lazy(() => import('../modules/auth/routes'))
 
 const FoodUserLayout = lazy(() => import('../modules/Food/components/user/UserLayout'))
 const FoodHomePage = lazy(() => import('../modules/Food/pages/user/Home'))
+const FoodComingSoonPage = lazy(() => import('../modules/Food/pages/user/ComingSoon'))
 const GlobalCartPage = lazy(() => import('../modules/Food/pages/user/cart/Cart'))
 const GlobalSelectAddressPage = lazy(() => import('../modules/Food/pages/user/cart/SelectAddress'))
 const GlobalAddressSelectorPage = lazy(() => import('../modules/Food/pages/user/cart/AddressSelectorPage'))
@@ -85,10 +87,46 @@ const FoodAppWrapper = () => {
 }
 
 const SharedFoodHomeRoute = () => {
+  const { settings } = useSettings()
+  const location = useLocation()
+
+  // This is a separate top-level entry for the bare /food/user path (kept so
+  // /food/user <-> legacy /quick don't remount through different app trees) —
+  // it never goes through UserRouter.jsx, so the login/coming-soon gates there
+  // don't cover it. Must be enforced here too.
+  if (!isModuleAuthenticated('user')) {
+    return <Navigate to="/user/auth/login" state={{ from: location }} replace />
+  }
+
   return (
     <Suspense fallback={<PageLoader />}>
       <FoodUserLayout>
-        <FoodHomePage />
+        {settings?.userComingSoonEnabled ? <FoodComingSoonPage /> : <FoodHomePage />}
+      </FoodUserLayout>
+    </Suspense>
+  )
+}
+
+/** Legal/info pages stay reachable even in Coming Soon mode (see UserRouter.jsx's own exemption list). */
+const SHARED_COMING_SOON_EXEMPT_PATHS = [
+  '/profile/about', '/profile/terms', '/profile/privacy', '/profile/refund',
+  '/profile/shipping', '/profile/cancellation', '/profile/support',
+]
+
+/**
+ * Layout for the shared /cart and /profile/* routes above. These sit outside
+ * UserRouter.jsx too, so Coming Soon mode has to be enforced here as well —
+ * login itself is handled per-route by ProtectedRoute/FoodProtectedRoute.
+ */
+const SharedCartProfileGate = () => {
+  const { settings } = useSettings()
+  const location = useLocation()
+  const isExempt = SHARED_COMING_SOON_EXEMPT_PATHS.includes(location.pathname)
+
+  return (
+    <Suspense fallback={<PageLoader />}>
+      <FoodUserLayout>
+        {settings?.userComingSoonEnabled && !isExempt ? <FoodComingSoonPage /> : <Outlet />}
       </FoodUserLayout>
     </Suspense>
   )
@@ -186,14 +224,8 @@ const AppRoutes = () => {
           <Route path="/porter" element={<Navigate to="/food/user" replace />} />
 
           {/* Global shared cart */}
-          <Route
-            element={
-              <Suspense fallback={<PageLoader />}>
-                <FoodUserLayout />
-              </Suspense>
-            }
-          >
-            <Route path="/cart" element={<GlobalCartPage />} />
+          <Route element={<SharedCartProfileGate />}>
+            <Route path="/cart" element={<ProtectedRoute requiredRole="user" loginPath="/user/auth/login"><GlobalCartPage /></ProtectedRoute>} />
             <Route path="/cart/checkout" element={<Navigate to="/cart" replace />} />
             <Route path="/cart/select-address" element={<ProtectedRoute requiredRole="user" loginPath="/user/auth/login"><GlobalSelectAddressPage /></ProtectedRoute>} />
             <Route path="/cart/address-selector" element={<ProtectedRoute requiredRole="user" loginPath="/user/auth/login"><GlobalAddressSelectorPage /></ProtectedRoute>} />

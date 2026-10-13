@@ -41,6 +41,7 @@ const PUBLIC_SETTINGS_PROJECTION = {
     loginBanner: 1,
     sellerLoginBanner: 1,
     restaurantLoginBanner: 1,
+    userComingSoonEnabled: 1,
     updatedAt: 1,
 };
 
@@ -167,6 +168,7 @@ const buildPublicSettingsPayload = (settings) => {
         },
         codEnabled: raw.codEnabled !== false,
         onlineEnabled: raw.onlineEnabled !== false,
+        userComingSoonEnabled: raw.userComingSoonEnabled === true,
         updatedAt: raw.updatedAt || null,
     };
 
@@ -253,7 +255,7 @@ export async function updateGlobalSettings(req, res, next) {
             sellerLoginBannerActive, restaurantLoginBannerActive,
             themeColor, codEnabled, onlineEnabled, modules,
             facebook, instagram, twitter, linkedin, youtube,
-            socialLinks
+            socialLinks, userComingSoonEnabled
         } = data;
         
         console.log("Updating global settings with data:", data);
@@ -332,6 +334,9 @@ export async function updateGlobalSettings(req, res, next) {
         }
         if (onlineEnabled !== undefined) {
             settings.onlineEnabled = !!onlineEnabled;
+        }
+        if (userComingSoonEnabled !== undefined) {
+            settings.userComingSoonEnabled = !!userComingSoonEnabled;
         }
 
         const incomingSocial = socialLinks || {};
