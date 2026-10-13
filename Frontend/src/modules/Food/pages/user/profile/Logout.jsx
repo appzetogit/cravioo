@@ -73,7 +73,13 @@ export default function Logout() {
 
       // Clear all authentication data from localStorage
       clearUserSession()
+      // isModuleAuthenticated("user") reads user_accessToken specifically — without
+      // removing it, logout left the user still "authenticated" and every guard
+      // (AuthPageGuard, UserRouter's login gate) bounced straight back into the app.
+      localStorage.removeItem("user_accessToken")
+      localStorage.removeItem("user_refreshToken")
       localStorage.removeItem("accessToken")
+      localStorage.removeItem("refreshToken")
       localStorage.removeItem("user_authenticated")
       localStorage.removeItem("user_user")
       localStorage.removeItem("user")
@@ -95,7 +101,10 @@ export default function Logout() {
       
       // Clear local data anyway
       clearUserSession()
+      localStorage.removeItem("user_accessToken")
+      localStorage.removeItem("user_refreshToken")
       localStorage.removeItem("accessToken")
+      localStorage.removeItem("refreshToken")
       localStorage.removeItem("user_authenticated")
       localStorage.removeItem("user_user")
       localStorage.removeItem("user")
