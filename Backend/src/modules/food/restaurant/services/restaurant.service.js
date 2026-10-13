@@ -355,6 +355,9 @@ const toRestaurantProfile = (doc) => {
         pureVegRestaurant: Boolean(doc.pureVegRestaurant),
         zoneId: doc.zoneId ? String(doc.zoneId?._id || doc.zoneId) : '',
         zoneName: doc.zoneId?.name || doc.zoneId?.zoneName || doc.zoneId?.serviceLocation || '',
+        // Lets the restaurant dashboard show "your area is paused by admin" — only
+        // meaningful when zoneId was populated (getCurrentRestaurantProfile does this).
+        zoneActive: doc.zoneId && typeof doc.zoneId === 'object' ? doc.zoneId.isActive !== false : true,
         profileImage: doc.profileImage ? { url: doc.profileImage } : null,
         menuImages,
         coverImages,
@@ -517,8 +520,14 @@ const buildZoneRestaurantFilter = async (zoneIdRaw) => {
         return null;
     }
 
-    const zoneClauses = [{ zoneId: new mongoose.Types.ObjectId(trimmedZoneId) }];
     const zoneDoc = await FoodZone.findOne({ _id: trimmedZoneId, isActive: true }).lean();
+    if (!zoneDoc) {
+        // Zone doesn't exist, or admin has paused it — show nothing for this zone
+        // rather than falling through to matching by zoneId regardless of status.
+        return { _id: { $in: [] } };
+    }
+
+    const zoneClauses = [{ zoneId: new mongoose.Types.ObjectId(trimmedZoneId) }];
     const polygon = zoneToPolygon(zoneDoc);
     if (polygon) {
         zoneClauses.push({ location: { $geoWithin: { $geometry: polygon } } });
@@ -1692,7 +1701,7 @@ export const getCurrentRestaurantProfile = async (restaurantId) => {
                 'updatedAt'
             ].join(' ')
         )
-        .populate('zoneId', 'name zoneName serviceLocation')
+        .populate('zoneId', 'name zoneName serviceLocation isActive')
         .lean();
     if (!doc) return null;
 
@@ -2541,6 +2550,13 @@ export const listApprovedRestaurants = async (query = {}) => {
 
     const filter = { status: 'approved', isListed: { $ne: false } };
 
+    // A zone the admin pauses must stop surfacing its restaurants to customers —
+    // restaurants without a zoneId yet (legacy data) are left alone.
+    const inactiveZoneIds = await FoodZone.find({ isActive: false }).select('_id').lean();
+    if (inactiveZoneIds.length > 0) {
+        filter.zoneId = { $nin: inactiveZoneIds.map((z) => z._id) };
+    }
+
     if (query.city && String(query.city).trim()) {
         const city = String(query.city).trim().slice(0, 80);
         const rx = { $regex: escapeRegex(city), $options: 'i' };
@@ -2747,44 +2763,39 @@ export const getApprovedRestaurantByIdOrSlug = async (idOrSlug) => {
     const value = String(idOrSlug || '').trim();
     if (!value) return null;
 
-    // ObjectId path
+    let doc;
     if (/^[0-9a-fA-F]{24}$/.test(value)) {
-        const doc = await FoodRestaurant.findOne({ _id: value, status: 'approved' }).lean();
-        if (!doc) return null;
-        return {
-            ...doc,
-            rating: normalizeRatingValue(doc.rating),
-            totalRatings: normalizeTotalRatingsValue(doc.totalRatings)
-        };
-    }
-
-    // Public restaurant code path, e.g. REST000003
-    if (/^REST\d{6}$/i.test(value)) {
-        const doc = await FoodRestaurant.findOne({
+        doc = await FoodRestaurant.findOne({ _id: value, status: 'approved' }).lean();
+    } else if (/^REST\d{6}$/i.test(value)) {
+        doc = await FoodRestaurant.findOne({
             restaurantId: value.toUpperCase(),
             status: 'approved',
         }).lean();
-        if (!doc) return null;
-        return {
-            ...doc,
-            rating: normalizeRatingValue(doc.rating),
-            totalRatings: normalizeTotalRatingsValue(doc.totalRatings)
-        };
+    } else {
+        // Slug path: use normalized field for index-friendly exact match.
+        const restaurantNameNormalized = normalizeName(value);
+        if (!restaurantNameNormalized) return null;
+        doc = await FoodRestaurant.findOne({
+            status: 'approved',
+            restaurantNameNormalized
+        }).lean();
+    }
+    if (!doc) return null;
+
+    // Zone paused by admin — menu/detail can still render (read-only browsing),
+    // but the flag lets the frontend show "temporarily unavailable" and order
+    // creation hard-blocks on it server-side regardless of what the UI shows.
+    let zoneActive = true;
+    if (doc.zoneId) {
+        const zoneDoc = await FoodZone.findById(doc.zoneId).select('isActive').lean();
+        zoneActive = zoneDoc ? zoneDoc.isActive !== false : true;
     }
 
-    // Slug path: use normalized field for index-friendly exact match.
-    const restaurantNameNormalized = normalizeName(value);
-    if (!restaurantNameNormalized) return null;
-
-    const doc = await FoodRestaurant.findOne({
-        status: 'approved',
-        restaurantNameNormalized
-    }).lean();
-    if (!doc) return null;
     return {
         ...doc,
         rating: normalizeRatingValue(doc.rating),
-        totalRatings: normalizeTotalRatingsValue(doc.totalRatings)
+        totalRatings: normalizeTotalRatingsValue(doc.totalRatings),
+        zoneActive
     };
 };
 

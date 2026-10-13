@@ -18,6 +18,7 @@ export default function RestaurantApprovalGuard({ children }) {
   const location = useLocation()
   const [checking, setChecking] = useState(true)
   const [redirectToPending, setRedirectToPending] = useState(false)
+  const [zonePaused, setZonePaused] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -45,6 +46,7 @@ export default function RestaurantApprovalGuard({ children }) {
 
         if (restaurant) {
           updateStoredModuleUser("restaurant", restaurant)
+          setZonePaused(restaurant?.zoneActive === false)
 
           const status = String(restaurant?.status || "").toLowerCase()
           if (!isRestaurantApproved(restaurant) && (isRestaurantInitialPendingApproval(restaurant) || status === "rejected")) {
@@ -78,5 +80,15 @@ export default function RestaurantApprovalGuard({ children }) {
     )
   }
 
-  return children
+  return (
+    <>
+      {zonePaused && (
+        <div className="bg-amber-500 text-white text-xs sm:text-sm font-semibold text-center py-2 px-4 sticky top-0 z-[60]">
+          Your service area has been temporarily paused by the admin — your restaurant isn't
+          visible to customers and new orders can't be placed until it's reactivated.
+        </div>
+      )}
+      {children}
+    </>
+  )
 }

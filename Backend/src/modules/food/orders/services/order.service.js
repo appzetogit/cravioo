@@ -2573,6 +2573,16 @@ export async function calculateOrder(userId, dto, options = {}) {
       dto.restaurantId,
     ));
   }
+
+  // Admin paused this restaurant's zone — surface it at checkout-preview time too,
+  // not just on final order creation.
+  if (primaryRestaurant?.zoneId) {
+    const zoneDoc = await FoodZone.findById(primaryRestaurant.zoneId).select('isActive').lean();
+    if (zoneDoc && zoneDoc.isActive === false) {
+      throw new ValidationError("This restaurant's area is temporarily paused. Please try again later.");
+    }
+  }
+
   await applyServerItemPricing(items, sourceMap);
   const subtotal = items.reduce(
     (sum, it) => sum + (Number(it.price) || 0) * (Number(it.quantity) || 1),
@@ -2882,6 +2892,15 @@ export async function createOrder(userId, dto) {
     if (!primaryRestaurant) throw new ValidationError("Restaurant not found");
     if (primaryRestaurant.status !== "approved")
       throw new ValidationError("Restaurant not accepting orders");
+
+    // Admin paused this restaurant's zone — block new orders server-side
+    // regardless of what the UI happened to have cached/shown.
+    if (primaryRestaurant.zoneId) {
+      const zoneDoc = await FoodZone.findById(primaryRestaurant.zoneId).select('isActive').lean();
+      if (zoneDoc && zoneDoc.isActive === false) {
+        throw new ValidationError("This restaurant's area is temporarily paused. Please try again later.");
+      }
+    }
 
     // PHASE 3D: SUBSCRIPTION GUARD (READ-ONLY VALIDATION) (Bypassed)
     /* Comment out the related restriction/check logic in the codebase instead of removing it completely.

@@ -71,6 +71,7 @@ export default function ZoneSetup() {
   const [zones, setZones] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
+  const [togglingZoneId, setTogglingZoneId] = useState(null)
 
   useEffect(() => {
     fetchZones()
@@ -107,6 +108,33 @@ export default function ZoneSetup() {
     } catch (error) {
       debugError("Error deleting zone:", error)
       alert(error.response?.data?.message || "Failed to delete zone")
+    }
+  }
+
+  const handleToggleZoneActive = async (zone) => {
+    if (!canEdit) {
+      alert("Permission denied")
+      return
+    }
+    const nextActive = !zone.isActive
+    const confirmed = window.confirm(
+      nextActive
+        ? `Activate "${zone.name}"? Restaurants in this zone will become visible to customers again.`
+        : `Pause "${zone.name}"? Its restaurants will stop showing to customers and new orders will be blocked until it's reactivated.`
+    )
+    if (!confirmed) return
+
+    try {
+      setTogglingZoneId(zone._id)
+      await adminAPI.updateZone(zone._id, { isActive: nextActive })
+      setZones((prev) =>
+        prev.map((z) => (z._id === zone._id ? { ...z, isActive: nextActive } : z))
+      )
+    } catch (error) {
+      debugError("Error toggling zone status:", error)
+      alert(error.response?.data?.message || "Failed to update zone status")
+    } finally {
+      setTogglingZoneId(null)
     }
   }
 
@@ -245,11 +273,27 @@ export default function ZoneSetup() {
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-slate-600">Status:</span>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      zone.isActive ? "bg-green-100 text-green-800" : "bg-slate-100 text-slate-800"
-                    }`}>
-                      {zone.isActive ? "Active" : "Inactive"}
-                    </span>
+                    {canEdit ? (
+                      <button
+                        type="button"
+                        onClick={() => handleToggleZoneActive(zone)}
+                        disabled={togglingZoneId === zone._id}
+                        title={zone.isActive ? "Click to pause this zone" : "Click to activate this zone"}
+                        className={`px-2 py-1 rounded-full text-xs font-medium transition-colors disabled:opacity-50 cursor-pointer ${
+                          zone.isActive
+                            ? "bg-green-100 text-green-800 hover:bg-green-200"
+                            : "bg-rose-100 text-rose-800 hover:bg-rose-200"
+                        }`}
+                      >
+                        {togglingZoneId === zone._id ? "..." : zone.isActive ? "Active" : "Inactive"}
+                      </button>
+                    ) : (
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        zone.isActive ? "bg-green-100 text-green-800" : "bg-slate-100 text-slate-800"
+                      }`}>
+                        {zone.isActive ? "Active" : "Inactive"}
+                      </span>
+                    )}
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-slate-600">Quick Delivery:</span>

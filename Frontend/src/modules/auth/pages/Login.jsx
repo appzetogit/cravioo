@@ -20,6 +20,9 @@ export default function UnifiedOTPFastLogin() {
   })
   const [emailAddress, setEmailAddress] = useState("")
   const [otp, setOtp] = useState("")
+  // Only populated when the backend is in test/default-OTP mode (never in a real
+  // production send) — shown as an on-screen hint so testers don't have to guess "1234".
+  const [devOtp, setDevOtp] = useState("")
   const [step, setStep] = useState(1)
   const [otpError, setOtpError] = useState("")
 
@@ -131,7 +134,8 @@ export default function UnifiedOTPFastLogin() {
     setLoading(true)
     try {
       clearNameFlow()
-      await authAPI.sendOTP(identifier, "login", null)
+      const res = await authAPI.sendOTP(identifier, "login", null)
+      setDevOtp(res?.data?.data?.otp || "")
       setOtpSent(true)
       setOtp("")
       setStep(2)
@@ -167,7 +171,8 @@ export default function UnifiedOTPFastLogin() {
     try {
       clearNameFlow()
       setOtpError("")
-      await authAPI.sendOTP(identifier, "login", null)
+      const res = await authAPI.sendOTP(identifier, "login", null)
+      setDevOtp(res?.data?.data?.otp || "")
       setOtp("")
       setOtpSent(true)
       setResendTimer(RESEND_COOLDOWN_SECONDS)
@@ -184,6 +189,7 @@ export default function UnifiedOTPFastLogin() {
   const handleEditNumber = () => {
     setStep(1)
     setOtp("")
+    setDevOtp("")
     setResendTimer(0)
     clearNameFlow()
   }
@@ -555,7 +561,15 @@ export default function UnifiedOTPFastLogin() {
                       </div>
                       <button type="button" onClick={handleEditNumber} className="text-xs text-primary-orange font-black underline cursor-pointer">Edit</button>
                    </div>
- 
+
+                   {devOtp && (
+                     <div className="text-center bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl py-2.5 px-4">
+                       <p className="text-xs font-bold text-amber-700 dark:text-amber-300">
+                         Test mode — use OTP <span className="text-base tracking-widest">{devOtp}</span>
+                       </p>
+                     </div>
+                   )}
+
                    <div className="flex justify-center gap-3 mt-4">
                     {[0, 1, 2, 3].map((index) => (
                       <input
