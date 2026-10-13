@@ -48,8 +48,10 @@ const resolveBackPath = ({ pathname, search, state }) => {
       normalizedPath,
     )
   ) {
+    // These are public pages (readable without login, e.g. from the login screen's
+    // footer links) — going back must never force an anonymous visitor into login.
     if (!isModuleAuthenticated("user")) {
-      return "/user/auth/login"
+      return explicitBackPath || "/food/user"
     }
     return explicitBackPath || "/food/user/profile"
   }
