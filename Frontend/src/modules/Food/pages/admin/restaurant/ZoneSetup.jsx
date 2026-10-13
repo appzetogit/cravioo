@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react"
 import { useNavigate } from "react-router-dom"
 import { MapPin, Plus, Search, Edit, Trash2, Eye, Map, Bike } from "lucide-react"
 import { adminAPI } from "@food/api"
+import { Switch } from "@food/components/ui/switch"
 import { useAuth } from "@core/context/AuthContext"
 import { getCurrentUser } from "@food/utils/auth"
 import { canPerformAdminPermissionAction, extractAdminPermissions, extractAdminRoleId, fetchAdminRolePermissions } from "@food/utils/adminPermissions"
@@ -274,19 +275,18 @@ export default function ZoneSetup() {
                   <div className="flex items-center justify-between">
                     <span className="text-slate-600">Status:</span>
                     {canEdit ? (
-                      <button
-                        type="button"
-                        onClick={() => handleToggleZoneActive(zone)}
-                        disabled={togglingZoneId === zone._id}
-                        title={zone.isActive ? "Click to pause this zone" : "Click to activate this zone"}
-                        className={`px-2 py-1 rounded-full text-xs font-medium transition-colors disabled:opacity-50 cursor-pointer ${
-                          zone.isActive
-                            ? "bg-green-100 text-green-800 hover:bg-green-200"
-                            : "bg-rose-100 text-rose-800 hover:bg-rose-200"
-                        }`}
-                      >
-                        {togglingZoneId === zone._id ? "..." : zone.isActive ? "Active" : "Inactive"}
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <span className={`text-xs font-semibold ${zone.isActive ? "text-green-700" : "text-slate-500"}`}>
+                          {zone.isActive ? "Active" : "Inactive"}
+                        </span>
+                        <Switch
+                          checked={zone.isActive}
+                          disabled={togglingZoneId === zone._id}
+                          onCheckedChange={() => handleToggleZoneActive(zone)}
+                          title={zone.isActive ? "Click to pause this zone" : "Click to activate this zone"}
+                          className="data-[state=unchecked]:bg-slate-300 data-[state=checked]:bg-green-600"
+                        />
+                      </div>
                     ) : (
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                         zone.isActive ? "bg-green-100 text-green-800" : "bg-slate-100 text-slate-800"
