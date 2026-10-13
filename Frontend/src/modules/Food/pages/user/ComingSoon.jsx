@@ -1,18 +1,20 @@
 import { Link } from "react-router-dom"
 import { motion } from "framer-motion"
 import { Sparkles, LogOut } from "lucide-react"
-import { useSettings } from "@core/context/SettingsContext"
 
 /**
  * Admin-controlled full-screen block for the User app. Shown to every logged-in
  * customer when GlobalSettings.userComingSoonEnabled is true — nothing else in
  * the user app is reachable while this is on (see the gates in UserRouter.jsx
  * and app/routes.jsx).
+ *
+ * appName/logoUrl are passed in as props (rather than this component calling
+ * useSettings() itself) since this is lazy-loaded into its own chunk — the
+ * parent gates already have settings loaded, so this avoids any risk of a
+ * duplicated SettingsContext module instance across chunk boundaries.
  */
-export default function ComingSoon() {
-  const { settings } = useSettings()
-  const appName = settings?.appName || settings?.companyName || "Cravioo"
-  const logoUrl = settings?.logoUrl
+export default function ComingSoon({ appName: appNameProp, logoUrl }) {
+  const appName = appNameProp || "Cravioo"
 
   return (
     <div className="relative min-h-screen w-full overflow-hidden flex items-center justify-center px-6 bg-[#0b1220]">

@@ -109,7 +109,11 @@ const SharedFoodHomeRoute = () => {
   return (
     <Suspense fallback={<PageLoader />}>
       <FoodUserLayout>
-        {settings?.userComingSoonEnabled ? <FoodComingSoonPage /> : <FoodHomePage />}
+        {settings?.userComingSoonEnabled ? (
+          <FoodComingSoonPage appName={settings?.appName || settings?.companyName} logoUrl={settings?.logoUrl} />
+        ) : (
+          <FoodHomePage />
+        )}
       </FoodUserLayout>
     </Suspense>
   )
@@ -139,7 +143,11 @@ const SharedCartProfileGate = () => {
   return (
     <Suspense fallback={<PageLoader />}>
       <FoodUserLayout>
-        {settings?.userComingSoonEnabled && !isExempt ? <FoodComingSoonPage /> : <Outlet />}
+        {settings?.userComingSoonEnabled && !isExempt ? (
+          <FoodComingSoonPage appName={settings?.appName || settings?.companyName} logoUrl={settings?.logoUrl} />
+        ) : (
+          <Outlet />
+        )}
       </FoodUserLayout>
     </Suspense>
   )

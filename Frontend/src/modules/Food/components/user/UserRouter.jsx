@@ -130,7 +130,7 @@ export default function UserRouter() {
   if (settings?.userComingSoonEnabled && !isComingSoonExempt && !isLoginExempt) {
     return (
       <Suspense fallback={<Loader />}>
-        <ComingSoon />
+        <ComingSoon appName={settings?.appName || settings?.companyName} logoUrl={settings?.logoUrl} />
       </Suspense>
     )
   }
