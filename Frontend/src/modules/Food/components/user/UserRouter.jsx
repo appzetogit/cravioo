@@ -1,6 +1,6 @@
 import { Routes, Route, Navigate, useLocation } from "react-router-dom"
 import UserLayout from "./UserLayout"
-import { Suspense, lazy } from "react"
+import { Suspense, lazy, useEffect } from "react"
 import Loader from "@food/components/Loader"
 import ProtectedRoute from "@food/components/ProtectedRoute"
 import { isModuleAuthenticated } from "@food/utils/auth"
@@ -109,8 +109,17 @@ const SubmitComplaint = lazy(() => import("@food/pages/user/complaints/SubmitCom
 
 export default function UserRouter() {
   const location = useLocation()
-  const { settings } = useSettings()
+  const { settings, refetch } = useSettings()
   const pathname = location.pathname
+
+  // Settings are session-cached (fetched once per tab) for performance, which is
+  // fine for logos/colors but would let a stale "Coming Soon off" linger for an
+  // entire session after admin turns it on. Force one fresh check whenever the
+  // user app is entered/re-entered so the flag is never stale at the gate.
+  useEffect(() => {
+    refetch()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const isLoginExempt = LOGIN_EXEMPT_PATHS.some((re) => re.test(pathname))
   if (!isModuleAuthenticated("user") && !isLoginExempt) {
