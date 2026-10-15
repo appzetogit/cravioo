@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from "react"
+import { useLocation as useRouterLocation } from "react-router-dom"
 import { MapPin, X } from "lucide-react"
 import { Card, CardHeader, CardTitle, CardContent } from "@food/components/ui/card"
 import { Button } from "@food/components/ui/button"
@@ -16,8 +17,16 @@ import {
 const PROMPT_DELAY_MS = 600
 const PROMPT_DELAY_AFTER_LOGIN_MS = 400
 
+/** Static info pages where location is irrelevant — never interrupt these with the prompt. */
+const NO_LOCATION_NEEDED_PATHS = [
+  /^\/food\/user\/profile\/(terms|privacy|refund|shipping|cancellation|about|accessibility|logout|report-safety-emergency)$/,
+  /^\/food\/user\/support$/,
+  /^\/food\/user\/help(\/|$)/,
+]
+
 export default function LocationPrompt() {
   const { loading, requestLocation } = useLocation()
+  const routerLocation = useRouterLocation()
   const [showPrompt, setShowPrompt] = useState(false)
   const [permissionBlocked, setPermissionBlocked] = useState(false)
   const cardRef = useRef(null)
@@ -57,9 +66,16 @@ export default function LocationPrompt() {
     [animateIn],
   )
 
-  // Run once on mount — avoids timer cancellation when geolocationPermission updates.
+  // Re-checks per path change — a legal/info page must never interrupt with this,
+  // but navigating on to a real browsing page should still get a chance to prompt.
   useEffect(() => {
     let cancelled = false
+
+    const skipForPath = NO_LOCATION_NEEDED_PATHS.some((re) => re.test(routerLocation.pathname))
+    if (skipForPath) {
+      closePrompt()
+      return undefined
+    }
 
     const tryShowPrompt = async () => {
       const afterLogin = peekLocationPromptAfterLogin()
@@ -101,7 +117,7 @@ export default function LocationPrompt() {
       window.clearTimeout(timer)
       document.body.style.overflow = ""
     }
-  }, [openPrompt])
+  }, [openPrompt, closePrompt, routerLocation.pathname])
 
   const handleAllow = async () => {
     if (permissionBlocked) {
