@@ -438,7 +438,7 @@ export async function getRestaurants(query) {
     const page = Math.max(parseInt(query.page, 10) || 1, 1);
     const skip = (page - 1) * limit;
     const status = query.status;
-    const filter = {};
+    const filter = { isDeleted: { $ne: true } };
     if (status && ['pending', 'approved', 'rejected'].includes(status)) {
         filter.status = status;
     }
@@ -4388,6 +4388,31 @@ export async function updateRestaurantStatus(id, body = {}) {
     }
 
     if (updated) invalidateDashboardStatsCache();
+    return updated;
+}
+
+/** Soft-deletes a restaurant (admin): hides it everywhere and kills its sessions. */
+export async function deleteRestaurant(id) {
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+        throw new ValidationError('Invalid restaurant ID');
+    }
+    const updated = await FoodRestaurant.findOneAndUpdate(
+        { _id: id, isDeleted: { $ne: true } },
+        {
+            $set: {
+                isDeleted: true,
+                accountStatus: 'deleted',
+                isActive: false,
+                isListed: false,
+                isAcceptingOrders: false
+            }
+        },
+        { new: true, runValidators: false }
+    ).lean();
+    if (!updated) return null;
+
+    await FoodRefreshToken.deleteMany({ userId: updated._id });
+    invalidateDashboardStatsCache();
     return updated;
 }
 

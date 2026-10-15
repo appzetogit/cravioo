@@ -134,6 +134,7 @@ router.get('/restaurants/:id/item-slot-timings', checkPermission('food::food_man
 router.post('/restaurants', checkPermission('food::restaurant_management::restaurants::list', 'create'), adminController.createRestaurant);
 router.patch('/restaurants/:id', checkPermission('food::restaurant_management::restaurants::list', 'edit'), adminController.updateRestaurantById);
 router.patch('/restaurants/:id/status', checkPermission('food::restaurant_management::restaurants::list', 'edit'), adminController.updateRestaurantStatus);
+router.delete('/restaurants/:id', checkPermission('food::restaurant_management::restaurants::list', 'delete'), adminController.deleteRestaurant);
 router.patch('/restaurants/:id/visibility', checkPermission('food::restaurant_management::restaurants::list', 'edit'), adminController.toggleRestaurantListing);
 router.patch('/restaurants/:id/show-without-menu', checkPermission('food::restaurant_management::restaurants::list', 'edit'), adminController.toggleShowWithoutMenu);
 router.patch('/restaurants/:id/position', checkPermission('food::restaurant_management::restaurants::list', 'edit'), adminController.updateRestaurantPosition);
