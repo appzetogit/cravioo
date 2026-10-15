@@ -644,6 +644,11 @@ export const adminAPI = {
       { status: status !== false },
       { contextModule: "admin" },
     ),
+  /** Delete (soft) a restaurant (admin). */
+  deleteRestaurant: (id) =>
+    apiClient.delete(`/food/admin/restaurants/${String(id)}`, {
+      contextModule: "admin",
+    }),
   /** Toggle restaurant listing visibility (admin). */
   toggleRestaurantListing: (id, isListed) =>
     apiClient.patch(
