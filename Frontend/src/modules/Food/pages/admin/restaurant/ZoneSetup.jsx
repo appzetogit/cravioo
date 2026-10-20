@@ -303,6 +303,14 @@ export default function ZoneSetup() {
                       {zone.quickDeliveryEnabled === true ? "Enabled" : "Off"}
                     </span>
                   </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-600">Order Transfer:</span>
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      zone.orderTransferEnabled === true ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-800"
+                    }`}>
+                      {zone.orderTransferEnabled === true ? `On · ${zone.orderTransferRadiusMeters || 500}m` : "Off"}
+                    </span>
+                  </div>
                   {(zone.coordinatesCount ?? zone.coordinates?.length ?? 0) > 0 && (
                     <div className="flex items-center justify-between">
                       <span className="text-slate-600">Points:</span>

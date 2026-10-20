@@ -30,7 +30,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts"
-import { Activity, ShoppingBag, CreditCard, Truck, Receipt, IndianRupee, Store, UserCheck, Package, UserCircle, Clock, CheckCircle, Plus, XCircle, Trophy } from "lucide-react"
+import { Activity, ShoppingBag, CreditCard, Truck, Receipt, IndianRupee, Store, UserCheck, Package, UserCircle, Clock, CheckCircle, Plus, XCircle, Trophy, ArrowRightLeft } from "lucide-react"
 import { adminAPI } from "@food/api"
 import { toast } from "sonner"
 import { useAuth } from "@core/context/AuthContext"
@@ -201,6 +201,9 @@ export default function AdminHome() {
   const quickOrdersCount = Number(quickKpis.orders || 0)
   const quickAttachRate = Number(quickKpis.attachmentRate || 0)
   const quickSlaBreachRate = Number(quickKpis.slaBreachRate || 0)
+  const orderTransferKpis = dashboardData?.orderTransfer || {}
+  const dsuChargeTotal = Number(orderTransferKpis.dsuChargeTotal || 0)
+  const dsuTransferredOrders = Number(orderTransferKpis.transferredOrders || 0)
 
   // Additional stats
   const totalRestaurants = dashboardData?.restaurants?.total || 0
@@ -385,6 +388,17 @@ export default function AdminHome() {
             iconBg="bg-sky-100/80"
             iconColor="text-sky-700"
             to="/admin/food/tax-report"
+            canAccess={canAccessPath}
+          />
+          <StatCard
+            title="DSU Transfer Charges"
+            value={formatCurrency(dsuChargeTotal)}
+            helper={`${dsuTransferredOrders.toLocaleString("en-IN")} orders transferred · included in Gross revenue, paid to receiving partner (not platform profit)`}
+            icon={<ArrowRightLeft className="h-3.5 w-3.5 sm:h-4 sm:w-4" />}
+            cardBg="bg-[#EFF6FF] border-blue-200/60 hover:border-blue-300/80"
+            iconBg="bg-blue-100/80"
+            iconColor="text-blue-700"
+            to="/admin/food/orders/all"
             canAccess={canAccessPath}
           />
           <StatCard

@@ -239,6 +239,7 @@ const transformOrderForList = (order) => {
   paymentMethod: order.paymentMethod || order.payment?.method || null,
   deliveryPartnerId: order.deliveryPartnerId || null,
   dispatchStatus: order.dispatch?.status || null,
+  transfer: order.transfer || null,
   preparingTimestamp: order.tracking?.preparing?.timestamp
     ? new Date(order.tracking.preparing.timestamp)
     : new Date(order.createdAt || Date.now()),
@@ -3362,6 +3363,23 @@ case "cancelled":
                 </div>
               )}
 
+              {/* Order Transfer (DSU) notice in Bottom Sheet */}
+              {selectedOrder.transfer?.status && selectedOrder.transfer.status !== "none" && (
+                <div className="mb-4 pt-3 border-t border-gray-100">
+                  <div className="bg-blue-50 border border-blue-100 rounded-2xl p-3 flex items-start gap-2.5">
+                    <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
+                      <ArrowRightLeft className="w-4 h-4 text-blue-600" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-xs font-bold text-blue-900">Order transferred between delivery partners</p>
+                      <p className="text-[10px] text-blue-700 mt-0.5 leading-tight">
+                        Handed off to a nearby DSU partner on the way to the customer.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <button
                 className="w-full bg-black text-white py-2.5 rounded-xl text-sm font-medium"
                 onClick={() => setIsSheetOpen(false)}>
@@ -3397,6 +3415,7 @@ const OrderCard = memo(function OrderCard({
   photoAlt,
   deliveryPartnerId,
   dispatchStatus,
+  transfer,
   isFoodQuickDelivery = false,
   deliveryMode,
   onSelect,
@@ -3510,6 +3529,11 @@ const OrderCard = memo(function OrderCard({
                 />
                 {deliveryPartnerId ? "Assigned" : "Not Assigned"}
               </span>
+              {transfer?.status && transfer.status !== "none" && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-blue-50 text-blue-700 border border-blue-200">
+                  Transferred
+                </span>
+              )}
               {dispatchStatus !== "accepted" && (
                 <ResendNotificationButton
                   orderId={orderId}
@@ -3607,6 +3631,7 @@ function PreparingOrders({
               photoAlt: getOrderPreviewItem(order.items)?.name || "Order",
               deliveryPartnerId: order.deliveryPartnerId || null,
               dispatchStatus: order.dispatch?.status || null,
+              transfer: order.transfer || null,
               paymentMethod:
                 order.paymentMethod || order.payment?.method || null,
               deliveryMode: order.deliveryMode || "basic",
@@ -3880,6 +3905,7 @@ function PreparingOrders({
                 paymentMethod={order.paymentMethod}
                 deliveryPartnerId={order.deliveryPartnerId}
                 dispatchStatus={order.dispatchStatus}
+                transfer={order.transfer}
                 onSelect={onSelectOrder}
                 onCancel={onCancel}
                 onMarkReady={handleMarkReady}
@@ -3937,6 +3963,7 @@ function ReadyOrders({ onSelectOrder, refreshToken = 0, searchQuery = "" }) {
             paymentMethod: order.paymentMethod || order.payment?.method || null,
             deliveryPartnerId: order.deliveryPartnerId || null,
             dispatchStatus: order.dispatch?.status || null,
+            transfer: order.transfer || null,
           }));
 
           if (isMounted) {
@@ -4062,6 +4089,7 @@ const OutForDeliveryOrders = ({ onSelectOrder, refreshToken = 0, searchQuery = "
             paymentMethod: order.paymentMethod || order.payment?.method || null,
             deliveryPartnerId: order.deliveryPartnerId || null,
             dispatchStatus: order.dispatch?.status || null,
+            transfer: order.transfer || null,
           }));
 
           if (isMounted) {

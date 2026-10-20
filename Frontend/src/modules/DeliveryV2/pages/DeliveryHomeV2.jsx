@@ -14,6 +14,8 @@ import { PickupActionModal } from '@/modules/DeliveryV2/components/modals/Pickup
 import { DeliveryVerificationModal } from '@/modules/DeliveryV2/components/modals/DeliveryVerificationModal';
 import { isReturnPickupTrip, getReturnPickupStopLabels, enrichReturnDeliveryOrder, enrichIncomingDeliveryOrder } from '@/modules/DeliveryV2/utils/orderRouting';
 import { OrderSummaryModal } from '@/modules/DeliveryV2/components/modals/OrderSummaryModal';
+import { OrderTransferModal } from '@/modules/DeliveryV2/components/modals/OrderTransferModal';
+import { NewTransferOrderModal } from '@/modules/DeliveryV2/components/modals/NewTransferOrderModal';
 import ActionSlider from '@/modules/DeliveryV2/components/ui/ActionSlider';
 import VehicleSwitcherSheet from '@/modules/DeliveryV2/components/modals/VehicleSwitcherSheet';
 
@@ -267,7 +269,11 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
   const canSwitchVehicle = getApprovedVehicles(driverVehicles).length > 1;
   const { isWithinRange, distanceToTarget, displayDistanceToTarget } = useProximityCheck();
   const { acceptOrder, reachPickup, pickUpOrder, reachDrop, completeDelivery, resetTrip } = useOrderManager();
-  const { newOrder, clearNewOrder, unavailableOfferKey, resetOfferQueue, orderStatusUpdate, clearOrderStatusUpdate, isConnected: isSocketConnected, emitLocation, forcedOfflineEvent, clearForcedOfflineEvent } = useDeliveryNotificationsContext();
+  const {
+    newOrder, clearNewOrder, unavailableOfferKey, resetOfferQueue, orderStatusUpdate, clearOrderStatusUpdate,
+    isConnected: isSocketConnected, emitLocation, forcedOfflineEvent, clearForcedOfflineEvent,
+    transferOffer, clearTransferOffer, transferAccepted, clearTransferAccepted, transferCompleted, clearTransferCompleted,
+  } = useDeliveryNotificationsContext();
   const [isProcessingToggle, setIsProcessingToggle] = useState(false);
 
   useEffect(() => {
@@ -503,6 +509,8 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
   }, []);
 
   const [showVerification, setShowVerification] = useState(false);
+  /** D1 side: the "Transfer this order?" popup shown just before Verify & Complete. */
+  const [showTransferOffer, setShowTransferOffer] = useState(false);
   const [showEmergencyPopup, setShowEmergencyPopup] = useState(false);
   const [profileImage, setProfileImage] = useState(null);
   const [emergencyNumbers, setEmergencyNumbers] = useState({
@@ -1330,6 +1338,31 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
           </AnimatePresence>
 
           <AnimatePresence>
+            {!isModalMinimized && !incomingOrder && !activeOrder && transferOffer && (
+              <NewTransferOrderModal
+                key={`new-transfer-modal-${transferOffer.orderMongoId || transferOffer.orderId || 'current'}`}
+                offer={transferOffer}
+                onAccept={async (offerData) => {
+                  const offerOrderId = offerData.orderMongoId || offerData.orderId;
+                  try {
+                    const res = await deliveryAPI.acceptOrderTransfer(offerOrderId);
+                    const acceptedOrder = res?.data?.data?.order;
+                    clearTransferOffer();
+                    if (acceptedOrder) {
+                      setActiveOrder(acceptedOrder);
+                      updateTripStatus('PICKED_UP');
+                    }
+                  } catch (err) {
+                    toast.error(err?.response?.data?.message || 'Could not accept transfer');
+                    clearTransferOffer();
+                  }
+                }}
+                onReject={() => clearTransferOffer()}
+              />
+            )}
+          </AnimatePresence>
+
+          <AnimatePresence>
             {!isModalMinimized && (
               <motion.div
               key="modal-container"
@@ -1446,13 +1479,21 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
                         <ActionSlider label="Slide to Arrive" successLabel="Arrived ✓" disabled={!isWithinRange} onConfirm={reachDrop} color="bg-[#32C45A]" />
                       </div>
                     ) : (
-                      <div className="px-4 pb-[92px] w-full max-w-lg mx-auto">
-                        <button 
-                          onClick={() => setShowVerification(true)} 
+                      <div className="px-4 pb-[92px] w-full max-w-lg mx-auto space-y-3">
+                        <button
+                          onClick={() => setShowVerification(true)}
                           className="w-full bg-green-500 hover:bg-green-600 text-white shadow-xl shadow-green-500/30 rounded-2xl py-5 font-bold text-sm tracking-[0.2em] transform transition-all active:scale-95 flex items-center justify-center gap-3"
                         >
                           <CheckCircle2 className="w-6 h-6" /> VERIFY & COMPLETE
                         </button>
+                        {!isReturnPickupTrip(activeOrder) && !activeOrder?.transfer?.status?.length && (
+                          <button
+                            onClick={() => setShowTransferOffer(true)}
+                            className="w-full bg-white border-2 border-blue-500 text-blue-600 rounded-2xl py-4 font-bold text-xs tracking-[0.15em] transform transition-all active:scale-95 flex items-center justify-center gap-2"
+                          >
+                            Transfer this order
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>
@@ -1466,6 +1507,25 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
                       return res;
                     }}
                     onClose={() => setShowVerification(false)}
+                  />
+                )}
+                {showTransferOffer && tripStatus !== 'COMPLETED' && (
+                  <OrderTransferModal
+                    order={activeOrder}
+                    transferAccepted={transferAccepted}
+                    transferCompleted={transferCompleted}
+                    onClose={() => setShowTransferOffer(false)}
+                    onSkip={() => {
+                      setShowTransferOffer(false);
+                      clearTransferAccepted();
+                    }}
+                    onTransferredAway={() => {
+                      setShowTransferOffer(false);
+                      clearTransferAccepted();
+                      clearTransferCompleted();
+                      toast.success('Order handed off successfully. Your part is done!');
+                      resetTrip();
+                    }}
                   />
                 )}
                 {tripStatus === 'COMPLETED' && <OrderSummaryModal order={activeOrder} onDone={resetTrip} />}

@@ -154,6 +154,7 @@ export default function DeliveryEarnings() {
         { key: "orderId", label: "Order ID" },
         { key: "restaurantName", label: "Restaurant" },
         { key: "amount", label: "Earning" },
+        { key: "earningType", label: "Type" },
         { key: "orderTotal", label: "Order Total" },
         { key: "deliveryFee", label: "Delivery Fee" },
         { key: "orderStatus", label: "Status" },
@@ -167,6 +168,7 @@ export default function DeliveryEarnings() {
         orderId: earning.orderId || "N/A",
         restaurantName: earning.restaurantName || "N/A",
         amount: formatCurrency(earning.amount),
+        earningType: earning.earningType === "dsu_transfer_earning" ? "DSU Transfer" : "Delivery",
         orderTotal: formatCurrency(earning.orderTotal),
         deliveryFee: formatCurrency(earning.deliveryFee),
         orderStatus: earning.orderStatus || "N/A",
@@ -381,6 +383,7 @@ export default function DeliveryEarnings() {
                   <th className="px-4 py-3 text-left text-xs font-bold text-slate-700 uppercase">Order ID</th>
                   <th className="px-4 py-3 text-left text-xs font-bold text-slate-700 uppercase">Restaurant</th>
                   <th className="px-4 py-3 text-left text-xs font-bold text-slate-700 uppercase">Earning</th>
+                  <th className="px-4 py-3 text-left text-xs font-bold text-slate-700 uppercase">Type</th>
                   <th className="px-4 py-3 text-left text-xs font-bold text-slate-700 uppercase">Order Total</th>
                   <th className="px-4 py-3 text-left text-xs font-bold text-slate-700 uppercase">Status</th>
                   <th className="px-4 py-3 text-left text-xs font-bold text-slate-700 uppercase">Date</th>
@@ -416,6 +419,17 @@ export default function DeliveryEarnings() {
                       </td>
                       <td className="px-4 py-3 text-sm font-semibold text-green-600">
                         {formatCurrency(earning.amount)}
+                      </td>
+                      <td className="px-4 py-3 text-sm">
+                        {earning.earningType === 'dsu_transfer_earning' ? (
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+                            DSU Transfer
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600">
+                            Delivery
+                          </span>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-sm text-slate-700">
                         {formatCurrency(earning.orderTotal)}

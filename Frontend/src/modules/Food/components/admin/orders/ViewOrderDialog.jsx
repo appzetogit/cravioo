@@ -1,4 +1,4 @@
-import { Eye, MapPin, Package, User, Phone, Mail, Calendar, Clock, Truck, CreditCard, X, Receipt, CheckCircle2, Loader2 } from "lucide-react"
+import { Eye, MapPin, Package, User, Phone, Mail, Calendar, Clock, Truck, CreditCard, X, Receipt, CheckCircle2, Loader2, ArrowRightLeft } from "lucide-react"
 import { useEffect, useState } from "react"
 import {
   Dialog,
@@ -777,6 +777,87 @@ export default function ViewOrderDialog({ isOpen, onOpenChange, order: orderProp
                     <p className="text-sm font-medium text-slate-900">{order.deliveryPartnerPhone}</p>
                   </div>
                 )}
+              </div>
+            </div>
+          )}
+
+          {/* Order Transfer (DSU) */}
+          {order.transfer && order.transfer.status && order.transfer.status !== "none" && (
+            <div className="border-t border-slate-200 pt-4">
+              <h3 className="text-sm font-semibold text-slate-700 mb-4 flex items-center gap-2">
+                <ArrowRightLeft className="w-4 h-4" />
+                Order Transfer (DSU)
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</p>
+                  <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
+                    order.transfer.status === "completed" ? "bg-emerald-100 text-emerald-700" :
+                    order.transfer.status === "verified" ? "bg-emerald-100 text-emerald-700" :
+                    order.transfer.status === "cancelled" ? "bg-red-100 text-red-700" :
+                    "bg-amber-100 text-amber-700"
+                  }`}>
+                    {order.transfer.status.charAt(0).toUpperCase() + order.transfer.status.slice(1)}
+                  </span>
+                </div>
+                {order.transfer.fromPartnerId && (
+                  <div className="space-y-1">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">From (Handed off by)</p>
+                    <p className="text-sm font-medium text-slate-900">
+                      {order.transfer.fromPartnerId?.name || "N/A"}
+                      {order.transfer.fromPartnerId?.phone ? ` · ${order.transfer.fromPartnerId.phone}` : ""}
+                    </p>
+                  </div>
+                )}
+                {order.transfer.toPartnerId && (
+                  <div className="space-y-1">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">To (Delivering now)</p>
+                    <p className="text-sm font-medium text-slate-900">
+                      {order.transfer.toPartnerId?.name || "N/A"}
+                      {order.transfer.toPartnerId?.phone ? ` · ${order.transfer.toPartnerId.phone}` : ""}
+                    </p>
+                  </div>
+                )}
+                {order.transfer.acceptedAt && (
+                  <div className="space-y-1">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Accepted At</p>
+                    <p className="text-sm font-medium text-slate-900">{formatHistoryTimestamp(order.transfer.acceptedAt)}</p>
+                  </div>
+                )}
+                {order.transfer.verifiedAt && (
+                  <div className="space-y-1">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Handover Verified At</p>
+                    <p className="text-sm font-medium text-slate-900">{formatHistoryTimestamp(order.transfer.verifiedAt)}</p>
+                  </div>
+                )}
+                {order.pricing?.dsuTransferCharge > 0 && (
+                  <div className="space-y-1">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Customer DSU Charge</p>
+                    <p className="text-sm font-medium text-slate-900">₹{Number(order.pricing.dsuTransferCharge).toFixed(2)}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Earnings split — D1 keeps full normal riderEarning, D2 earns the DSU charge */}
+              <div className="mt-4 bg-slate-50 border border-slate-200 rounded-lg p-3 space-y-2">
+                <p className="text-xs font-semibold text-slate-600 uppercase tracking-wider">Earnings Split</p>
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-600">
+                    {order.transfer.fromPartnerId?.name || "First partner"} (delivery earning, unaffected by transfer)
+                  </span>
+                  <span className="font-medium text-slate-900">₹{Number(order.riderEarning || 0).toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-600">
+                    {order.transfer.toPartnerId?.name || "Second partner"} (DSU transfer earning)
+                  </span>
+                  <span className="font-medium text-slate-900">
+                    ₹{Number(order.transfer.d2Payout?.amount || 0).toFixed(2)}
+                    {order.transfer.d2Payout?.settled === false && (
+                      <span className="ml-1 text-amber-600 text-xs">(pending)</span>
+                    )}
+                  </span>
+                </div>
               </div>
             </div>
           )}

@@ -90,6 +90,8 @@ export default function DeliverymanList() {
   const [activeUpdatingId, setActiveUpdatingId] = useState(null)
   const [concurrencyLimitInput, setConcurrencyLimitInput] = useState("")
   const [savingConcurrencyLimit, setSavingConcurrencyLimit] = useState(false)
+  const [driverRolesInput, setDriverRolesInput] = useState(["normal"])
+  const [savingDriverRoles, setSavingDriverRoles] = useState(false)
   const fetchSeqRef = useRef(0)
   const [visibleColumns, setVisibleColumns] = useState({
     si: true,
@@ -237,6 +239,11 @@ totalWithdrawn: deliveryman.totalWithdrawn || 0,
 availableCashLimit: deliveryman.availableCashLimit || 0,
         })
         setConcurrencyLimitInput(String(response.data.data.delivery?.maxConcurrentOrders || 1))
+        setDriverRolesInput(
+          Array.isArray(response.data.data.delivery?.driverRoles) && response.data.data.delivery.driverRoles.length
+            ? response.data.data.delivery.driverRoles
+            : ["normal"],
+        )
         setIsViewOpen(true)
       } else {
         alert("Failed to load details")
@@ -488,6 +495,49 @@ availableCashLimit: deliveryman.availableCashLimit || 0,
       toast.error(err?.response?.data?.message || "Failed to update concurrent order limit")
     } finally {
       setSavingConcurrencyLimit(false)
+    }
+  }
+
+  const toggleDriverRoleInput = (role) => {
+    setDriverRolesInput((prev) =>
+      prev.includes(role) ? prev.filter((r) => r !== role) : [...prev, role],
+    )
+  }
+
+  const handleSaveDriverRoles = async () => {
+    if (!canEdit) {
+      toast.error("Permission denied")
+      return
+    }
+    const deliverymanId = String(viewDetails?._id || "")
+    if (!deliverymanId) return
+
+    if (!driverRolesInput.length) {
+      toast.error("Select at least one driver role")
+      return
+    }
+
+    try {
+      setSavingDriverRoles(true)
+      const response = await adminAPI.updateDeliveryPartnerDriverRoles(deliverymanId, driverRolesInput)
+      if (!response?.data?.success) {
+        toast.error(response?.data?.message || "Failed to update driver roles")
+        return
+      }
+      setViewDetails((prev) =>
+        prev && String(prev._id) === deliverymanId ? { ...prev, driverRoles: driverRolesInput } : prev,
+      )
+      setDeliverymen((prev) =>
+        prev.map((item) =>
+          String(item._id) === deliverymanId ? { ...item, driverRoles: driverRolesInput } : item,
+        ),
+      )
+      toast.success(response?.data?.message || "Driver roles updated")
+    } catch (err) {
+      debugError("Error updating driver roles:", err)
+      toast.error(err?.response?.data?.message || "Failed to update driver roles")
+    } finally {
+      setSavingDriverRoles(false)
     }
   }
 
@@ -949,6 +999,49 @@ availableCashLimit: deliveryman.availableCashLimit || 0,
                             className="px-3 py-1.5 rounded-lg bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800 transition-colors disabled:opacity-50"
                           >
                             {savingConcurrencyLimit ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save"}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-slate-500 uppercase">
+                        Driver Role (Order Transfer)
+                      </label>
+                      <p className="text-[11px] text-slate-400 mt-0.5">
+                        Normal = receives restaurant pickups. DSU = can also receive order transfers from other drivers.
+                      </p>
+                      <div className="flex items-center gap-4 mt-1.5">
+                        <label className="inline-flex items-center gap-1.5 text-sm text-slate-700 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={driverRolesInput.includes("normal")}
+                            disabled={!canEdit || savingDriverRoles}
+                            onChange={() => toggleDriverRoleInput("normal")}
+                            className="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-500"
+                          />
+                          Normal
+                        </label>
+                        <label className="inline-flex items-center gap-1.5 text-sm text-slate-700 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={driverRolesInput.includes("dsu")}
+                            disabled={!canEdit || savingDriverRoles}
+                            onChange={() => toggleDriverRoleInput("dsu")}
+                            className="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-500"
+                          />
+                          DSU
+                        </label>
+                        {canEdit && (
+                          <button
+                            onClick={handleSaveDriverRoles}
+                            disabled={
+                              savingDriverRoles ||
+                              JSON.stringify([...(viewDetails.driverRoles || ["normal"])].sort()) ===
+                                JSON.stringify([...driverRolesInput].sort())
+                            }
+                            className="px-3 py-1.5 rounded-lg bg-slate-900 text-white text-xs font-semibold hover:bg-slate-800 transition-colors disabled:opacity-50"
+                          >
+                            {savingDriverRoles ? <Loader2 className="w-4 h-4 animate-spin" /> : "Save"}
                           </button>
                         )}
                       </div>

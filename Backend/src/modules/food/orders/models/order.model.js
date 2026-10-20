@@ -144,6 +144,8 @@ const pricingSchema = new mongoose.Schema(
             restaurant: { type: Number, default: 0, min: 0 },
         },
         quickFinanceVersion: { type: String, default: '' },
+        /** Order Transfer (DSU) zone charge — fixed, shown upfront whenever the zone has transfer enabled. */
+        dsuTransferCharge: { type: Number, default: 0, min: 0 },
         total: { type: Number, required: true, min: 0 },
         currency: { type: String, default: 'INR' }
     },
@@ -305,6 +307,58 @@ const deliveryVerificationSchema = new mongoose.Schema(
             required: { type: Boolean, default: false },
             verified: { type: Boolean, default: false }
         }
+    },
+    { _id: false }
+);
+
+/**
+ * Order Transfer (DSU) — a second delivery partner (D2) takes over an
+ * in-progress order from the originally assigned partner (D1) at a
+ * driver-to-driver handover point, before the drop-OTP stage.
+ * `status` lifecycle: none → offered → accepted → verified → completed.
+ * `transferOtp` is the handover code D1 shows and D2 types in — separate
+ * from `deliveryOtp` (the customer drop OTP), which stays untouched.
+ */
+const orderTransferSchema = new mongoose.Schema(
+    {
+        status: {
+            type: String,
+            enum: ['none', 'offered', 'accepted', 'verified', 'completed', 'cancelled'],
+            default: 'none',
+        },
+        fromPartnerId: { type: mongoose.Schema.Types.ObjectId, ref: 'FoodDeliveryPartner', default: null },
+        toPartnerId: { type: mongoose.Schema.Types.ObjectId, ref: 'FoodDeliveryPartner', default: null },
+        /** Candidates offered the handoff (mirrors dispatch.offeredTo pattern). */
+        offeredTo: [{
+            partnerId: { type: mongoose.Schema.Types.ObjectId, ref: 'FoodDeliveryPartner' },
+            distanceMeters: { type: Number, default: null },
+            at: { type: Date, default: Date.now },
+            action: { type: String, enum: ['offered', 'accepted', 'rejected', 'timeout'], default: 'offered' },
+        }],
+        handoverLocation: {
+            type: { type: String, enum: ['Point'], default: undefined },
+            coordinates: { type: [Number], default: undefined },
+        },
+        /** Plain 4-digit handover OTP; cleared after verify. Never sent to D2 in API responses. */
+        transferOtp: { type: String, default: '', select: false },
+        offeredAt: { type: Date, default: null },
+        acceptedAt: { type: Date, default: null },
+        verifiedAt: { type: Date, default: null },
+        completedAt: { type: Date, default: null },
+        /** Radius (meters) used for this specific offer — snapshot of zone setting at offer time. */
+        radiusMeters: { type: Number, default: null },
+        /**
+         * D2's (the receiving partner's) earning for taking over this delivery —
+         * equal to the zone's dsuTransferCharge (the charge the customer paid at
+         * checkout for this zone). Credited to D2's wallet when the handover OTP
+         * is verified. D1 keeps their own full riderEarning separately — this is
+         * never paid to or deducted from D1.
+         */
+        d2Payout: {
+            amount: { type: Number, default: 0, min: 0 },
+            settled: { type: Boolean, default: false },
+            settledAt: { type: Date, default: null },
+        },
     },
     { _id: false }
 );
@@ -521,6 +575,11 @@ const orderSchema = new mongoose.Schema(
         lastRiderLocation: {
             type: geoPointSchema,
             default: undefined
+        },
+        /** Order Transfer (DSU) handover state. Absent/status:'none' ⇒ never transferred. */
+        transfer: {
+            type: orderTransferSchema,
+            default: () => ({})
         }
     },
     {
@@ -542,6 +601,8 @@ orderSchema.index({ 'payment.method': 1, createdAt: -1 });
 orderSchema.index({ orderStatus: 1, scheduledAt: 1 });
 orderSchema.index({ deliveryMode: 1, createdAt: -1 });
 orderSchema.index({ restaurantId: 1, deliveryMode: 1, createdAt: -1 });
+orderSchema.index({ 'transfer.status': 1, createdAt: -1 });
+orderSchema.index({ 'transfer.toPartnerId': 1, 'transfer.status': 1 });
 
 const LOCKED_MONEY_PATHS = [
     'pricing.subtotal',
@@ -560,6 +621,7 @@ const LOCKED_MONEY_PATHS = [
     'pricing.couponCode',
     'pricing.appliedCoupon',
     'pricing.referralDiscount',
+    'pricing.dsuTransferCharge',
     'riderEarning',
     'platformProfit',
     'payment.method',

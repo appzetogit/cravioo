@@ -307,6 +307,12 @@ export const useDeliveryNotifications = () => {
   const [unavailableOfferKey, setUnavailableOfferKey] = useState(null);
   const [orderReady, setOrderReady] = useState(null);
   const [orderStatusUpdate, setOrderStatusUpdate] = useState(null);
+  /** D2 side: a nearby DSU transfer offer arrived (new_transfer_order_available). */
+  const [transferOffer, setTransferOffer] = useState(null);
+  /** D1 side: a DSU partner accepted the transfer and sent the handover OTP. */
+  const [transferAccepted, setTransferAccepted] = useState(null);
+  /** Either side: the handover OTP was verified and the transfer is done. */
+  const [transferCompleted, setTransferCompleted] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
   const [deliveryPartnerId, setDeliveryPartnerId] = useState(null);
   const [forcedOfflineEvent, setForcedOfflineEvent] = useState(null);
@@ -1231,6 +1237,36 @@ export const useDeliveryNotifications = () => {
       dropOfferByKeyRef.current?.(getOrderAlertKey(data || {}));
     });
 
+    socket.on('new_transfer_order_available', (data) => {
+      debugLog('?? Transfer order offer received via socket:', data);
+      setTransferOffer(data || null);
+      playNotificationSoundRef.current?.(data);
+    });
+
+    socket.on('transfer_accepted', (data) => {
+      debugLog('?? Transfer accepted by DSU partner, handover OTP received:', data);
+      setTransferAccepted(data || null);
+    });
+
+    socket.on('transfer_offer_closed', (data) => {
+      debugLog('?? Transfer offer closed (claimed by another DSU partner):', data);
+      setTransferOffer((prev) => {
+        const prevKey = String(prev?.orderMongoId || prev?.orderId || '');
+        const closedKey = String(data?.orderMongoId || data?.orderId || '');
+        return prevKey && prevKey === closedKey ? null : prev;
+      });
+    });
+
+    socket.on('transfer_completed', (data) => {
+      debugLog('?? Transfer completed (handover OTP verified):', data);
+      setTransferCompleted(data || null);
+    });
+
+    socket.on('order_transferred', (data) => {
+      debugLog('?? Order transferred notice:', data);
+      setOrderStatusUpdate((prev) => ({ ...(prev || {}), ...data, transferred: true }));
+    });
+
     socket.on('admin_notification', (payload) => {
       debugLog('Admin broadcast received via socket', payload);
       dispatchNotificationInboxRefresh();
@@ -1325,6 +1361,9 @@ export const useDeliveryNotifications = () => {
   };
 
   const clearForcedOfflineEvent = useCallback(() => setForcedOfflineEvent(null), []);
+  const clearTransferOffer = useCallback(() => setTransferOffer(null), []);
+  const clearTransferAccepted = useCallback(() => setTransferAccepted(null), []);
+  const clearTransferCompleted = useCallback(() => setTransferCompleted(null), []);
 
   const emitLocation = useCallback((data) => {
     if (socketRef.current && socketRef.current.connected) {
@@ -1348,7 +1387,13 @@ export const useDeliveryNotifications = () => {
     playNotificationSound,
     emitLocation,
     forcedOfflineEvent,
-    clearForcedOfflineEvent
+    clearForcedOfflineEvent,
+    transferOffer,
+    clearTransferOffer,
+    transferAccepted,
+    clearTransferAccepted,
+    transferCompleted,
+    clearTransferCompleted,
   };
 };
 

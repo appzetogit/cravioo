@@ -156,6 +156,30 @@ export const useUserNotifications = () => {
       });
     });
 
+    /** Order Transfer (DSU): the assigned delivery partner handed the order off to a new one. */
+    socketRef.current.on('order_transferred', (payload) => {
+      debugLog('🔁 Order transferred to a new delivery partner:', payload?.orderId);
+      const orderId = payload?.orderId != null ? String(payload.orderId) : '';
+      const message =
+        payload?.message ||
+        'Your order has been transferred to a new delivery partner for faster delivery.';
+      window.dispatchEvent(
+        new CustomEvent('orderTransferred', {
+          detail: {
+            orderMongoId: payload?.orderMongoId,
+            orderId,
+            message,
+            timestamp: new Date().toISOString(),
+          },
+        }),
+      );
+      toast.info(orderId ? `Order ${orderId}` : 'Delivery partner changed', {
+        id: `order-transferred-${orderId}`,
+        description: message,
+        duration: 8000,
+      });
+    });
+
     socketRef.current.on('admin_notification', (payload) => {
       toast.message(payload?.title || 'Notification', {
         id: `admin-notif-${Date.now()}`,

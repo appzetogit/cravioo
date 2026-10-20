@@ -898,6 +898,27 @@ export async function getDashboardStats(query = {}) {
                             ],
                         },
                     },
+                    // DSU transfer charge is included in pricing.total (Gross revenue) but is a
+                    // pure pass-through to the receiving partner (D2) — never platform profit.
+                    // Tracked separately so Gross revenue can be reconciled against it.
+                    dsuTransferChargeTotal: {
+                        $sum: {
+                            $cond: [
+                                { $eq: ['$orderStatus', 'delivered'] },
+                                { $ifNull: ['$pricing.dsuTransferCharge', 0] },
+                                0,
+                            ],
+                        },
+                    },
+                    dsuTransferredOrders: {
+                        $sum: {
+                            $cond: [
+                                { $in: ['$transfer.status', ['verified', 'completed']] },
+                                1,
+                                0,
+                            ],
+                        },
+                    },
                 }
             }
         ]),
@@ -1208,6 +1229,14 @@ export async function getDashboardStats(query = {}) {
                     : 0,
             slaCompensatedOrders: Number(totals.quickSlaCompensated || 0),
             slaCompensationPaid: Number(totals.quickSlaCompensationPaid || 0),
+        },
+        // Order Transfer (DSU) — the charge is inside Gross revenue (pricing.total) but
+        // is a full pass-through to the receiving partner (D2), never platform profit.
+        // Shown separately so Gross revenue can be reconciled: revenue.total already
+        // includes this; it does NOT appear in platformFee / totalAdminEarnings.
+        orderTransfer: {
+            transferredOrders: Number(totals.dsuTransferredOrders || 0),
+            dsuChargeTotal: Number(totals.dsuTransferChargeTotal || 0),
         },
         monthlyData,
         liveSignals: finalLiveSignals,
@@ -7348,7 +7377,14 @@ export async function getDeliveryEarnings(query = {}) {
     }
 
     if (query.deliveryPartnerId && mongoose.Types.ObjectId.isValid(query.deliveryPartnerId)) {
-        filter['dispatch.deliveryPartnerId'] = new mongoose.Types.ObjectId(query.deliveryPartnerId);
+        const partnerOid = new mongoose.Types.ObjectId(query.deliveryPartnerId);
+        // Match orders where this partner is currently assigned (dispatch.deliveryPartnerId)
+        // OR was the original partner on a transferred order (transfer.fromPartnerId) — a
+        // partner who handed off an order must still show up filtered by their own id.
+        filter.$and = [
+            ...(filter.$and || []),
+            { $or: [{ 'dispatch.deliveryPartnerId': partnerOid }, { 'transfer.fromPartnerId': partnerOid }] },
+        ];
     }
 
     const search = String(query.search || '').trim();
@@ -7379,8 +7415,9 @@ export async function getDeliveryEarnings(query = {}) {
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(limit)
-            .select('orderId orderStatus createdAt pricing riderEarning deliveryPartnerSettlement dispatch.deliveryPartnerId restaurantId')
+            .select('orderId orderStatus createdAt pricing riderEarning deliveryPartnerSettlement dispatch.deliveryPartnerId restaurantId transfer')
             .populate({ path: 'dispatch.deliveryPartnerId', select: 'name phone' })
+            .populate({ path: 'transfer.fromPartnerId', select: 'name phone' })
             .populate({ path: 'restaurantId', select: 'restaurantName name' })
             .lean(),
         FoodOrder.countDocuments(filter),
@@ -7389,6 +7426,8 @@ export async function getDeliveryEarnings(query = {}) {
             {
                 $group: {
                     _id: null,
+                    // riderEarning always goes to the ORIGINAL partner (transfer.fromPartnerId when
+                    // transferred, otherwise dispatch.deliveryPartnerId) — never double counted here.
                     totalEarnings: {
                         $sum: {
                             $ifNull: [
@@ -7402,6 +7441,17 @@ export async function getDeliveryEarnings(query = {}) {
                             ]
                         }
                     },
+                    // DSU transfer earnings are a separate, additional pool paid to D2 — summed
+                    // on top so the report's total reflects everything actually paid out.
+                    totalDsuEarnings: {
+                        $sum: {
+                            $cond: [
+                                { $in: ['$transfer.status', ['completed', 'verified']] },
+                                { $ifNull: ['$transfer.d2Payout.amount', 0] },
+                                0,
+                            ],
+                        },
+                    },
                     totalOrders: { $sum: 1 }
                 }
             }
@@ -7409,28 +7459,58 @@ export async function getDeliveryEarnings(query = {}) {
         FoodOrder.distinct('dispatch.deliveryPartnerId', filter)
     ]);
 
-    const earnings = orders.map((order) => {
-        const partner = order?.dispatch?.deliveryPartnerId;
-        const amount = Number(
+    const isTransferred = (order) =>
+        ['verified', 'completed'].includes(String(order?.transfer?.status || ''));
+
+    const earnings = orders.flatMap((order) => {
+        const transferred = isTransferred(order);
+        // riderEarning always belongs to the ORIGINAL partner (D1), even after a
+        // transfer — dispatch.deliveryPartnerId points at D2 post-transfer, so it
+        // must never be used to attribute riderEarning in that case.
+        const originalPartner = transferred
+            ? order?.transfer?.fromPartnerId
+            : order?.dispatch?.deliveryPartnerId;
+        const riderEarningAmount = Number(
             order?.riderEarning ??
             order?.deliveryPartnerSettlement ??
             order?.pricing?.deliveryFee ??
             0
         ) || 0;
 
-        return {
+        const rows = [{
             transactionId: String(order._id),
             orderId: order.orderId || 'N/A',
-            deliveryPartnerId: partner?._id ? String(partner._id) : null,
-            deliveryPartnerName: partner?.name || 'N/A',
-            deliveryPartnerPhone: partner?.phone || 'N/A',
+            deliveryPartnerId: originalPartner?._id ? String(originalPartner._id) : null,
+            deliveryPartnerName: originalPartner?.name || 'N/A',
+            deliveryPartnerPhone: originalPartner?.phone || 'N/A',
             restaurantName: order?.restaurantId?.restaurantName || order?.restaurantId?.name || 'N/A',
-            amount,
+            amount: riderEarningAmount,
+            earningType: 'delivery_earning',
             orderTotal: Number(order?.pricing?.total || 0) || 0,
             deliveryFee: Number(order?.pricing?.deliveryFee || 0) || 0,
             orderStatus: order?.orderStatus || 'N/A',
             createdAt: order?.createdAt || null
-        };
+        }];
+
+        if (transferred && Number(order?.transfer?.d2Payout?.amount) > 0) {
+            const d2Partner = order?.dispatch?.deliveryPartnerId;
+            rows.push({
+                transactionId: `${String(order._id)}-dsu`,
+                orderId: order.orderId || 'N/A',
+                deliveryPartnerId: d2Partner?._id ? String(d2Partner._id) : null,
+                deliveryPartnerName: d2Partner?.name || 'N/A',
+                deliveryPartnerPhone: d2Partner?.phone || 'N/A',
+                restaurantName: order?.restaurantId?.restaurantName || order?.restaurantId?.name || 'N/A',
+                amount: Number(order.transfer.d2Payout.amount) || 0,
+                earningType: 'dsu_transfer_earning',
+                orderTotal: Number(order?.pricing?.total || 0) || 0,
+                deliveryFee: Number(order?.pricing?.deliveryFee || 0) || 0,
+                orderStatus: order?.orderStatus || 'N/A',
+                createdAt: order?.transfer?.completedAt || order?.createdAt || null
+            });
+        }
+
+        return rows;
     });
 
     const agg = earningsAgg?.[0] || {};
@@ -7440,7 +7520,7 @@ export async function getDeliveryEarnings(query = {}) {
         earnings,
         summary: {
             totalDeliveryPartners,
-            totalEarnings: Number(agg.totalEarnings || 0),
+            totalEarnings: Number(agg.totalEarnings || 0) + Number(agg.totalDsuEarnings || 0),
             totalOrders: Number(agg.totalOrders || 0)
         },
         pagination: {
@@ -8199,6 +8279,24 @@ export async function updateDeliveryPartnerConcurrencyLimit(id, maxConcurrentOrd
     return updated;
 }
 
+export async function updateDeliveryPartnerDriverRoles(id, driverRoles) {
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) return null;
+    const roles = Array.isArray(driverRoles) ? driverRoles : [driverRoles];
+    const normalized = [...new Set(
+        roles.map((r) => String(r || '').trim().toLowerCase()).filter((r) => ['normal', 'dsu'].includes(r))
+    )];
+    if (!normalized.length) {
+        return { error: 'At least one driver role (normal or dsu) is required' };
+    }
+
+    const updated = await FoodDeliveryPartner.findByIdAndUpdate(
+        id,
+        { $set: { driverRoles: normalized } },
+        { new: true },
+    ).select('name phone driverRoles').lean();
+    return updated;
+}
+
 // ----- Zones CRUD -----
 const ZONE_LIST_SUMMARY_FIELDS = {
     _id: 1,
@@ -8210,6 +8308,9 @@ const ZONE_LIST_SUMMARY_FIELDS = {
     coverageAreaKm2: 1,
     isActive: 1,
     quickDeliveryEnabled: 1,
+    orderTransferEnabled: 1,
+    orderTransferRadiusMeters: 1,
+    dsuTransferCharge: 1,
     zoneHubId: 1,
     createdAt: 1,
     updatedAt: 1,
@@ -8312,6 +8413,9 @@ export async function createZone(body) {
         coordinates: normalized,
         isActive: body.isActive !== false,
         quickDeliveryEnabled: body.quickDeliveryEnabled === true,
+        orderTransferEnabled: body.orderTransferEnabled === true,
+        orderTransferRadiusMeters: Math.max(50, Number(body.orderTransferRadiusMeters) || 500),
+        dsuTransferCharge: Math.max(0, Number(body.dsuTransferCharge) || 0),
     });
     await zone.save();
     return { zone: zone.toObject() };
@@ -8329,6 +8433,15 @@ export async function updateZone(id, body) {
     if (body.isActive !== undefined) zone.isActive = body.isActive !== false;
     if (body.quickDeliveryEnabled !== undefined) {
         zone.quickDeliveryEnabled = body.quickDeliveryEnabled === true;
+    }
+    if (body.orderTransferEnabled !== undefined) {
+        zone.orderTransferEnabled = body.orderTransferEnabled === true;
+    }
+    if (body.orderTransferRadiusMeters !== undefined) {
+        zone.orderTransferRadiusMeters = Math.max(50, Number(body.orderTransferRadiusMeters) || 50);
+    }
+    if (body.dsuTransferCharge !== undefined) {
+        zone.dsuTransferCharge = Math.max(0, Number(body.dsuTransferCharge) || 0);
     }
     if (Array.isArray(body.coordinates) && body.coordinates.length >= 3) {
         const normalizedCoords = [];

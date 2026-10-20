@@ -295,6 +295,17 @@ export const registerDeliveryPartner = async (payload, files, options = {}) => {
         );
     }
 
+    const requestedDriverRoles = Array.isArray(payload?.driverRoles)
+        ? payload.driverRoles
+        : payload?.driverRoles ? [payload.driverRoles] : null;
+    const normalizedDriverRoles = requestedDriverRoles
+        ? [...new Set(
+            requestedDriverRoles
+                .map((r) => String(r || '').trim().toLowerCase())
+                .filter((r) => ['normal', 'dsu'].includes(r))
+        )]
+        : null;
+
     const partnerData = {
         name,
         phone,
@@ -309,6 +320,7 @@ export const registerDeliveryPartner = async (payload, files, options = {}) => {
         drivingLicenseNumber,
         panNumber,
         aadharNumber,
+        ...(normalizedDriverRoles?.length ? { driverRoles: normalizedDriverRoles } : {}),
         status: 'pending',
         isActive: false,
         rejectionReason: undefined,
@@ -538,6 +550,17 @@ export const updateDeliveryPartnerDetails = async (userId, payload) => {
 
     if (payload?.profilePhoto !== undefined) {
         partner.profilePhoto = payload.profilePhoto ? String(payload.profilePhoto).trim() : '';
+    }
+
+    if (payload?.driverRoles !== undefined) {
+        const roles = Array.isArray(payload.driverRoles) ? payload.driverRoles : [payload.driverRoles];
+        const normalized = [...new Set(
+            roles.map((r) => String(r || '').trim().toLowerCase()).filter((r) => ['normal', 'dsu'].includes(r))
+        )];
+        if (!normalized.length) {
+            throw new ValidationError('At least one driver role (normal or dsu) is required');
+        }
+        partner.driverRoles = normalized;
     }
 
     await partner.save();

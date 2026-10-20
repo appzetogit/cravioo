@@ -118,6 +118,30 @@ function slimDispatch(dispatch) {
   };
 }
 
+/** Order Transfer (DSU) state — never includes transferOtp (handover code). */
+function slimTransfer(transfer) {
+  if (!transfer || typeof transfer !== "object") return undefined;
+  if (!transfer.status || transfer.status === "none") return undefined;
+  return {
+    status: transfer.status,
+    fromPartnerId: slimPartnerRef(transfer.fromPartnerId) || transfer.fromPartnerId,
+    toPartnerId: slimPartnerRef(transfer.toPartnerId) || transfer.toPartnerId,
+    handoverLocation: transfer.handoverLocation,
+    offeredAt: transfer.offeredAt,
+    acceptedAt: transfer.acceptedAt,
+    verifiedAt: transfer.verifiedAt,
+    completedAt: transfer.completedAt,
+    /** D2's earning for this transfer (= zone's dsuTransferCharge). D1 keeps their own full riderEarning separately. */
+    d2Payout: transfer.d2Payout
+      ? {
+          amount: Number(transfer.d2Payout.amount || 0),
+          settled: Boolean(transfer.d2Payout.settled),
+          settledAt: transfer.d2Payout.settledAt,
+        }
+      : undefined,
+  };
+}
+
 function restaurantProfileImageUrl(restaurantRef) {
   if (!restaurantRef || typeof restaurantRef !== "object") return "";
   const raw = restaurantRef.profileImage ?? restaurantRef.image;
@@ -287,6 +311,7 @@ export function toOrderListItemDto(orderLike, { role = "USER" } = {}) {
     deliveryPartnerPhone: o.deliveryPartnerPhone || partner?.phone,
     customerName: customerRef?.name || o.customerName || o.userName || o.deliveryAddress?.name,
     customerPhone: customerRef?.phone || o.customerPhone || o.userPhone || o.deliveryAddress?.phone,
+    transfer: slimTransfer(o.transfer),
   };
 
   if (role === "RESTAURANT" || role === "ADMIN") {
@@ -324,8 +349,9 @@ export function toDeliveryTripDto(orderLike) {
     orderStatus: o.orderStatus || o.status,
     status: o.orderStatus || o.status,
     documentType: o.documentType,
-    tripType: o.tripType,
+    tripType: o.transfer?.status === "verified" || o.transfer?.status === "completed" ? "transferred" : o.tripType,
     returnId: o.returnId,
+    transfer: slimTransfer(o.transfer),
     restaurantId: slimRestaurantRef(restaurant),
     restaurantName:
       o.restaurantName ||
@@ -433,6 +459,7 @@ export function toOrderDetailDto(orderLike, { role = "USER" } = {}) {
         }
       : undefined,
     handoverOtp: o.handoverOtp,
+    transfer: slimTransfer(o.transfer),
     dispatch: slimDispatch(o.dispatch) || o.dispatch,
     dispatchPlan: o.dispatchPlan
       ? {
@@ -466,6 +493,7 @@ export function toOrderStatusSocketDto(orderLike, extras = {}) {
     orderStatus: o.orderStatus || o.status,
     status: o.orderStatus || o.status,
     deliveryState: o.deliveryState,
+    transfer: slimTransfer(o.transfer),
     updatedAt: o.updatedAt || new Date().toISOString(),
     ...extras,
   };
@@ -612,6 +640,7 @@ export const RESTAURANT_ORDER_LIST_SELECT = [
   "etaPromise.max",
   "ratings.restaurant.rating",
   "ratings.restaurant.comment",
+  "transfer",
 ].join(" ");
 
 function slimRestaurantListAddress(addr) {
@@ -823,6 +852,7 @@ export function toRestaurantOrderListDto(orderLike) {
         })
       : undefined,
     rating: ratingValue,
+    transfer: slimTransfer(o.transfer),
   });
 }
 

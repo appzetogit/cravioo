@@ -68,6 +68,9 @@ router.patch('/orders/:orderId/complete', authMiddleware, requireRoles('DELIVERY
 router.patch('/orders/:orderId/status', authMiddleware, requireRoles('DELIVERY_PARTNER'), orderController.updateOrderStatusDeliveryController);
 router.post('/orders/:orderId/collect/qr', authMiddleware, requireRoles('DELIVERY_PARTNER'), orderController.createCollectQrController);
 router.post('/orders/:orderId/collect/cash', authMiddleware, requireRoles('DELIVERY_PARTNER'), orderController.collectCashController);
+router.post('/orders/:orderId/transfer/initiate', authMiddleware, requireRoles('DELIVERY_PARTNER'), orderController.initiateOrderTransferController);
+router.post('/orders/:orderId/transfer/accept', authMiddleware, requireRoles('DELIVERY_PARTNER'), orderController.acceptOrderTransferController);
+router.post('/orders/:orderId/transfer/verify', authMiddleware, requireRoles('DELIVERY_PARTNER'), orderController.verifyOrderTransferController);
 router.get('/orders/:orderId/route', authMiddleware, requireRoles('DELIVERY_PARTNER'), orderController.getOrderRouteController);
 router.get('/orders/:orderId/payment-status', authMiddleware, requireRoles('DELIVERY_PARTNER'), orderController.getPaymentStatusController);
 

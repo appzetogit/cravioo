@@ -170,6 +170,37 @@ export async function updateDeliveryPartnerConcurrencyLimit(req, res, next) {
     }
 }
 
+export async function updateDeliveryPartnerDriverRoles(req, res, next) {
+    try {
+        const { id } = req.params;
+        if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid delivery partner id'
+            });
+        }
+
+        const result = await adminService.updateDeliveryPartnerDriverRoles(id, req.body?.driverRoles);
+        if (!result) {
+            return res.status(404).json({
+                success: false,
+                message: 'Delivery partner not found'
+            });
+        }
+        if (result.error) {
+            return res.status(400).json({ success: false, message: result.error });
+        }
+
+        res.status(200).json({
+            success: true,
+            message: `Driver roles updated to ${result.driverRoles.join(', ')}`,
+            data: result
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
 export async function bulkUpdateCustomersCodAccess(req, res, next) {
     try {
         const ids = Array.isArray(req.body?.ids) ? req.body.ids : [];

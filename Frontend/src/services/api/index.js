@@ -511,6 +511,12 @@ export const adminAPI = {
       { maxConcurrentOrders: Number(maxConcurrentOrders) },
       { contextModule: "admin" },
     ),
+  updateDeliveryPartnerDriverRoles: (id, driverRoles) =>
+    apiClient.patch(
+      `/food/admin/delivery/${String(id)}/driver-roles`,
+      { driverRoles },
+      { contextModule: "admin" },
+    ),
   /** GET /food/admin/delivery/support-tickets - list all delivery support tickets (query: status, priority, search, page, limit). */
   getDeliverySupportTickets: (params) =>
     apiClient.get("/food/admin/delivery/support-tickets", {
@@ -2586,6 +2592,11 @@ export const deliveryAPI = {
       return inFlight;
     };
   })(),
+  /** GET /food/delivery/orders/:orderId - fetch a single order from the delivery partner's view. */
+  getOrderById: (orderId) =>
+    apiClient.get(`/food/delivery/orders/${String(orderId)}`, {
+      contextModule: "delivery",
+    }),
   acceptOrder: (orderId, body = {}) =>
     apiClient.patch(
       `/food/delivery/orders/${String(orderId)}/accept`,
@@ -2650,6 +2661,27 @@ export const deliveryAPI = {
       {
         contextModule: "delivery",
       },
+    ),
+  /** POST /food/delivery/orders/:orderId/transfer/initiate - D1 offers the order to nearby DSU partners */
+  initiateOrderTransfer: (orderId, { lat, lng } = {}) =>
+    apiClient.post(
+      `/food/delivery/orders/${String(orderId)}/transfer/initiate`,
+      { lat, lng },
+      { contextModule: "delivery" },
+    ),
+  /** POST /food/delivery/orders/:orderId/transfer/accept - D2 accepts the transfer offer */
+  acceptOrderTransfer: (orderId) =>
+    apiClient.post(
+      `/food/delivery/orders/${String(orderId)}/transfer/accept`,
+      {},
+      { contextModule: "delivery" },
+    ),
+  /** POST /food/delivery/orders/:orderId/transfer/verify - D2 verifies D1's handover OTP */
+  verifyOrderTransfer: (orderId, otp) =>
+    apiClient.post(
+      `/food/delivery/orders/${String(orderId)}/transfer/verify`,
+      { otp: String(otp) },
+      { contextModule: "delivery" },
     ),
   /** POST /food/delivery/orders/:orderId/collect/qr - create Cashfree payment link (COD collection) */
   createCollectQr: (orderId, body = {}) =>

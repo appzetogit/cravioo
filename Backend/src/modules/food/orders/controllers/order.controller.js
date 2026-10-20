@@ -505,6 +505,40 @@ export async function collectCashController(req, res, next) {
     }
 }
 
+export async function initiateOrderTransferController(req, res, next) {
+    try {
+        const deliveryPartnerId = req.user?.userId;
+        const orderId = req.params.orderId;
+        const result = await orderService.initiateOrderTransfer(orderId, deliveryPartnerId, req.body || {});
+        return sendResponse(res, 200, result.eligible ? 'Transfer offered to nearby partners' : 'No nearby DSU partners found', result);
+    } catch (err) {
+        next(err);
+    }
+}
+
+export async function acceptOrderTransferController(req, res, next) {
+    try {
+        const deliveryPartnerId = req.user?.userId;
+        const orderId = req.params.orderId;
+        const order = await orderService.acceptOrderTransfer(orderId, deliveryPartnerId);
+        return sendResponse(res, 200, 'Transfer accepted', { order: toDeliveryTripDto(order) });
+    } catch (err) {
+        next(err);
+    }
+}
+
+export async function verifyOrderTransferController(req, res, next) {
+    try {
+        const deliveryPartnerId = req.user?.userId;
+        const orderId = req.params.orderId;
+        const { otp } = req.body;
+        const result = await orderService.verifyOrderTransferOtp(orderId, deliveryPartnerId, otp);
+        return sendResponse(res, 200, 'Transfer verified', { order: toDeliveryTripDto(result.order) });
+    } catch (err) {
+        next(err);
+    }
+}
+
 export async function getOrderRouteController(req, res, next) {
     try {
         const orderId = req.params.orderId;

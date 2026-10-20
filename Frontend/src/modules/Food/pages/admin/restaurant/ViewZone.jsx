@@ -26,6 +26,7 @@ export default function ViewZone() {
   const [zone, setZone] = useState(null)
   const [loading, setLoading] = useState(true)
   const [savingQuick, setSavingQuick] = useState(false)
+  const [savingTransfer, setSavingTransfer] = useState(false)
 
   // Memoize zone dependencies to keep dependency array stable
 const zoneId = useMemo(() => zone?._id || null, [zone?._id])
@@ -57,6 +58,25 @@ const unitWithCoverage = useMemo(
       alert(error?.response?.data?.message || "Failed to update Quick Delivery")
     } finally {
       setSavingQuick(false)
+    }
+  }
+
+  const handleOrderTransferToggle = async (next) => {
+    if (!zone?._id && !id) return
+    const previous = zone?.orderTransferEnabled === true
+    setZone((z) => (z ? { ...z, orderTransferEnabled: next } : z))
+    setSavingTransfer(true)
+    try {
+      const response = await adminAPI.updateZone(id, { orderTransferEnabled: next })
+      if (response.data?.success && response.data.data?.zone) {
+        setZone(response.data.data.zone)
+      }
+    } catch (error) {
+      setZone((z) => (z ? { ...z, orderTransferEnabled: previous } : z))
+      debugError("Error updating Order Transfer:", error)
+      alert(error?.response?.data?.message || "Failed to update Order Transfer")
+    } finally {
+      setSavingTransfer(false)
     }
   }
   // Trigger map resize when component is fully mounted
@@ -413,6 +433,29 @@ const unitWithCoverage = useMemo(
                   </label>
                   <p className="text-xs text-slate-500 mt-1">
                     Zone enable only. Max Quick distance is configured in Global Fee Settings.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-1">Order Transfer (DSU)</label>
+                  <label className="inline-flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={zone.orderTransferEnabled === true}
+                      disabled={savingTransfer}
+                      onChange={(e) => handleOrderTransferToggle(e.target.checked)}
+                      className="h-4 w-4 rounded border-slate-300 text-green-600 focus:ring-green-500"
+                    />
+                    {zone.orderTransferEnabled === true ? "Enabled" : "Disabled"}
+                  </label>
+                  {zone.orderTransferEnabled === true && (
+                    <div className="mt-2 text-xs text-slate-600 space-y-0.5">
+                      <p>Radius: <strong>{zone.orderTransferRadiusMeters || 500}m</strong></p>
+                      <p>Customer DSU charge (= DSU partner's earning): <strong>₹{zone.dsuTransferCharge || 0}</strong></p>
+                    </div>
+                  )}
+                  <p className="text-xs text-slate-500 mt-1">
+                    Edit radius and charge from the Edit Zone screen.
                   </p>
                 </div>
 

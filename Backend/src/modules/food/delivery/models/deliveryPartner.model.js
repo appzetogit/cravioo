@@ -196,6 +196,18 @@ const deliveryPartnerSchema = new mongoose.Schema(
             default: 0,
             min: 0
         },
+        /**
+         * Order Transfer (DSU) roles this partner opted into during onboarding.
+         * 'normal' = receives restaurant-pickup offers (existing behavior).
+         * 'dsu' = receives transfer-handoff offers from other partners nearby.
+         * A partner can hold both. Missing/empty ⇒ treated as ['normal'] for
+         * backward compatibility with existing accounts.
+         */
+        driverRoles: {
+            type: [String],
+            enum: ['normal', 'dsu'],
+            default: ['normal'],
+        },
     },
     {
         collection: 'food_delivery_partners',

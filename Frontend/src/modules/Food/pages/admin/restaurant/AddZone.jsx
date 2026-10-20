@@ -66,6 +66,9 @@ export default function AddZone() {
     zoneName: "",
     unit: "kilometer",
     quickDeliveryEnabled: false,
+    orderTransferEnabled: false,
+    orderTransferRadiusMeters: 500,
+    dsuTransferCharge: 0,
   })
   
   const [coordinates, setCoordinates] = useState([])
@@ -209,6 +212,9 @@ export default function AddZone() {
           zoneName: zoneData.name || zoneData.zoneName || "",
           unit: zoneData.unit || "kilometer",
           quickDeliveryEnabled: zoneData.quickDeliveryEnabled === true,
+          orderTransferEnabled: zoneData.orderTransferEnabled === true,
+          orderTransferRadiusMeters: zoneData.orderTransferRadiusMeters ?? 500,
+          dsuTransferCharge: zoneData.dsuTransferCharge ?? 0,
         })
         
         if (zoneData.coordinates && zoneData.coordinates.length > 0) {
@@ -744,6 +750,9 @@ export default function AddZone() {
         coordinates: validCoordinates,
         isActive: true,
         quickDeliveryEnabled: formData.quickDeliveryEnabled === true,
+        orderTransferEnabled: formData.orderTransferEnabled === true,
+        orderTransferRadiusMeters: Math.max(50, Number(formData.orderTransferRadiusMeters) || 50),
+        dsuTransferCharge: Math.max(0, Number(formData.dsuTransferCharge) || 0),
       }
 
       const overlapMessage = findZoneOverlapMessage(
@@ -905,6 +914,68 @@ export default function AddZone() {
                     <p className="text-xs text-slate-500 mt-1">
                       Zone gate only. Global Fee Settings and Restaurant must also be enabled for customers.
                     </p>
+                  </div>
+
+                  {/* Order Transfer (DSU) */}
+                  <div className="pt-2 border-t border-slate-200">
+                    <label className="block text-sm font-semibold text-slate-700 mb-2">
+                      Order Transfer (DSU)
+                    </label>
+                    <label className="inline-flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData.orderTransferEnabled === true}
+                        onChange={(e) => handleInputChange("orderTransferEnabled", e.target.checked)}
+                        className="h-4 w-4 rounded border-slate-300 text-green-600 focus:ring-green-500"
+                      />
+                      Allow drivers to transfer orders to a nearby DSU partner in this zone
+                    </label>
+                    <p className="text-xs text-slate-500 mt-1">
+                      A delivery partner en route to drop can hand the order off to a nearby DSU-role
+                      partner. Only applies within this zone.
+                    </p>
+
+                    {formData.orderTransferEnabled && (
+                      <div className="mt-4 space-y-4 pl-1">
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                            Transfer radius (meters) <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="number"
+                            min={50}
+                            step={10}
+                            value={formData.orderTransferRadiusMeters}
+                            onChange={(e) => handleInputChange("orderTransferRadiusMeters", e.target.value)}
+                            className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                          <p className="text-xs text-slate-500 mt-1">
+                            Minimum 50m. Only DSU partners within this distance of the handing-off
+                            driver will be offered the transfer.
+                          </p>
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                            DSU charge to customer (₹)
+                          </label>
+                          <input
+                            type="number"
+                            min={0}
+                            step={1}
+                            value={formData.dsuTransferCharge}
+                            onChange={(e) => handleInputChange("dsuTransferCharge", e.target.value)}
+                            className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                          <p className="text-xs text-slate-500 mt-1">
+                            Shown upfront at checkout for every order placed in this zone (charged
+                            regardless of whether a transfer actually happens). This full amount
+                            becomes the DSU partner's earning when they accept a transfer — the
+                            original driver still keeps their own full normal delivery earning.
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

@@ -1318,6 +1318,7 @@ const baseComputedDeliveryFee =
     : fallbackDeliveryFee
 const deliveryFee = baseComputedDeliveryFee
 const quickDeliveryFee = Number(pricing?.quickDeliveryFee || 0) || 0
+const dsuTransferCharge = Number(pricing?.dsuTransferCharge || 0) || 0
 const quickEtaLabel = formatQuickEtaWindow(pricing?.etaPromise || pricing?.quickDelivery?.etaPromise)
 const gates = pricing?.quickDelivery?.gates
 const quickGatesOpen = pricing?.quickDelivery?.eligible === true
@@ -1376,7 +1377,7 @@ const formatBillAmount = (value) => {
 // Never invent coupon caps — wait for server pricing for actual discount.
 const discount = pricing?.discount ?? 0
 const totalBeforeDiscount =
-  subtotal + deliveryFee + platformFee + packagingFee + gstCharges + quickDeliveryFee
+  subtotal + deliveryFee + platformFee + packagingFee + gstCharges + quickDeliveryFee + dsuTransferCharge
 const total = pricing?.total ?? (totalBeforeDiscount - discount)
 
 // Calculate other platform total for comparison
@@ -3331,6 +3332,18 @@ return (
                       <span className="text-gray-600 dark:text-gray-400">Quick Delivery</span>
                       <span className="text-gray-800 dark:text-gray-200 font-medium">
                         {RUPEE_SYMBOL}{quickDeliveryFee.toFixed(0)}
+                      </span>
+                    </div>
+                  )}
+
+                  {dsuTransferCharge > 0 && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-gray-600 dark:text-gray-400 flex items-center gap-1">
+                        DSU Charge
+                        <span className="text-[10px] text-gray-400">(order may be transferred to another partner)</span>
+                      </span>
+                      <span className="text-gray-800 dark:text-gray-200 font-medium">
+                        {RUPEE_SYMBOL}{dsuTransferCharge.toFixed(0)}
                       </span>
                     </div>
                   )}

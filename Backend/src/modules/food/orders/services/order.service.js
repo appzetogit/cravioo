@@ -2728,6 +2728,16 @@ export async function calculateOrder(userId, dto, options = {}) {
   ));
   const deliveryOptions = [];
 
+  // ----- Order Transfer (DSU) — fixed zone charge, upfront whenever the zone opts in -----
+  // Charged regardless of whether a transfer actually happens later (simpler accounting,
+  // matches admin's chosen policy). Zero when zone has orderTransferEnabled=false.
+  const dsuTransferCharge = serviceZone?.zone?.orderTransferEnabled
+    ? Math.max(0, Number(serviceZone.zone.dsuTransferCharge) || 0)
+    : 0;
+  if (dsuTransferCharge > 0) {
+    total = roundCurrency(total + dsuTransferCharge);
+  }
+
   // ----- Food Quick Delivery — additive; Basic path untouched when deliveryMode≠quick -----
   let foodQuickDeliveryFee = 0;
   let foodQuickPlatformShare = 0;
@@ -2850,6 +2860,8 @@ export async function calculateOrder(userId, dto, options = {}) {
       quickSharePcts: foodQuickSharePcts,
       quickFinanceVersion: foodQuickFinanceVersion,
       qcDeliveryFee: 0,
+      /** Order Transfer (DSU) zone charge — 0 unless the zone has orderTransferEnabled. */
+      dsuTransferCharge,
       total,
       currency: "INR",
       couponCode: appliedCoupon?.code || codeRaw || null,
@@ -3141,6 +3153,7 @@ export async function createOrder(userId, dto) {
       ),
     },
     quickFinanceVersion: String(serverPricing.quickFinanceVersion || ""),
+    dsuTransferCharge: Math.max(0, Number(serverPricing.dsuTransferCharge || 0)),
     total: resolvedTotal,
     currency: String(serverPricing.currency || "INR"),
     couponCode: serverPricing.couponCode || couponCodeFromClient || null,
@@ -3735,6 +3748,8 @@ export async function getOrderById(
     )
     .populate("dispatch.deliveryPartnerId", "name phone rating totalRatings")
     .populate("dispatchPlan.legs.deliveryPartnerId", "name phone rating totalRatings")
+    .populate("transfer.fromPartnerId", "name phone rating totalRatings")
+    .populate("transfer.toPartnerId", "name phone rating totalRatings")
     .populate("userId", "name phone email")
     .lean();
   if (!order) throw new NotFoundError("Order not found");
@@ -4260,6 +4275,8 @@ export async function listOrdersRestaurant(restaurantId, query, { restaurantIds 
       .select(RESTAURANT_ORDER_LIST_SELECT)
       .populate("userId", "name phone profileImage")
       .populate("dispatch.deliveryPartnerId", "name phone rating")
+      .populate("transfer.fromPartnerId", "name phone rating")
+      .populate("transfer.toPartnerId", "name phone rating")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
@@ -5871,6 +5888,322 @@ export async function completeDelivery(orderId, deliveryPartnerId, body = {}) {
   return sanitizeOrderForExternal(order);
 }
 
+// ===================== Order Transfer (DSU) =====================
+// A delivery partner (D1) en route to drop can hand an in-progress order off
+// to a nearby DSU-role partner (D2), before the customer drop-OTP stage.
+// D1's own handover is a separate OTP from the customer's dropOtp; D2 then
+// completes the order exactly like a normally-assigned partner would.
+
+function haversineMeters(lat1, lng1, lat2, lng2) {
+  if (![lat1, lng1, lat2, lng2].every((v) => Number.isFinite(v))) return null;
+  const R = 6371000;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+/**
+ * D1 initiates a transfer offer: finds online DSU-role partners within the
+ * order's zone-configured radius of D1's current location, and offers them
+ * the handoff over socket. If none are found, returns eligible:false so the
+ * app falls back to D1 completing the order normally — never blocks delivery.
+ */
+export async function initiateOrderTransfer(orderId, fromPartnerId, body = {}) {
+  const identity = buildOrderIdentityFilter(orderId);
+  const order = await FoodOrder.findOne(identity);
+  if (!order) throw new NotFoundError("Order not found");
+  if (!isOrderAssignedToDeliveryPartner(order, fromPartnerId)) {
+    throw new ForbiddenError("Not your order");
+  }
+  if (isTerminalOrderStatus(order.orderStatus)) {
+    throw new ValidationError("Order is already completed or cancelled");
+  }
+  if (order.transfer?.status && !["none", "cancelled"].includes(order.transfer.status)) {
+    throw new ValidationError("A transfer is already in progress for this order");
+  }
+
+  const zone = order.zoneId ? await FoodZone.findById(order.zoneId).lean() : null;
+  if (!zone?.orderTransferEnabled) {
+    throw new ValidationError("Order transfer is not enabled for this zone");
+  }
+
+  const lat = Number(body.lat);
+  const lng = Number(body.lng);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+    throw new ValidationError("Current location (lat/lng) is required");
+  }
+
+  const radiusMeters = Math.max(50, Number(zone.orderTransferRadiusMeters) || 500);
+
+  const allowedStatuses =
+    process.env.NODE_ENV === "production" ? ["approved"] : ["approved", "pending"];
+  const dsuCandidates = await FoodDeliveryPartner.find({
+    _id: { $ne: new mongoose.Types.ObjectId(String(fromPartnerId)) },
+    availabilityStatus: "online",
+    status: { $in: allowedStatuses },
+    driverRoles: "dsu",
+  })
+    .select("_id name lastLat lastLng lastLocationAt")
+    .lean();
+
+  const STALE_GPS_MS = 10 * 60 * 1000;
+  const nearby = [];
+  for (const p of dsuCandidates) {
+    if (p.lastLat == null || p.lastLng == null) continue;
+    if (!p.lastLocationAt || Date.now() - new Date(p.lastLocationAt).getTime() > STALE_GPS_MS) continue;
+    const distanceMeters = haversineMeters(lat, lng, p.lastLat, p.lastLng);
+    if (Number.isFinite(distanceMeters) && distanceMeters <= radiusMeters) {
+      nearby.push({ partnerId: p._id, name: p.name, distanceMeters: Math.round(distanceMeters) });
+    }
+  }
+  nearby.sort((a, b) => a.distanceMeters - b.distanceMeters);
+
+  if (!nearby.length) {
+    return {
+      eligible: false,
+      reason: "No DSU delivery partners available nearby. Continue delivering this order yourself.",
+      radiusMeters,
+    };
+  }
+
+  order.transfer = {
+    ...(order.transfer?.toObject?.() || order.transfer || {}),
+    status: "offered",
+    fromPartnerId,
+    toPartnerId: null,
+    offeredTo: nearby.map((p) => ({
+      partnerId: p.partnerId,
+      distanceMeters: p.distanceMeters,
+      at: new Date(),
+      action: "offered",
+    })),
+    handoverLocation: { type: "Point", coordinates: [lng, lat] },
+    offeredAt: new Date(),
+    radiusMeters,
+  };
+  await order.save();
+
+  const io = getIO();
+  if (io) {
+    const payload = {
+      orderMongoId: order._id.toString(),
+      orderId: order.orderId,
+      pickupLocation: { lat, lng },
+      itemsCount: Array.isArray(order.items) ? order.items.length : 0,
+      // D2's earning for accepting this transfer is the zone's DSU charge — NOT
+      // order.riderEarning, which stays with D1 as their own full delivery earning.
+      dsuTransferCharge: Math.max(0, Number(order.pricing?.dsuTransferCharge) || Number(zone.dsuTransferCharge) || 0),
+      paymentMethod: order.payment?.method || "cash",
+    };
+    for (const p of nearby) {
+      io.to(rooms.delivery(p.partnerId)).emit("new_transfer_order_available", {
+        ...payload,
+        pickupDistanceMeters: p.distanceMeters,
+      });
+      io.to(rooms.delivery(p.partnerId)).emit("play_notification_sound", {
+        audience: "delivery",
+        type: "new_transfer_order_available",
+        orderId: order.orderId,
+        orderMongoId: order._id.toString(),
+      });
+    }
+  }
+
+  enqueueOrderEvent("transfer_offered", {
+    orderMongoId: order._id.toString(),
+    orderId: order.orderId,
+    fromPartnerId,
+    offeredCount: nearby.length,
+  });
+
+  return { eligible: true, offeredCount: nearby.length, radiusMeters };
+}
+
+/**
+ * D2 accepts the transfer offer. Generates the handover OTP (shown to D1,
+ * entered by D2) and locks the offer to this partner so other offerees can
+ * no longer accept it.
+ */
+export async function acceptOrderTransfer(orderId, toPartnerId) {
+  const identity = buildOrderIdentityFilter(orderId);
+  const order = await FoodOrder.findOne(identity);
+  if (!order) throw new NotFoundError("Order not found");
+
+  if (order.transfer?.status !== "offered") {
+    throw new ValidationError("This transfer offer is no longer available");
+  }
+  const wasOffered = (order.transfer.offeredTo || []).some(
+    (o) => toIdString(o.partnerId) === toIdString(toPartnerId),
+  );
+  if (!wasOffered) {
+    throw new ForbiddenError("You were not offered this transfer");
+  }
+
+  const transferOtp = generateFourDigitDeliveryOtp();
+  order.transfer.status = "accepted";
+  order.transfer.toPartnerId = toPartnerId;
+  order.transfer.transferOtp = transferOtp;
+  order.transfer.acceptedAt = new Date();
+  order.transfer.offeredTo = order.transfer.offeredTo.map((o) =>
+    toIdString(o.partnerId) === toIdString(toPartnerId)
+      ? { ...o.toObject?.() ?? o, action: "accepted" }
+      : { ...o.toObject?.() ?? o, action: o.action === "offered" ? "timeout" : o.action },
+  );
+  await order.save();
+
+  const io = getIO();
+  if (io && order.transfer.fromPartnerId) {
+    io.to(rooms.delivery(order.transfer.fromPartnerId)).emit("transfer_accepted", {
+      orderMongoId: order._id.toString(),
+      orderId: order.orderId,
+      toPartnerId: toIdString(toPartnerId),
+      transferOtp,
+      message: "Share this OTP with the delivery partner taking over the order.",
+    });
+    // Tell the other offerees their offer is gone.
+    for (const o of order.transfer.offeredTo) {
+      if (toIdString(o.partnerId) !== toIdString(toPartnerId)) {
+        io.to(rooms.delivery(o.partnerId)).emit("transfer_offer_closed", {
+          orderMongoId: order._id.toString(),
+          orderId: order.orderId,
+        });
+      }
+    }
+  }
+
+  enqueueOrderEvent("transfer_accepted", {
+    orderMongoId: order._id.toString(),
+    orderId: order.orderId,
+    fromPartnerId: toIdString(order.transfer.fromPartnerId),
+    toPartnerId: toIdString(toPartnerId),
+  });
+
+  return sanitizeOrderForExternal(order);
+}
+
+/**
+ * D2 verifies the handover OTP given by D1. On success, ownership of the
+ * order (dispatch.deliveryPartnerId) moves to D2; D1's wallet is credited
+ * the zone's DSU handover payout. D2 then continues the normal delivery
+ * flow (reached-drop → customer dropOtp → collect payment → complete),
+ * unaffected by this change.
+ */
+export async function verifyOrderTransferOtp(orderId, toPartnerId, otp) {
+  const identity = buildOrderIdentityFilter(orderId);
+  const order = await FoodOrder.findOne(identity).select("+transfer.transferOtp");
+  if (!order) throw new NotFoundError("Order not found");
+
+  if (order.transfer?.status !== "accepted") {
+    throw new ValidationError("No pending transfer to verify for this order");
+  }
+  if (toIdString(order.transfer.toPartnerId) !== toIdString(toPartnerId)) {
+    throw new ForbiddenError("This transfer was not accepted by you");
+  }
+
+  const otpStr = String(otp || "").trim();
+  const expected = String(order.transfer.transferOtp || "").trim();
+  if (!otpStr || !expected || expected !== otpStr) {
+    throw new ValidationError("Invalid handover OTP. Ask the other delivery partner for the code.");
+  }
+
+  const fromPartnerId = order.transfer.fromPartnerId;
+  const from = order.orderStatus;
+
+  order.dispatch.deliveryPartnerId = toPartnerId;
+  order.transfer.status = "verified";
+  order.transfer.verifiedAt = new Date();
+  order.transfer.transferOtp = "";
+
+  pushStatusHistory(order, {
+    byRole: "DELIVERY_PARTNER",
+    byId: toPartnerId,
+    from,
+    to: from,
+    note: `Order transferred from partner ${toIdString(fromPartnerId)} to ${toIdString(toPartnerId)}`,
+  });
+
+  await order.save();
+
+  // Financial settlement at the moment of handover:
+  // - D1 keeps their FULL normal delivery earning (order.riderEarning), exactly as if
+  //   they had delivered it themselves — credited now with category 'delivery_earning'
+  //   so the later delivery_completed payout job (which fires for D2 on final complete)
+  //   sees this category already paid for this order and skips re-crediting it.
+  // - D2 earns the zone's dsuTransferCharge (what the customer paid at checkout for
+  //   this zone) instead of riderEarning — credited under its own category so it is
+  //   never confused with, or blocked by, D1's delivery_earning credit above.
+  try {
+    const { creditWallet } = await import("../../../../core/payments/wallet.service.js");
+
+    const riderEarningAmount = Math.max(0, Number(order.riderEarning) || 0);
+    if (riderEarningAmount > 0 && fromPartnerId) {
+      await creditWallet({
+        entityType: "deliveryBoy",
+        entityId: fromPartnerId,
+        amount: riderEarningAmount,
+        description: `Order ${order.orderId || order._id} - delivery earning`,
+        category: "delivery_earning",
+        orderId: order._id,
+        metadata: { orderId: order.orderId, transferred: true, toPartnerId: toIdString(toPartnerId) },
+      });
+    }
+
+    const zone = order.zoneId ? await FoodZone.findById(order.zoneId).select("dsuTransferCharge").lean() : null;
+    const d2EarningAmount = Math.max(
+      0,
+      Number(order.pricing?.dsuTransferCharge) || Number(zone?.dsuTransferCharge) || 0,
+    );
+    if (d2EarningAmount > 0) {
+      await creditWallet({
+        entityType: "deliveryBoy",
+        entityId: toPartnerId,
+        amount: d2EarningAmount,
+        description: `Order ${order.orderId || order._id} - DSU transfer earning`,
+        category: "dsu_transfer_earning",
+        orderId: order._id,
+        metadata: { orderId: order.orderId, fromPartnerId: toIdString(fromPartnerId) },
+      });
+    }
+
+    order.transfer.d2Payout = { amount: d2EarningAmount, settled: d2EarningAmount > 0, settledAt: d2EarningAmount > 0 ? new Date() : null };
+    order.transfer.status = "completed";
+    order.transfer.completedAt = new Date();
+    await order.save();
+  } catch (err) {
+    logger.error(
+      `[OrderTransfer] Settlement failed for order ${order.orderId || order._id}: ${err?.message || err}`,
+    );
+  }
+
+  const io = getIO();
+  if (io) {
+    io.to(rooms.delivery(fromPartnerId)).emit("transfer_completed", {
+      orderMongoId: order._id.toString(),
+      orderId: order.orderId,
+    });
+    io.to(rooms.user(order.userId)).emit("order_transferred", {
+      orderMongoId: order._id.toString(),
+      orderId: order.orderId,
+      message: "Your order has been transferred to a new delivery partner for faster delivery.",
+    });
+  }
+  emitOrderUpdate(order, toPartnerId);
+
+  enqueueOrderEvent("transfer_completed", {
+    orderMongoId: order._id.toString(),
+    orderId: order.orderId,
+    fromPartnerId: toIdString(fromPartnerId),
+    toPartnerId: toIdString(toPartnerId),
+  });
+
+  return { order: sanitizeOrderForExternal(order) };
+}
+
 function emitOrderUpdate(order, deliveryPartnerId) {
   try {
     const io = getIO();
@@ -6549,6 +6882,8 @@ export async function listOrdersAdmin(query) {
       .populate("userId", "name phone email")
       .populate("restaurantId", "restaurantName area city ownerPhone")
       .populate("dispatch.deliveryPartnerId", "name phone")
+      .populate("transfer.fromPartnerId", "name phone")
+      .populate("transfer.toPartnerId", "name phone")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)

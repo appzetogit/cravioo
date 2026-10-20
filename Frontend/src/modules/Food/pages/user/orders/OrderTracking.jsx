@@ -974,6 +974,7 @@ export default function OrderTracking() {
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [showSafetyDialog, setShowSafetyDialog] = useState(false);
   const [cancellationNotice, setCancellationNotice] = useState(null);
+  const [transferNotice, setTransferNotice] = useState(null);
   const [showOrderDetails, setShowOrderDetails] = useState(false);
   const [invoiceBusy, setInvoiceBusy] = useState(false);
   const invoiceAction = useMemo(() => getInvoiceActionMeta(), []);
@@ -1355,6 +1356,24 @@ export default function OrderTracking() {
     window.addEventListener('orderStatusNotification', handle);
     return () => window.removeEventListener('orderStatusNotification', handle);
   }, [orderId, isQuickOrder]);
+
+  // Order Transfer (DSU): delivery partner changed mid-delivery
+  useEffect(() => {
+    const handle = (event) => {
+      const detail = event?.detail || {};
+      const evtKeys = [detail?.orderId, detail?.orderMongoId].filter(Boolean).map(String);
+      const idMatches = evtKeys.length === 0 || evtKeys.some((k) => String(k) === String(orderId)) || evtKeys.some((k) => trackingOrderIdsRef.current.has(k));
+      if (!idMatches) return;
+      setTransferNotice(detail.message || 'Your order has been transferred to a new delivery partner for faster delivery.');
+      const now = Date.now();
+      if (now - lastRealtimeRefreshRef.current > 1500 && !isRefreshing) {
+        lastRealtimeRefreshRef.current = now;
+        handleRefresh();
+      }
+    };
+    window.addEventListener('orderTransferred', handle);
+    return () => window.removeEventListener('orderTransferred', handle);
+  }, [orderId]);
 
   // Edit window countdown
   useEffect(() => {
@@ -2114,6 +2133,30 @@ export default function OrderTracking() {
             </div>
           </div>
         </motion.div>
+
+        {/* Order Transfer (DSU) notice — delivery partner changed mid-delivery */}
+        {transferNotice && (
+          <motion.div
+            className="bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 rounded-xl px-4 py-3 flex items-start gap-3"
+            {...MOTION_SLIDE_UP(0.5)}
+          >
+            <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+              <RefreshCw className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-blue-900 dark:text-blue-200">Delivery partner changed</p>
+              <p className="text-xs text-blue-700/80 dark:text-blue-300/80 mt-0.5">{transferNotice}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setTransferNotice(null)}
+              className="text-blue-400 hover:text-blue-600 dark:hover:text-blue-300 flex-shrink-0"
+              aria-label="Dismiss"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </motion.div>
+        )}
 
         {/* Delivery Partners */}
         {visibleDeliveryPartners.length > 0 && (

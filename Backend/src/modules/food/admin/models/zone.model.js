@@ -87,6 +87,33 @@ const zoneSchema = new mongoose.Schema(
             type: mongoose.Schema.Types.ObjectId,
             ref: 'FoodRestaurant',
             default: null
+        },
+        /**
+         * Order Transfer (DSU) — opt-in per zone. When enabled, a delivery partner
+         * en route to drop can hand the order off to a nearby DSU-role partner.
+         * Missing/undefined ⇒ false, radius/charge/payout ignored.
+         */
+        orderTransferEnabled: {
+            type: Boolean,
+            default: false,
+            index: true,
+        },
+        /** Max distance (meters) within which a DSU partner can be offered the transfer. */
+        orderTransferRadiusMeters: {
+            type: Number,
+            default: 500,
+            min: 50,
+        },
+        /**
+         * Fixed charge shown to the user at checkout when this zone has transfer enabled.
+         * This entire amount becomes the DSU partner's (D2's) earning for a transferred
+         * order — D1 still keeps their full normal riderEarning as if they had delivered
+         * it themselves. See order.service.js verifyOrderTransferOtp / completeDelivery.
+         */
+        dsuTransferCharge: {
+            type: Number,
+            default: 0,
+            min: 0,
         }
     },
     {
@@ -98,6 +125,7 @@ const zoneSchema = new mongoose.Schema(
 zoneSchema.index({ isActive: 1, name: 1 });
 zoneSchema.index({ country: 1, name: 1 });
 zoneSchema.index({ isActive: 1, quickDeliveryEnabled: 1 });
+zoneSchema.index({ isActive: 1, orderTransferEnabled: 1 });
 zoneSchema.index({ geometry: '2dsphere' }, { sparse: true });
 
 zoneSchema.pre('save', async function saveZoneGeometryAndValidateOverlap(next) {

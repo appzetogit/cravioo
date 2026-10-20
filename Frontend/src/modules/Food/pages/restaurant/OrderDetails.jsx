@@ -22,6 +22,7 @@ import {
   Star,
   Phone,
   X,
+  ArrowRightLeft,
 } from "lucide-react"
 import ResendNotificationButton from "@food/components/restaurant/ResendNotificationButton"
 import { getCancellationDisplayLabel } from "@food/utils/cancellationDisplay"
@@ -253,6 +254,7 @@ export default function OrderDetails({ orderId: propOrderId, isSidebar = false, 
               totalRatings: order.deliveryPartnerId.totalRatings || 0,
             } : null,
             dispatchStatus: order.dispatch?.status || null,
+            transfer: order.transfer && order.transfer.status && order.transfer.status !== 'none' ? order.transfer : null,
             reason: order.cancellationReason || '',
             note: order.note || '',
             restaurantNote: order.restaurantNote || '',
@@ -621,6 +623,32 @@ export default function OrderDetails({ orderId: propOrderId, isSidebar = false, 
                   </div>
                 )}
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Order Transfer (DSU) notice */}
+        {orderData.transfer && (
+          <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 mb-3 flex items-start gap-3">
+            <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+              <ArrowRightLeft className="w-4 h-4 text-blue-600" />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-bold text-blue-900">
+                Order transferred between delivery partners
+              </p>
+              <p className="text-xs text-blue-700 mt-0.5">
+                {orderData.transfer.fromPartnerId?.name || "The assigned partner"} handed this order off
+                to {orderData.transfer.toPartnerId?.name || "another delivery partner"} on the way to the
+                customer. Your preparation and pickup are unaffected.
+              </p>
+              <span className={`inline-flex items-center mt-2 px-2 py-0.5 rounded-full text-[11px] font-semibold ${
+                ["completed", "verified"].includes(orderData.transfer.status)
+                  ? "bg-emerald-100 text-emerald-700"
+                  : "bg-amber-100 text-amber-700"
+              }`}>
+                {orderData.transfer.status.charAt(0).toUpperCase() + orderData.transfer.status.slice(1)}
+              </span>
             </div>
           </div>
         )}
