@@ -333,23 +333,14 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
     }
 
     const approved = getApprovedVehicles(driverVehicles);
-    if (!approved.length) {
-      toast.error('No approved vehicle available. Please contact admin.');
-      return;
-    }
-
-    if (approved.length === 1) {
-      const only = approved[0];
-      const vId = String(only.id || only.vehicleId || '').trim();
+    if (approved.length <= 1) {
       try {
+        const only = approved[0];
+        const vId = String(only?.id || only?.vehicleId || '').trim();
         if (vId && String(activeVehicleId) !== vId) {
           const vehicleRes = await deliveryAPI.setActiveVehicle(vId);
           const vehiclePayload = extractVehiclePayload(vehicleRes);
           setActiveVehicleId(vehiclePayload.activeVehicleId || vId);
-          if (vehiclePayload.availabilityStatus === 'offline') {
-            hydratePartnerState({ availabilityStatus: 'offline', isOnline: false });
-            setOnline(false);
-          }
         }
         await completeGoOnline();
       } catch {

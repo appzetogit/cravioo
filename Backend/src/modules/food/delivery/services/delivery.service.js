@@ -748,14 +748,11 @@ export const updateDeliveryAvailability = async (userId, payload) => {
             throw new ValidationError('CASH_LIMIT_EXCEEDED');
         }
 
+        // No vehicle-approval gate: a driver has a single vehicle and can go online directly.
         const approved = getApprovedDriverVehicles(partner.driverVehicles || []);
-        if (!approved.length) {
-            throw new ValidationError('No approved vehicle available. Please contact admin.');
-        }
-        if (!partner.activeVehicleId) {
-            partner.activeVehicleId = String(approved[0].id || approved[0]._id);
-        } else {
-            const activeOk = approved.some((v) => String(v.id || v._id) === String(partner.activeVehicleId));
+        if (approved.length) {
+            const activeOk = partner.activeVehicleId
+                && approved.some((v) => String(v.id || v._id) === String(partner.activeVehicleId));
             if (!activeOk) {
                 partner.activeVehicleId = String(approved[0].id || approved[0]._id);
             }
