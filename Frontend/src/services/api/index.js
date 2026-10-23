@@ -815,7 +815,12 @@ export const adminAPI = {
       { deliveryPartnerId },
       { contextModule: "admin" },
     ),
-  /** Accepted in-progress orders for live tracking. Params: { zoneId? } */
+  /** Online riders with last GPS point (live tracking driver map). */
+  getOnlineDriverLocations: () =>
+    apiClient.get("/food/admin/delivery/online-locations", {
+      contextModule: "admin",
+    }),
+  /** In-progress orders for live tracking. Params: { zoneId? } */
   getLiveTrackingOrders: (params = {}) =>
     apiClient.get("/food/admin/orders/live-tracking", {
       params,

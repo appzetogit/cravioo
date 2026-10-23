@@ -110,11 +110,11 @@ export async function listAssignableDriversForOrder(orderId) {
   };
 }
 
-/** Accepted, in-progress orders (optionally one zone) for the admin live-tracking map. */
+/** In-progress orders (optionally one zone) for the admin live-tracking map. */
 export async function listLiveTrackingOrders({ zoneId } = {}) {
   const filter = {
-    "dispatch.status": "accepted",
     orderStatus: { $in: ACTIVE_ORDER_STATUSES },
+    "dispatch.status": { $ne: "cancelled" },
   };
   if (zoneId) {
     if (!mongoose.Types.ObjectId.isValid(zoneId)) throw new ValidationError("Invalid zone id");
@@ -155,4 +155,35 @@ export async function listLiveTrackingOrders({ zoneId } = {}) {
         : null,
     };
   });
+}
+
+/** Online riders with their last known GPS point (backend source for the live-tracking driver map). */
+export async function listOnlineDriverLocations() {
+  const allowedStatuses =
+    process.env.NODE_ENV === "production" ? ["approved"] : ["approved", "pending"];
+  const partners = await FoodDeliveryPartner.find({
+    availabilityStatus: "online",
+    status: { $in: allowedStatuses },
+    isActive: { $ne: false },
+  })
+    .select("name phone lastLat lastLng lastLocationAt")
+    .lean();
+  const ids = partners.map((p) => p._id);
+  const busy = ids.length
+    ? await FoodOrder.distinct("dispatch.deliveryPartnerId", {
+        "dispatch.deliveryPartnerId": { $in: ids },
+        "dispatch.status": "accepted",
+        orderStatus: { $in: ACTIVE_ORDER_STATUSES },
+      })
+    : [];
+  const busySet = new Set(busy.map(String));
+  return partners.map((p) => ({
+    id: String(p._id),
+    name: p.name || "Delivery Partner",
+    phone: p.phone || "",
+    lat: Number.isFinite(p.lastLat) ? p.lastLat : null,
+    lng: Number.isFinite(p.lastLng) ? p.lastLng : null,
+    lastLocationAt: p.lastLocationAt || null,
+    busy: busySet.has(String(p._id)),
+  }));
 }

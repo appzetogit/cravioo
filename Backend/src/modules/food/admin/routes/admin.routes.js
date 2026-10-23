@@ -293,6 +293,7 @@ router.post('/delivery/earning-addon-completions/check', checkPermission('food::
 router.get('/delivery/support-tickets/stats', checkPermission('food::deliveryman_management::support_tickets', 'view'), adminController.getSupportTicketStats);
 router.get('/delivery/support-tickets', checkPermission('food::deliveryman_management::support_tickets', 'view'), adminController.getSupportTickets);
 router.patch('/delivery/support-tickets/:id', checkPermission('food::deliveryman_management::support_tickets', 'edit'), adminController.updateSupportTicket);
+router.get('/delivery/online-locations', checkPermission('food::deliveryman_management::deliveryman::list', 'view'), orderController.onlineDriverLocationsController);
 router.get('/delivery/partners', checkPermission('food::deliveryman_management::deliveryman::list', 'view'), adminController.getDeliveryPartners);
 router.post(
     '/delivery/partners',

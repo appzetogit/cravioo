@@ -65,6 +65,15 @@ function useGoogleMap(containerRef) {
   return { map, error }
 }
 
+const driverDot = (busy) => ({
+  path: window.google.maps.SymbolPath.CIRCLE,
+  scale: 8,
+  fillColor: busy ? "#f59e0b" : "#16a34a",
+  fillOpacity: 1,
+  strokeColor: "#ffffff",
+  strokeWeight: 2,
+})
+
 const bikeIcon = () => ({
   url: bikeLogo,
   scaledSize: new window.google.maps.Size(40, 40),
@@ -80,7 +89,8 @@ export default function DriverLiveTracking() {
   const [zones, setZones] = useState([])
   const [zoneId, setZoneId] = useState("")
   const [directory, setDirectory] = useState({}) // driverId -> {name, phone}
-  const [liveDrivers, setLiveDrivers] = useState([]) // firebase online drivers
+  const [liveDrivers, setLiveDrivers] = useState([]) // firebase live positions
+  const [onlineDrivers, setOnlineDrivers] = useState([]) // backend: online drivers + last GPS
   const [orders, setOrders] = useState([])
   const [ordersLoading, setOrdersLoading] = useState(true)
   const [selectedOrderId, setSelectedOrderId] = useState("")
@@ -128,7 +138,25 @@ export default function DriverLiveTracking() {
     return () => typeof unsub === "function" && unsub()
   }, [])
 
-  // Map 2 data: accepted orders of selected zone
+  // Backend list of online drivers (authoritative for "online"; Firebase refines the position)
+  useEffect(() => {
+    let cancelled = false
+    const load = () =>
+      adminAPI
+        .getOnlineDriverLocations()
+        .then((res) => {
+          if (!cancelled) setOnlineDrivers(res?.data?.data?.drivers || [])
+        })
+        .catch(() => {})
+    load()
+    const t = setInterval(load, 15000)
+    return () => {
+      cancelled = true
+      clearInterval(t)
+    }
+  }, [])
+
+  // Map 2 data: in-progress orders of selected zone
   useEffect(() => {
     let cancelled = false
     const load = async (first) => {
@@ -164,10 +192,19 @@ export default function DriverLiveTracking() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orderIdsKey])
 
-  const visibleDrivers = useMemo(
-    () => (zonePath ? liveDrivers.filter((d) => inPolygon(d.lat, d.lng, zonePath)) : liveDrivers),
-    [liveDrivers, zonePath],
-  )
+  const visibleDrivers = useMemo(() => {
+    const live = new Map(liveDrivers.map((d) => [d.id, d]))
+    const merged = onlineDrivers
+      .map((d) => {
+        const f = live.get(d.id)
+        const lat = f ? f.lat : d.lat
+        const lng = f ? f.lng : d.lng
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null
+        return { id: d.id, name: d.name, phone: d.phone, lat, lng, busy: d.busy || Boolean(f?.busy) }
+      })
+      .filter(Boolean)
+    return zonePath ? merged.filter((d) => inPolygon(d.lat, d.lng, zonePath)) : merged
+  }, [liveDrivers, onlineDrivers, zonePath])
 
   // ---- Map 1 rendering: zone polygons + drivers
   const zoneShapesRef = useRef([])
@@ -203,14 +240,16 @@ export default function DriverLiveTracking() {
     const seen = new Set()
     visibleDrivers.forEach((d) => {
       seen.add(d.id)
-      const title = `${directory[d.id]?.name || "Driver"}${d.busy ? " (on order)" : ""}`
+      const title = `${d.name || directory[d.id]?.name || "Driver"}${d.busy ? " (on order)" : " (free)"}`
+      const pos = { lat: d.lat, lng: d.lng }
       let m = markers.get(d.id)
       if (!m) {
-        m = new window.google.maps.Marker({ map: driversMap, position: d, icon: bikeIcon(), title })
+        m = new window.google.maps.Marker({ map: driversMap, position: pos, icon: driverDot(d.busy), title, zIndex: 1000 })
         markers.set(d.id, m)
       } else {
-        m.setPosition(d)
+        m.setPosition(pos)
         m.setTitle(title)
+        m.setIcon(driverDot(d.busy))
       }
     })
     markers.forEach((m, id) => {
@@ -226,12 +265,31 @@ export default function DriverLiveTracking() {
   const driverOrderMarkersRef = useRef(new Map())
   const routeLinesRef = useRef(new Map())
 
-  // static markers (restaurant + customer) — rebuilt only when the order list changes
+  // static markers (restaurant + customer) + selected zone outline; zoom to orders, else to the zone
   useEffect(() => {
     if (!ordersMap) return
     orderOverlaysRef.current.forEach((o) => o.setMap(null))
     orderOverlaysRef.current = []
     const bounds = new window.google.maps.LatLngBounds()
+    const zoneBounds = new window.google.maps.LatLngBounds()
+    const selectedZones = zoneId ? zones.filter((z) => String(z._id || z.id) === zoneId) : []
+    selectedZones.forEach((z) => {
+      const path = toPath(z)
+      if (path.length < 3) return
+      path.forEach((pt) => zoneBounds.extend(pt))
+      orderOverlaysRef.current.push(
+        new window.google.maps.Polygon({
+          paths: path,
+          strokeColor: ZONE_COLOR,
+          strokeOpacity: 0.8,
+          strokeWeight: 2,
+          fillColor: ZONE_COLOR,
+          fillOpacity: 0.08,
+          clickable: false,
+          map: ordersMap,
+        }),
+      )
+    })
     orders.forEach((o) => {
       if (o.restaurant) {
         orderOverlaysRef.current.push(
@@ -257,7 +315,8 @@ export default function DriverLiveTracking() {
       }
     })
     if (!bounds.isEmpty()) ordersMap.fitBounds(bounds)
-  }, [ordersMap, orders])
+    else if (!zoneBounds.isEmpty()) ordersMap.fitBounds(zoneBounds)
+  }, [ordersMap, orders, zones, zoneId])
 
   // live driver markers + route lines
   useEffect(() => {
@@ -371,7 +430,8 @@ export default function DriverLiveTracking() {
           <h2 className="font-semibold text-slate-900 mb-1">Driver Locations</h2>
           <p className="text-xs text-slate-500 mb-3">
             Online drivers: <strong>{visibleDrivers.length}</strong>
-            {zoneId ? " in selected zone" : ""}
+            {zoneId ? " in selected zone" : ""} · <span className="text-green-600">● free</span>{" "}
+            <span className="text-amber-500">● on order</span>
           </p>
           {renderMapBox({ innerRef: driversMapEl, loading: !driversMap, error: driversMapError })}
         </section>
@@ -400,7 +460,7 @@ export default function DriverLiveTracking() {
                   #{o.orderId} · {o.restaurant?.name || "Restaurant"}
                 </div>
                 <div className="text-xs text-slate-500">
-                  Driver: {o.driver?.name || "-"} {o.driver?.phone ? `(${o.driver.phone})` : ""} · Customer:{" "}
+                  Driver: {o.driver?.name || "Not assigned"} {o.driver?.phone ? `(${o.driver.phone})` : ""} · Customer:{" "}
                   {o.customer?.name || "-"}
                 </div>
               </button>

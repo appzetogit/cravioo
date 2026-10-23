@@ -675,3 +675,12 @@ export async function liveTrackingOrdersController(req, res, next) {
         next(err);
     }
 }
+
+export async function onlineDriverLocationsController(req, res, next) {
+    try {
+        const drivers = await adminDispatchService.listOnlineDriverLocations();
+        return sendResponse(res, 200, 'Online drivers retrieved', { drivers });
+    } catch (err) {
+        next(err);
+    }
+}
