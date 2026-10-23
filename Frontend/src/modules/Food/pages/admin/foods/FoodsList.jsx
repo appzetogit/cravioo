@@ -463,7 +463,7 @@ export default function FoodsList() {
         })),
         description: foodForm.description.trim(),
         image: imageUrl,
-        foodType: foodForm.foodType === "Veg" ? "Veg" : "Non-Veg",
+        foodType: ["Veg", "Both"].includes(foodForm.foodType) ? foodForm.foodType : "Non-Veg",
         isAvailable: foodForm.isAvailable !== false,
         preparationTime: String(foodForm.preparationTime || "").trim(),
       }
@@ -972,6 +972,7 @@ export default function FoodsList() {
                 >
                   <option value="Veg">Veg</option>
                   <option value="Non-Veg">Non-Veg</option>
+                  <option value="Both">Both</option>
                 </select>
               </div>
               <div>

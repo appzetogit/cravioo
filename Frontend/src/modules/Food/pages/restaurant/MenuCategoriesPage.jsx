@@ -191,8 +191,8 @@ export default function MenuCategoriesPage() {
     const name = String(formData.name || "").trim()
     if (!name) return "Category name is required"
     if (name.length > 200) return "Category name is too long"
-    if (!["Veg", "Non-Veg"].includes(formData.foodTypeScope)) {
-      return "Category diet type must be Veg or Non-Veg"
+    if (!["Veg", "Non-Veg", "Both"].includes(formData.foodTypeScope)) {
+      return "Category diet type must be Veg, Non-Veg, or Both"
     }
     if (isPureVegRestaurant && formData.foodTypeScope !== "Veg") {
       return "Pure veg restaurants can only create veg categories"
@@ -309,6 +309,7 @@ export default function MenuCategoriesPage() {
         >
           <option value="Veg">Veg</option>
           {!isPureVegRestaurant && <option value="Non-Veg">Non-Veg</option>}
+          {!isPureVegRestaurant && <option value="Both">Both</option>}
         </select>
         {isPureVegRestaurant ? (
           <p className="mt-2 text-xs text-slate-500">Pure veg restaurants can only create veg categories.</p>

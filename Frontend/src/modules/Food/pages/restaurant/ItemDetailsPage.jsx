@@ -363,7 +363,7 @@ export default function ItemDetailsPage() {
     setItemSizeQuantity(item.itemSizeQuantity || "")
     setItemSizeUnit(item.itemSizeUnit || "piece")
     setItemDescription(item.description || "")
-    setFoodType(item.foodType === "Veg" ? "Veg" : "Non-Veg")
+    setFoodType(["Veg", "Both"].includes(item.foodType) ? item.foodType : "Non-Veg")
     const itemVariants = getFoodVariants(item)
     const hasExistingVariants = itemVariants.length > 0
     setItemHasVariants(hasExistingVariants)
@@ -1732,6 +1732,18 @@ export default function ItemDetailsPage() {
                         >
                           {foodType === "Non-Veg" && <Check className="w-4 h-4" />}
                           <span>Non-Veg</span>
+                        </button>
+                      )}
+                      {!showNonVegFoodType ? null : (
+                        <button
+                          onClick={() => setFoodType("Both")}
+                          className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${foodType === "Both"
+                            ? "border-amber-600 border-2 text-amber-600"
+                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                            }`}
+                        >
+                          {foodType === "Both" && <Check className="w-4 h-4" />}
+                          <span>Both</span>
                         </button>
                       )}
                     </div>
