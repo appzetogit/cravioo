@@ -16,9 +16,13 @@ export const canSelectNonVegFoodType = ({ pureVegRestaurant, categoryFoodTypeSco
   return true
 }
 
+/** "Both" food type needs the category to accept non-veg too, same gate as Non-Veg itself. */
+export const canSelectBothFoodType = canSelectNonVegFoodType
+
 export const categoryAcceptsFoodType = (scope, foodType) => {
   const normalizedScope = String(scope || "").trim()
-  const normalizedFoodType = foodType === "Veg" ? "Veg" : "Non-Veg"
-  if (!normalizedScope || normalizedScope === "Both") return true
+  const normalizedFoodType = foodType === "Veg" || foodType === "Both" ? foodType : "Non-Veg"
+  if (!normalizedScope) return true
+  if (normalizedScope === "Both" || normalizedFoodType === "Both") return true
   return normalizedScope === normalizedFoodType
 }

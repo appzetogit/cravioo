@@ -26,10 +26,7 @@ const APPROVED_CATEGORY_FILTER = [
 
 const normalizeFoodType = (v) => {
     const t = String(v || '').trim();
-    if (!t) return 'Non-Veg';
-    if (t === 'Veg') return 'Veg';
-    if (t === 'Non-Veg') return 'Non-Veg';
-    if (t === 'Egg') return 'Non-Veg';
+    if (t === 'Veg' || t === 'Both') return t;
     return 'Non-Veg';
 };
 

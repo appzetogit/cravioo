@@ -23,7 +23,7 @@ const foodSchema = new mongoose.Schema(
         variants: { type: [foodVariantSchema], default: [] },
         image: { type: String, trim: true, default: '' },
         images: { type: [String], default: [] },
-        foodType: { type: String, enum: ['Veg', 'Non-Veg'], default: 'Non-Veg' },
+        foodType: { type: String, enum: ['Veg', 'Non-Veg', 'Both'], default: 'Non-Veg' },
         isAvailable: { type: Boolean, default: true, index: true },
         itemSlotTimingId: { type: mongoose.Schema.Types.ObjectId, ref: 'ItemSlotTiming', default: null, index: true },
         preparationTime: { type: String, trim: true, default: '' },

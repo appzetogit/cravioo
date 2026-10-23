@@ -803,6 +803,7 @@ export default function Category() {
                           >
                             <option value="Veg">Veg</option>
                             <option value="Non-Veg">Non-Veg</option>
+                            <option value="Both">Both</option>
                           </select>
                         </div>
 

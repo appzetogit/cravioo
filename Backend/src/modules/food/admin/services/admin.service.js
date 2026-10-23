@@ -4686,7 +4686,7 @@ export async function createCategory(body) {
     if (!image) throw new ValidationError('Category image is required');
     const foodTypeScope = normalizeCategoryFoodTypeScope(body.foodTypeScope, '');
     if (!foodTypeScope) {
-        throw new ValidationError('Category diet type must be Veg or Non-Veg');
+        throw new ValidationError('Category diet type must be Veg, Non-Veg, or Both');
     }
     const zoneId =
         body.zoneId && String(body.zoneId).trim()
@@ -4852,14 +4852,16 @@ export async function updateCategory(id, body) {
         : normalizeCategoryFoodTypeScope(doc.foodTypeScope, 'Veg');
 
     if (body.foodTypeScope !== undefined && !nextFoodTypeScope) {
-        throw new ValidationError('Category diet type must be Veg or Non-Veg');
+        throw new ValidationError('Category diet type must be Veg, Non-Veg, or Both');
     }
 
     if (body.foodTypeScope !== undefined) {
-        const incompatibleFoods = await FoodItem.countDocuments({
-            categoryId: doc._id,
-            foodType: nextFoodTypeScope === 'Veg' ? 'Non-Veg' : 'Veg'
-        });
+        const incompatibleFoodType = nextFoodTypeScope === 'Both'
+            ? null
+            : (nextFoodTypeScope === 'Veg' ? 'Non-Veg' : 'Veg');
+        const incompatibleFoods = incompatibleFoodType
+            ? await FoodItem.countDocuments({ categoryId: doc._id, foodType: incompatibleFoodType })
+            : 0;
         if (incompatibleFoods > 0) {
             throw new ValidationError(`This category already has ${incompatibleFoods} food item(s) outside the selected diet scope`);
         }
@@ -5402,7 +5404,7 @@ export async function createFood(body) {
     }
     const name = typeof body.name === 'string' ? body.name.trim() : '';
     if (!name) throw new ValidationError('Food name is required');
-    const foodType = body.foodType === 'Veg' ? 'Veg' : 'Non-Veg';
+    const foodType = ['Veg', 'Non-Veg', 'Both'].includes(body.foodType) ? body.foodType : 'Non-Veg';
     if (restaurant.pureVegRestaurant === true && foodType !== 'Veg') {
         throw new ValidationError('Pure veg restaurants can only use veg foods');
     }
@@ -5468,7 +5470,10 @@ export async function updateFood(id, body) {
     }
     if (body.name !== undefined) doc.name = String(body.name || '').trim();
     if (body.description !== undefined) doc.description = String(body.description || '').trim();
-    const targetFoodType = body.foodType !== undefined ? (body.foodType === 'Veg' ? 'Veg' : 'Non-Veg') : (doc.foodType === 'Veg' ? 'Veg' : 'Non-Veg');
+    const validFoodTypes = ['Veg', 'Non-Veg', 'Both'];
+    const targetFoodType = body.foodType !== undefined
+        ? (validFoodTypes.includes(body.foodType) ? body.foodType : 'Non-Veg')
+        : (validFoodTypes.includes(doc.foodType) ? doc.foodType : 'Non-Veg');
     if (restaurant.pureVegRestaurant === true && targetFoodType !== 'Veg') {
         throw new ValidationError('Pure veg restaurants can only use veg foods');
     }

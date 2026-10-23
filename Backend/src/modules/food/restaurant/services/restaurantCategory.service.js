@@ -340,9 +340,6 @@ export async function createRestaurantCategory(restaurantId, body = {}) {
     if (!foodTypeScope) {
         throw new ValidationError('Invalid category diet type');
     }
-    if (!['Veg', 'Non-Veg'].includes(foodTypeScope)) {
-        throw new ValidationError('Category diet type must be Veg or Non-Veg');
-    }
     if (context.pureVegRestaurant && foodTypeScope !== 'Veg') {
         throw new ValidationError('Pure veg restaurants can only create veg categories');
     }
@@ -403,9 +400,6 @@ export async function updateRestaurantCategory(restaurantId, id, body = {}) {
     if (body.foodTypeScope !== undefined && !nextFoodTypeScope) {
         throw new ValidationError('Invalid category diet type');
     }
-    if (body.foodTypeScope !== undefined && !['Veg', 'Non-Veg'].includes(nextFoodTypeScope)) {
-        throw new ValidationError('Category diet type must be Veg or Non-Veg');
-    }
     if (context.pureVegRestaurant && nextFoodTypeScope !== 'Veg') {
         throw new ValidationError('Pure veg restaurants can only keep veg categories');
     }
@@ -447,10 +441,12 @@ export async function updateRestaurantCategory(restaurantId, id, body = {}) {
         }
     }
     if (body.foodTypeScope !== undefined) {
-        const incompatibleFoods = await FoodItem.countDocuments({
-            categoryId: doc._id,
-            foodType: nextFoodTypeScope === 'Veg' ? 'Non-Veg' : 'Veg'
-        });
+        const incompatibleFoodType = nextFoodTypeScope === 'Both'
+            ? null
+            : (nextFoodTypeScope === 'Veg' ? 'Non-Veg' : 'Veg');
+        const incompatibleFoods = incompatibleFoodType
+            ? await FoodItem.countDocuments({ categoryId: doc._id, foodType: incompatibleFoodType })
+            : 0;
         if (incompatibleFoods > 0) {
             throw new ValidationError(`This category already has ${incompatibleFoods} food item(s) outside the selected diet type`);
         }

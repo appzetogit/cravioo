@@ -703,6 +703,7 @@ export default function AdminEditFoodPage() {
                   >
                     <option value="Veg">Veg</option>
                     {showNonVegFoodType && <option value="Non-Veg">Non-Veg</option>}
+                    {showNonVegFoodType && <option value="Both">Both</option>}
                   </select>
                 </div>
               </div>
