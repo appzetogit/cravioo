@@ -323,7 +323,7 @@ export default function DriverLiveTracking() {
     }
   }
 
-  const MapBox = ({ innerRef, loading, error }) => (
+  const renderMapBox = ({ innerRef, loading, error }) => (
     <div className="relative h-[460px] rounded-lg overflow-hidden border border-slate-200">
       <div ref={innerRef} className="w-full h-full" />
       {(loading || error) && (
@@ -373,7 +373,7 @@ export default function DriverLiveTracking() {
             Online drivers: <strong>{visibleDrivers.length}</strong>
             {zoneId ? " in selected zone" : ""}
           </p>
-          <MapBox innerRef={driversMapEl} loading={!driversMap} error={driversMapError} />
+          {renderMapBox({ innerRef: driversMapEl, loading: !driversMap, error: driversMapError })}
         </section>
 
         <section className="bg-white rounded-lg shadow-sm border border-slate-200 p-4">
@@ -381,7 +381,7 @@ export default function DriverLiveTracking() {
           <p className="text-xs text-slate-500 mb-3">
             Active orders: <strong>{orders.length}</strong> · R = restaurant, C = customer
           </p>
-          <MapBox innerRef={ordersMapEl} loading={!ordersMap} error={ordersMapError} />
+          {renderMapBox({ innerRef: ordersMapEl, loading: !ordersMap, error: ordersMapError })}
           <div className="mt-3 max-h-48 overflow-y-auto divide-y divide-slate-100 border border-slate-200 rounded-lg">
             {ordersLoading && <p className="p-3 text-sm text-slate-500">Loading orders...</p>}
             {!ordersLoading && orders.length === 0 && (
