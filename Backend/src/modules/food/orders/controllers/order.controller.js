@@ -1,3 +1,4 @@
+import * as adminDispatchService from '../services/order-admin-dispatch.service.js';
 import { sendResponse } from '../../../../utils/response.js';
 import * as orderService from '../services/order.service.js';
 import { getOwnerOutletIds } from '../../restaurant/services/restaurantOutlet.service.js';
@@ -652,6 +653,24 @@ export async function resendDeliveryNotificationRestaurantController(req, res, n
         const restaurantId = await resolveOutletForOrder(req, orderId);
         const result = await orderService.resendDeliveryNotificationRestaurant(orderId, restaurantId);
         return sendResponse(res, 200, 'Notification resent successfully', result);
+    } catch (err) {
+        next(err);
+    }
+}
+
+export async function listAssignableDriversController(req, res, next) {
+    try {
+        const data = await adminDispatchService.listAssignableDriversForOrder(req.params.orderId);
+        return sendResponse(res, 200, 'Assignable drivers retrieved', data);
+    } catch (err) {
+        next(err);
+    }
+}
+
+export async function liveTrackingOrdersController(req, res, next) {
+    try {
+        const orders = await adminDispatchService.listLiveTrackingOrders({ zoneId: req.query.zoneId });
+        return sendResponse(res, 200, 'Live tracking orders retrieved', { orders });
     } catch (err) {
         next(err);
     }

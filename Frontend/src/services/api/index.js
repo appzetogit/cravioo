@@ -803,6 +803,24 @@ export const adminAPI = {
     apiClient.post(`/food/admin/orders/${String(orderId)}/refund`, body ?? {}, {
       contextModule: "admin",
     }),
+  /** Online riders for an order, nearest to the restaurant first. */
+  getAssignableDrivers: (orderId) =>
+    apiClient.get(`/food/admin/orders/${String(orderId)}/assignable-drivers`, {
+      contextModule: "admin",
+    }),
+  /** Admin assigns / reassigns a rider to an order. */
+  assignDriverToOrder: (orderId, deliveryPartnerId) =>
+    apiClient.post(
+      `/food/admin/orders/${String(orderId)}/assign-driver`,
+      { deliveryPartnerId },
+      { contextModule: "admin" },
+    ),
+  /** Accepted in-progress orders for live tracking. Params: { zoneId? } */
+  getLiveTrackingOrders: (params = {}) =>
+    apiClient.get("/food/admin/orders/live-tracking", {
+      params,
+      contextModule: "admin",
+    }),
   deleteOrder: (orderId) =>
     apiClient.delete(`/food/admin/orders/${String(orderId)}`, {
       contextModule: "admin",

@@ -329,6 +329,9 @@ router.get('/zones/:id/restaurants', checkPermission('food::restaurant_managemen
 
 // ----- Orders -----
 router.get('/orders', checkPermission('food::order_management::orders', 'view'), orderController.listOrdersAdminController);
+router.get('/orders/live-tracking', checkPermission('food::deliveryman_management::deliveryman::list', 'view'), orderController.liveTrackingOrdersController);
+router.get('/orders/:orderId/assignable-drivers', checkPermission('food::order_management::orders', 'view'), orderController.listAssignableDriversController);
+router.post('/orders/:orderId/assign-driver', checkPermission('food::order_management::orders', 'edit'), orderController.assignDeliveryPartnerController);
 router.get('/orders/:orderId/pos-analytics', checkPermission('food::restaurant_management::restaurants::list', 'view'), adminController.getOrderPosAnalytics);
 router.get('/orders/:orderId', checkPermission('food::order_management::orders', 'view'), orderController.getOrderByIdAdminController);
 router.patch('/orders/:orderId/status', checkPermission('food::order_management::orders', 'edit'), orderController.updateOrderStatusAdminController);

@@ -7,6 +7,7 @@ import { API_BASE_URL } from "@food/api/config"
 import { toast } from "sonner"
 import OrdersTopbar from "@food/components/admin/orders/OrdersTopbar"
 import OrdersTable from "@food/components/admin/orders/OrdersTable"
+import AssignDriverDialog from "@food/components/admin/orders/AssignDriverDialog"
 import FilterPanel from "@food/components/admin/orders/FilterPanel"
 import ViewOrderDialog from "@food/components/admin/orders/ViewOrderDialog"
 import SettingsDialog from "@food/components/admin/orders/SettingsDialog"
@@ -52,6 +53,7 @@ export default function OrdersPage({ statusKey = "all" }) {
   const [processingActionOrderId, setProcessingActionOrderId] = useState(null)
   const [processingActionType, setProcessingActionType] = useState(null)
   const [deletingOrderId, setDeletingOrderId] = useState(null)
+  const [assignDriverOrder, setAssignDriverOrder] = useState(null)
   const [refundModalOpen, setRefundModalOpen] = useState(false)
   const [selectedOrderForRefund, setSelectedOrderForRefund] = useState(null)
   const [rejectModalOpen, setRejectModalOpen] = useState(false)
@@ -613,6 +615,7 @@ export default function OrdersPage({ statusKey = "all" }) {
         paymentType,
         paymentStatus,
         orderStatus: displayStatus,
+        backendOrderStatus: order.orderStatus,
         deliveryPartnerName,
         deliveryPartnerPhone,
         deliveryType: order.deliveryType || "Home Delivery",
@@ -1135,9 +1138,16 @@ export default function OrdersPage({ statusKey = "all" }) {
         onDeleteOrder={statusKey === "all" ? handleDeleteOrder : undefined}
         onAcceptOrder={statusKey === "all" || statusKey === "pending" ? handleAcceptOrder : undefined}
         onRejectOrder={statusKey === "all" || statusKey === "pending" ? handleRejectOrder : undefined}
+        onAssignDriver={setAssignDriverOrder}
         actionLoadingOrderId={processingActionOrderId}
         actionLoadingType={processingActionType}
         deletingOrderId={deletingOrderId}
+      />
+      <AssignDriverDialog
+        isOpen={Boolean(assignDriverOrder)}
+        onOpenChange={(open) => { if (!open) setAssignDriverOrder(null) }}
+        order={assignDriverOrder}
+        onAssigned={() => fetchOrders({ silent: true, withRingCheck: false })}
       />
     </div>
   )

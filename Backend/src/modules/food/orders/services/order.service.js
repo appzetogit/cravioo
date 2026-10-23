@@ -5257,7 +5257,7 @@ export async function listOrdersAvailableDelivery(deliveryPartnerId, query) {
     limit,
   });
 }
-export async function acceptOrderDelivery(orderId, deliveryPartnerId, body = {}) {
+export async function acceptOrderDelivery(orderId, deliveryPartnerId, body = {}, options = {}) {
   const partnerId = new mongoose.Types.ObjectId(deliveryPartnerId);
   const identity = buildOrderIdentityFilter(orderId);
   if (!identity) throw new ValidationError("Order id required");
@@ -5294,6 +5294,7 @@ export async function acceptOrderDelivery(orderId, deliveryPartnerId, body = {})
   if (!order) throw new NotFoundError("Order not found");
 
   if (
+    !options.adminOverride &&
     !["ready_for_pickup", "ready", "picked_up"].includes(
       order.orderStatus,
     )
@@ -6900,34 +6901,162 @@ export async function listOrdersAdmin(query) {
   };
 }
 
+const ADMIN_ASSIGNABLE_ORDER_STATUSES = ["confirmed", "preparing", "ready_for_pickup"];
+const ADMIN_ASSIGNABLE_PHASES = ["waiting_activation", "en_route_to_pickup"];
+
+/**
+ * Admin assigns / re-assigns a rider. The rider is set as the order's partner and the
+ * normal accept flow runs for them (Firebase tracking, transaction rider, socket events),
+ * so every downstream step behaves exactly as if the rider had accepted the offer.
+ * Re-assignment is only allowed until the rider reaches the restaurant.
+ */
 export async function assignDeliveryPartnerAdmin(
   orderId,
   deliveryPartnerId,
   adminId,
 ) {
-  const order = await FoodOrder.findById(orderId);
+  const identity = buildOrderIdentityFilter(orderId);
+  if (!identity) throw new ValidationError("Order id required");
+  if (!mongoose.Types.ObjectId.isValid(deliveryPartnerId))
+    throw new ValidationError("Invalid delivery partner id");
+
+  const order = await FoodOrder.findOne(identity);
   if (!order) throw new NotFoundError("Order not found");
-  if (order.dispatch.status === "accepted")
-    throw new ValidationError("Order already accepted by partner");
+
+  if (!ADMIN_ASSIGNABLE_ORDER_STATUSES.includes(order.orderStatus))
+    throw new ValidationError(
+      `Driver cannot be assigned while order is ${order.orderStatus}`,
+    );
+  if (order.dispatch?.status === "cancelled")
+    throw new ValidationError("Order dispatch is cancelled");
+  if (isSplitDispatchOrder(order))
+    throw new ValidationError("Split-dispatch orders cannot be assigned manually");
+  if (["offered", "accepted", "verified"].includes(order.transfer?.status))
+    throw new ValidationError("Order transfer is in progress");
+
+  const phase = order.deliveryState?.currentPhase || "waiting_activation";
+  if (!ADMIN_ASSIGNABLE_PHASES.includes(phase))
+    throw new ValidationError("Driver has already started this order; it cannot be reassigned");
 
   const partner = await FoodDeliveryPartner.findById(deliveryPartnerId)
-    .select("status")
+    .select("status isActive")
     .lean();
-  if (!partner || partner.status !== "approved")
+  const allowedStatuses = process.env.NODE_ENV === "production" ? ["approved"] : ["approved", "pending"];
+  if (!partner || !allowedStatuses.includes(partner.status) || partner.isActive === false)
     throw new ValidationError("Delivery partner not available");
 
-    order.dispatch.status = 'assigned';
-    order.dispatch.deliveryPartnerId = new mongoose.Types.ObjectId(deliveryPartnerId);
-    order.dispatch.assignedAt = new Date();
-    pushStatusHistory(order, { byRole: 'ADMIN', byId: adminId, from: order.dispatch.status, to: 'assigned' });
-    await order.save();
-    enqueueOrderEvent('delivery_partner_assigned', {
-        orderMongoId: order._id?.toString?.(),
-        orderId: order.orderId,
-        deliveryPartnerId,
-        adminId
-    });
-    return order.toObject();
+  const previousPartnerId = order.dispatch?.deliveryPartnerId
+    ? String(order.dispatch.deliveryPartnerId)
+    : null;
+  if (previousPartnerId === String(deliveryPartnerId) && order.dispatch?.status === "accepted")
+    throw new ValidationError("Order is already assigned to this delivery partner");
+
+  const previousDispatch = {
+    status: order.dispatch?.status || "unassigned",
+    deliveryPartnerId: order.dispatch?.deliveryPartnerId || null,
+    assignedAt: order.dispatch?.assignedAt || null,
+    acceptedAt: order.dispatch?.acceptedAt || null,
+    phase: order.deliveryState?.currentPhase,
+  };
+
+  // Hand the order to the new rider (guarded so a concurrent accept/auto-dispatch can't interleave).
+  const handed = await FoodOrder.findOneAndUpdate(
+    {
+      _id: order._id,
+      "dispatch.status": previousDispatch.status,
+      "dispatch.deliveryPartnerId": previousDispatch.deliveryPartnerId,
+      orderStatus: { $in: ADMIN_ASSIGNABLE_ORDER_STATUSES },
+    },
+    {
+      $set: {
+        "dispatch.status": "assigned",
+        "dispatch.deliveryPartnerId": new mongoose.Types.ObjectId(deliveryPartnerId),
+        "dispatch.assignedAt": new Date(),
+        "deliveryState.currentPhase": "waiting_activation",
+      },
+      $unset: { "dispatch.acceptedAt": "" },
+      $push: {
+        "dispatch.offeredTo": {
+          partnerId: new mongoose.Types.ObjectId(deliveryPartnerId),
+          at: new Date(),
+          action: "offered",
+        },
+      },
+    },
+    { new: true },
+  );
+  if (!handed) throw new ValidationError("Order changed while assigning. Please retry.");
+
+  try {
+    await acceptOrderDelivery(handed._id, deliveryPartnerId, {}, { adminOverride: true });
+  } catch (err) {
+    // Roll back so the previous rider / dispatch state is untouched.
+    await FoodOrder.updateOne(
+      { _id: order._id },
+      {
+        $set: {
+          "dispatch.status": previousDispatch.status,
+          "dispatch.deliveryPartnerId": previousDispatch.deliveryPartnerId,
+          "dispatch.assignedAt": previousDispatch.assignedAt,
+          ...(previousDispatch.acceptedAt ? { "dispatch.acceptedAt": previousDispatch.acceptedAt } : {}),
+          ...(previousDispatch.phase ? { "deliveryState.currentPhase": previousDispatch.phase } : {}),
+        },
+        ...(previousDispatch.acceptedAt ? {} : { $unset: { "dispatch.acceptedAt": "" } }),
+      },
+    );
+    throw err;
+  }
+
+  const finalOrder = await FoodOrder.findById(order._id);
+  pushStatusHistory(finalOrder, {
+    byRole: "ADMIN",
+    byId: adminId,
+    from: previousDispatch.status,
+    to: "admin_assigned",
+    note: previousPartnerId
+      ? `Admin reassigned from ${previousPartnerId} to ${deliveryPartnerId}`
+      : `Admin assigned ${deliveryPartnerId}`,
+  });
+  await finalOrder.save();
+
+  // Tell the previous rider the order is gone; tell the new rider about it.
+  try {
+    const io = getIO();
+    if (io && previousPartnerId && previousPartnerId !== String(deliveryPartnerId)) {
+      const payload = {
+        orderId: String(finalOrder.orderId || ""),
+        orderMongoId: finalOrder._id.toString(),
+        claimedBy: String(deliveryPartnerId),
+        reason: "admin_reassigned",
+      };
+      io.to(rooms.delivery(previousPartnerId)).emit("order_claimed", payload);
+      io.to(rooms.delivery(previousPartnerId)).emit("order_reassigned_elsewhere", payload);
+      io.to(rooms.delivery(previousPartnerId)).emit("order_status_update", {
+        orderMongoId: payload.orderMongoId,
+        orderId: payload.orderId,
+        dispatchStatus: "reassigned",
+      });
+    }
+    await notifyOwnerSafely(
+      { ownerType: "DELIVERY_PARTNER", ownerId: deliveryPartnerId },
+      {
+        title: "New order assigned!",
+        body: `Admin assigned order ${finalOrder.orderId} to you.`,
+        data: {
+          type: "order_assigned_by_admin",
+          audience: "delivery",
+          orderId: String(finalOrder.orderId || ""),
+          orderMongoId: finalOrder._id.toString(),
+          link: "/food/delivery",
+          targetUrl: "/food/delivery",
+        },
+      },
+    );
+  } catch (e) {
+    logger.warn(`Admin assign notify failed: ${e?.message || e}`);
+  }
+
+  return finalOrder.toObject();
 }
 
 export async function deleteOrderAdmin(orderId, adminId) {

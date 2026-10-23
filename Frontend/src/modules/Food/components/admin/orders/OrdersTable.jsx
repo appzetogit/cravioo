@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react"
-import { Eye, Printer, ArrowUpDown, Loader2, Check, X, Trash2 } from "lucide-react"
+import { Eye, Printer, ArrowUpDown, Loader2, Check, X, Trash2, Bike } from "lucide-react"
+import { canAdminAssignDriver } from "./AssignDriverDialog"
 
 const getStatusColor = (orderStatus) => {
   const colors = {
@@ -42,6 +43,7 @@ export default function OrdersTable({
   orders,
   visibleColumns,
   onViewOrder,
+  onAssignDriver,
   onPrintOrder,
   onRefund,
   onDeleteOrder,
@@ -412,6 +414,16 @@ export default function OrdersTable({
                             <X className="w-3.5 h-3.5" />
                           )}
                           <span>Reject</span>
+                        </button>
+                      )}
+                      {onAssignDriver && canAdminAssignDriver(order) && (
+                        <button
+                          onClick={() => onAssignDriver(order)}
+                          className="px-2.5 py-1.5 rounded text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors flex items-center gap-1"
+                          title={order.dispatch?.deliveryPartnerId ? "Reassign Driver" : "Assign Driver"}
+                        >
+                          <Bike className="w-3.5 h-3.5" />
+                          <span>{order.dispatch?.deliveryPartnerId ? "Reassign" : "Assign"}</span>
                         </button>
                       )}
                       <button 

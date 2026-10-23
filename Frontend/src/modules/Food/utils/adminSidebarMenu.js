@@ -254,6 +254,7 @@ export const adminSidebarMenu = [
         subItems: [
           { label: "New Join Request", path: "/admin/food/delivery-partners/join-request", permissionKey: "join_request" },
           { label: "Deliveryman List", path: "/admin/food/delivery-partners", permissionKey: "list" },
+          { label: "Live Tracking", path: "/admin/food/delivery-partners/live-tracking", permissionKey: "list" },
           { label: "Deliveryman Reviews", path: "/admin/food/delivery-partners/reviews", permissionKey: "reviews" },
           { label: "Bonus", path: "/admin/food/delivery-partners/bonus", permissionKey: "bonus" },
           { label: "Earning Addon", path: "/admin/food/delivery-partners/earning-addon", permissionKey: "earning_addon" },
