@@ -12,6 +12,10 @@ import {
 const debugLog = (...args) => {}
 const debugError = (...args) => {}
 
+/** A restaurant is "configured" if it has a custom commission % OR is on the user-commission model. */
+const isConfiguredPricing = (res) =>
+  res.pricingModel === "userCommission" || isCustomRestaurantCommission(res.commissionPercentage)
+
 export default function RestaurantCommission() {
   const [restaurants, setRestaurants] = useState([])
   const [isLoading, setIsLoading] = useState(true)
@@ -30,6 +34,8 @@ export default function RestaurantCommission() {
   // Selected restaurant for edit/delete
   const [selectedRestaurant, setSelectedRestaurant] = useState(null)
   const [commissionInput, setCommissionInput] = useState("")
+  const [editPricingModel, setEditPricingModel] = useState("commission")
+  const [userCommissionInput, setUserCommissionInput] = useState("")
   
   // Multi-select state (only used in "all" tab)
   const [selectedIds, setSelectedIds] = useState(new Set())
@@ -38,7 +44,9 @@ export default function RestaurantCommission() {
   // New commission form state
   const [newCommissionForm, setNewCommissionForm] = useState({
     restaurantId: "",
-    commissionPercentage: ""
+    pricingModel: "commission",
+    commissionPercentage: "",
+    userCommissionPercentage: ""
   })
   
   // Loading states for actions
@@ -97,7 +105,7 @@ export default function RestaurantCommission() {
     let result = [...restaurants]
 
     if (filterMode === "configured") {
-      result = result.filter(res => isCustomRestaurantCommission(res.commissionPercentage))
+      result = result.filter(isConfiguredPricing)
     }
 
     if (searchQuery.trim()) {
@@ -128,12 +136,12 @@ export default function RestaurantCommission() {
 
   // Count of configured commissions
   const configuredCount = useMemo(() => {
-    return restaurants.filter(res => isCustomRestaurantCommission(res.commissionPercentage)).length
+    return restaurants.filter(isConfiguredPricing).length
   }, [restaurants])
 
   // Dropdown list of restaurants still on the platform default commission
   const unconfiguredRestaurantsList = useMemo(() => {
-    return restaurants.filter(res => !isCustomRestaurantCommission(res.commissionPercentage))
+    return restaurants.filter(res => !isConfiguredPricing(res))
   }, [restaurants])
 
   // ----- Multi-select helpers -----
@@ -189,14 +197,15 @@ export default function RestaurantCommission() {
   // Handle Add Commission Submission
   const handleAddCommission = async (e) => {
     e.preventDefault()
-    const { restaurantId, commissionPercentage } = newCommissionForm
-    
+    const { restaurantId, pricingModel, commissionPercentage, userCommissionPercentage } = newCommissionForm
+
     if (!restaurantId) {
       toast.error("Please select a restaurant")
       return
     }
 
-    const pct = parseFloat(commissionPercentage)
+    const isUserCommission = pricingModel === "userCommission"
+    const pct = parseFloat(isUserCommission ? userCommissionPercentage : commissionPercentage)
     if (isNaN(pct) || pct < 0 || pct > 100) {
       toast.error("Commission must be a percentage between 0 and 100")
       return
@@ -207,17 +216,22 @@ export default function RestaurantCommission() {
       const targetRestaurant = restaurants.find(r => r.id === restaurantId || r._id === restaurantId)
       if (!targetRestaurant) return
 
-      await adminAPI.updateRestaurant(targetRestaurant._id || targetRestaurant.id, {
-        commissionPercentage: pct
-      })
+      const payload = isUserCommission
+        ? { pricingModel: "userCommission", userCommissionPercentage: pct }
+        : { pricingModel: "commission", commissionPercentage: pct }
+      await adminAPI.updateRestaurant(targetRestaurant._id || targetRestaurant.id, payload)
 
       setRestaurants(prev =>
-        prev.map(r => (r.id === targetRestaurant.id) ? { ...r, commissionPercentage: pct } : r)
+        prev.map(r => (r.id === targetRestaurant.id) ? { ...r, ...payload } : r)
       )
 
-      toast.success(`Commission set to ${pct}% for ${targetRestaurant.name}`)
+      toast.success(
+        isUserCommission
+          ? `User commission set to ${pct}% for ${targetRestaurant.name}`
+          : `Commission set to ${pct}% for ${targetRestaurant.name}`
+      )
       setIsAddModalOpen(false)
-      setNewCommissionForm({ restaurantId: "", commissionPercentage: "" })
+      setNewCommissionForm({ restaurantId: "", pricingModel: "commission", commissionPercentage: "", userCommissionPercentage: "" })
     } catch (err) {
       debugError("Failed to add commission:", err)
       toast.error(err?.response?.data?.message || "Failed to set commission percentage")
@@ -229,7 +243,9 @@ export default function RestaurantCommission() {
   // Open Edit Modal
   const openEditModal = (restaurant) => {
     setSelectedRestaurant(restaurant)
+    setEditPricingModel(restaurant.pricingModel === "userCommission" ? "userCommission" : "commission")
     setCommissionInput(String(restaurant.commissionPercentage))
+    setUserCommissionInput(String(restaurant.userCommissionPercentage || ""))
     setIsEditModalOpen(true)
   }
 
@@ -238,7 +254,8 @@ export default function RestaurantCommission() {
     e.preventDefault()
     if (!selectedRestaurant) return
 
-    const pct = parseFloat(commissionInput)
+    const isUserCommission = editPricingModel === "userCommission"
+    const pct = parseFloat(isUserCommission ? userCommissionInput : commissionInput)
     if (isNaN(pct) || pct < 0 || pct > 100) {
       toast.error("Commission must be a percentage between 0 and 100")
       return
@@ -246,18 +263,24 @@ export default function RestaurantCommission() {
 
     try {
       setIsSaving(true)
-      await adminAPI.updateRestaurant(selectedRestaurant._id || selectedRestaurant.id, {
-        commissionPercentage: pct
-      })
+      const payload = isUserCommission
+        ? { pricingModel: "userCommission", userCommissionPercentage: pct }
+        : { pricingModel: "commission", commissionPercentage: pct }
+      await adminAPI.updateRestaurant(selectedRestaurant._id || selectedRestaurant.id, payload)
 
       setRestaurants(prev =>
-        prev.map(r => r.id === selectedRestaurant.id ? { ...r, commissionPercentage: pct } : r)
+        prev.map(r => r.id === selectedRestaurant.id ? { ...r, ...payload } : r)
       )
 
-      toast.success(`Commission updated to ${pct}% for ${selectedRestaurant.name}`)
+      toast.success(
+        isUserCommission
+          ? `User commission updated to ${pct}% for ${selectedRestaurant.name}`
+          : `Commission updated to ${pct}% for ${selectedRestaurant.name}`
+      )
       setIsEditModalOpen(false)
       setSelectedRestaurant(null)
       setCommissionInput("")
+      setUserCommissionInput("")
     } catch (err) {
       debugError("Failed to edit commission:", err)
       toast.error(err?.response?.data?.message || "Failed to update commission percentage")
@@ -279,11 +302,14 @@ export default function RestaurantCommission() {
     try {
       setIsSaving(true)
       await adminAPI.updateRestaurant(selectedRestaurant._id || selectedRestaurant.id, {
+        pricingModel: "commission",
         commissionPercentage: DEFAULT_RESTAURANT_COMMISSION_PERCENTAGE
       })
 
       setRestaurants(prev =>
-        prev.map(r => r.id === selectedRestaurant.id ? { ...r, commissionPercentage: DEFAULT_RESTAURANT_COMMISSION_PERCENTAGE } : r)
+        prev.map(r => r.id === selectedRestaurant.id
+          ? { ...r, pricingModel: "commission", commissionPercentage: DEFAULT_RESTAURANT_COMMISSION_PERCENTAGE }
+          : r)
       )
 
       toast.success(`Commission reset to ${DEFAULT_RESTAURANT_COMMISSION_PERCENTAGE}% for ${selectedRestaurant.name}`)
@@ -598,7 +624,7 @@ export default function RestaurantCommission() {
                             <button
                               onClick={() => openDeleteConfirm(res)}
                               title={`Reset Commission to ${DEFAULT_RESTAURANT_COMMISSION_PERCENTAGE}%`}
-                              disabled={!isCustomRestaurantCommission(res.commissionPercentage)}
+                              disabled={!isConfiguredPricing(res)}
                               className="p-1.5 text-rose-600 hover:bg-rose-50 rounded disabled:text-slate-300 disabled:hover:bg-transparent transition-colors"
                             >
                               <Trash2 className="w-4 h-4" />
@@ -625,8 +651,8 @@ export default function RestaurantCommission() {
                 <Plus className="w-5 h-5 text-blue-600" />
               </div>
               <div>
-                <DialogTitle className="text-xl font-bold text-slate-900">Add Commission</DialogTitle>
-                <p className="text-xs text-slate-500 mt-0.5">Set a custom commission for a restaurant</p>
+                <DialogTitle className="text-xl font-bold text-slate-900">Add Pricing</DialogTitle>
+                <p className="text-xs text-slate-500 mt-0.5">Set a commission or user-commission policy for a restaurant</p>
               </div>
             </div>
           </DialogHeader>
@@ -657,25 +683,83 @@ export default function RestaurantCommission() {
 
               <div>
                 <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">
-                  Commission Percentage (%)
+                  Pricing Model
                 </label>
-                <div className="relative">
-                  <input
-                    type="number"
-                    min="0"
-                    max="100"
-                    step="0.1"
-                    placeholder={`e.g. ${DEFAULT_RESTAURANT_COMMISSION_PERCENTAGE + 5}`}
-                    value={newCommissionForm.commissionPercentage}
-                    onChange={(e) => setNewCommissionForm(prev => ({ ...prev, commissionPercentage: e.target.value }))}
-                    className="w-full pl-3 pr-10 py-2.5 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                    required
-                  />
-                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400 font-bold text-sm">
-                    %
-                  </div>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setNewCommissionForm(prev => ({ ...prev, pricingModel: "commission" }))}
+                    className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                      newCommissionForm.pricingModel !== "userCommission"
+                        ? "bg-blue-600 text-white border-blue-600"
+                        : "bg-white text-slate-700 border-slate-300"
+                    }`}
+                  >
+                    Restaurant Commission
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setNewCommissionForm(prev => ({ ...prev, pricingModel: "userCommission" }))}
+                    className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                      newCommissionForm.pricingModel === "userCommission"
+                        ? "bg-amber-500 text-white border-amber-500"
+                        : "bg-white text-slate-700 border-slate-300"
+                    }`}
+                  >
+                    User Commission
+                  </button>
                 </div>
               </div>
+
+              {newCommissionForm.pricingModel === "userCommission" ? (
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">
+                    User Commission Percentage (%)
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.1"
+                      placeholder="e.g. 10"
+                      value={newCommissionForm.userCommissionPercentage}
+                      onChange={(e) => setNewCommissionForm(prev => ({ ...prev, userCommissionPercentage: e.target.value }))}
+                      className="w-full pl-3 pr-10 py-2.5 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-sm"
+                      required
+                    />
+                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400 font-bold text-sm">
+                      %
+                    </div>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1.5">
+                    Restaurant keeps its full listed price. Customer pays this % extra, baked silently
+                    into every item's displayed price.
+                  </p>
+                </div>
+              ) : (
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">
+                    Commission Percentage (%)
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.1"
+                      placeholder={`e.g. ${DEFAULT_RESTAURANT_COMMISSION_PERCENTAGE + 5}`}
+                      value={newCommissionForm.commissionPercentage}
+                      onChange={(e) => setNewCommissionForm(prev => ({ ...prev, commissionPercentage: e.target.value }))}
+                      className="w-full pl-3 pr-10 py-2.5 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                      required
+                    />
+                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400 font-bold text-sm">
+                      %
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             <DialogFooter className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex flex-row items-center justify-end gap-3">
@@ -708,8 +792,8 @@ export default function RestaurantCommission() {
                 <Pencil className="w-5 h-5 text-blue-600" />
               </div>
               <div>
-                <DialogTitle className="text-xl font-bold text-slate-900">Edit Commission</DialogTitle>
-                <p className="text-xs text-slate-500 mt-0.5">Modify individual restaurant commission policy</p>
+                <DialogTitle className="text-xl font-bold text-slate-900">Edit Pricing</DialogTitle>
+                <p className="text-xs text-slate-500 mt-0.5">Choose commission vs. user-commission for this restaurant</p>
               </div>
             </div>
           </DialogHeader>
@@ -731,25 +815,83 @@ export default function RestaurantCommission() {
 
                 <div>
                   <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">
-                    Commission Percentage (%)
+                    Pricing Model
                   </label>
-                  <div className="relative">
-                    <input
-                      type="number"
-                      min="0"
-                      max="100"
-                      step="0.1"
-                      placeholder={`e.g. ${DEFAULT_RESTAURANT_COMMISSION_PERCENTAGE + 5}`}
-                      value={commissionInput}
-                      onChange={(e) => setCommissionInput(e.target.value)}
-                      className="w-full pl-3 pr-10 py-2.5 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                      required
-                    />
-                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400 font-bold text-sm">
-                      %
-                    </div>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setEditPricingModel("commission")}
+                      className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                        editPricingModel !== "userCommission"
+                          ? "bg-blue-600 text-white border-blue-600"
+                          : "bg-white text-slate-700 border-slate-300"
+                      }`}
+                    >
+                      Restaurant Commission
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditPricingModel("userCommission")}
+                      className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                        editPricingModel === "userCommission"
+                          ? "bg-amber-500 text-white border-amber-500"
+                          : "bg-white text-slate-700 border-slate-300"
+                      }`}
+                    >
+                      User Commission
+                    </button>
                   </div>
                 </div>
+
+                {editPricingModel === "userCommission" ? (
+                  <div>
+                    <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">
+                      User Commission Percentage (%)
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="0.1"
+                        placeholder="e.g. 10"
+                        value={userCommissionInput}
+                        onChange={(e) => setUserCommissionInput(e.target.value)}
+                        className="w-full pl-3 pr-10 py-2.5 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-sm"
+                        required
+                      />
+                      <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400 font-bold text-sm">
+                        %
+                      </div>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-1.5">
+                      Restaurant keeps its full listed price. Customer pays this % extra, baked silently
+                      into every item's displayed price.
+                    </p>
+                  </div>
+                ) : (
+                  <div>
+                    <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">
+                      Commission Percentage (%)
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="0.1"
+                        placeholder={`e.g. ${DEFAULT_RESTAURANT_COMMISSION_PERCENTAGE + 5}`}
+                        value={commissionInput}
+                        onChange={(e) => setCommissionInput(e.target.value)}
+                        className="w-full pl-3 pr-10 py-2.5 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                        required
+                      />
+                      <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400 font-bold text-sm">
+                        %
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <DialogFooter className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex flex-row items-center justify-end gap-3">
