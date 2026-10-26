@@ -447,7 +447,7 @@ export async function getRestaurants(query) {
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(limit)
-            .select('restaurantId restaurantName location area city profileImage coverImages menuImages status ownerName ownerPhone zoneId commissionPercentage isListed productCount pureVegRestaurant createdAt updatedAt showWithoutMenu displayPosition')
+            .select('restaurantId restaurantName location area city profileImage coverImages menuImages status ownerName ownerPhone zoneId commissionPercentage pricingModel userCommissionPercentage isListed productCount pureVegRestaurant createdAt updatedAt showWithoutMenu displayPosition')
             .populate('zoneId', 'name zoneName')
             .lean(),
         FoodRestaurant.countDocuments(filter)
@@ -4373,6 +4373,25 @@ export async function updateRestaurantById(id, body = {}) {
                 throw new ValidationError('Commission percentage must be between 0 and 100');
             }
             doc.commissionPercentage = commission;
+        }
+    }
+
+    // User-commission model: mutually exclusive with the restaurant-commission model above.
+    // Setting pricingModel to 'userCommission' makes the customer pay the markup instead of
+    // the restaurant losing commission — see commission.constants.js.
+    if (body.pricingModel !== undefined) {
+        if (!['commission', 'userCommission'].includes(body.pricingModel)) {
+            throw new ValidationError("pricingModel must be 'commission' or 'userCommission'");
+        }
+        doc.pricingModel = body.pricingModel;
+    }
+    if (body.userCommissionPercentage !== undefined) {
+        const userCommission = toFinite(body.userCommissionPercentage);
+        if (userCommission !== undefined) {
+            if (userCommission < 0 || userCommission > 100) {
+                throw new ValidationError('User commission percentage must be between 0 and 100');
+            }
+            doc.userCommissionPercentage = userCommission;
         }
     }
 

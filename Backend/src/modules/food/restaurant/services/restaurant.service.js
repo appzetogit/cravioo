@@ -1677,6 +1677,8 @@ export const getCurrentRestaurantProfile = async (restaurantId) => {
                 'scheduleOrderEnabled',
                 'quickDeliveryEnabled',
                 'kitchenPrepMinutes',
+                'pricingModel',
+                'userCommissionPercentage',
                 'isActive',
                 'wasEverApproved',
                 'approvedAt',
@@ -2646,7 +2648,9 @@ export const listApprovedRestaurants = async (query = {}) => {
         openDays: 1,
         isActive: 1,
         deliveryTimings: 1,
-        outletTimings: 1
+        outletTimings: 1,
+        pricingModel: 1,
+        userCommissionPercentage: 1
     };
 
     // Use $geoNear only when geo is explicitly needed (radius filter or nearest sorting).

@@ -111,6 +111,8 @@ const normalizeDetailsFormFromRestaurant = (restaurant) => {
     closingTime: restaurant?.closingTime || restaurant?.deliveryTimings?.closingTime || "",
     isActive: restaurant?.isActive !== false,
     commissionPercentage: resolveRestaurantCommissionPercentage(restaurant?.commissionPercentage),
+    pricingModel: restaurant?.pricingModel === "userCommission" ? "userCommission" : "commission",
+    userCommissionPercentage: restaurant?.userCommissionPercentage || 0,
   }
 }
 
@@ -350,6 +352,11 @@ export default function EditRestaurant() {
           detailsForm.commissionPercentage === ""
             ? DEFAULT_RESTAURANT_COMMISSION_PERCENTAGE
             : Number(detailsForm.commissionPercentage),
+        pricingModel: detailsForm.pricingModel === "userCommission" ? "userCommission" : "commission",
+        userCommissionPercentage:
+          detailsForm.pricingModel === "userCommission"
+            ? Number(detailsForm.userCommissionPercentage) || 0
+            : 0,
       }
 
       const res = await adminAPI.updateRestaurant(restaurantId, payload)
@@ -565,26 +572,76 @@ export default function EditRestaurant() {
             <section className="bg-white rounded-xl border border-slate-200 p-6">
               <div className="flex items-center justify-between gap-3 mb-4">
                 <div>
-                  <h2 className="text-lg font-semibold text-slate-900">Restaurant Commission</h2>
+                  <h2 className="text-lg font-semibold text-slate-900">Pricing Model</h2>
                   <p className="text-sm text-slate-500 mt-1">
-                    Set a custom commission percentage to deduct automatically from each order subtotal.
+                    Choose how this restaurant earns on each order. Only one model applies at a time.
                   </p>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label>Commission Percentage (%)</Label>
-                  <Input
-                    type="number"
-                    min="0"
-                    max="100"
-                    placeholder={String(DEFAULT_RESTAURANT_COMMISSION_PERCENTAGE)}
-                    value={detailsForm.commissionPercentage}
-                    onChange={(e) => setDetailsForm((p) => ({ ...p, commissionPercentage: e.target.value }))}
-                  />
-                </div>
+              <div className="flex gap-2 mb-4">
+                <button
+                  type="button"
+                  onClick={() => setDetailsForm((p) => ({ ...p, pricingModel: "commission" }))}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium border ${
+                    detailsForm.pricingModel !== "userCommission"
+                      ? "bg-slate-900 text-white border-slate-900"
+                      : "bg-white text-slate-700 border-slate-300"
+                  }`}
+                >
+                  Restaurant Commission
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDetailsForm((p) => ({ ...p, pricingModel: "userCommission" }))}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium border ${
+                    detailsForm.pricingModel === "userCommission"
+                      ? "bg-slate-900 text-white border-slate-900"
+                      : "bg-white text-slate-700 border-slate-300"
+                  }`}
+                >
+                  User Commission
+                </button>
               </div>
+
+              {detailsForm.pricingModel === "userCommission" ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label>User Commission Percentage (%)</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      max="100"
+                      placeholder="0"
+                      value={detailsForm.userCommissionPercentage}
+                      onChange={(e) => setDetailsForm((p) => ({ ...p, userCommissionPercentage: e.target.value }))}
+                    />
+                    <p className="text-xs text-slate-500 mt-1">
+                      The restaurant keeps its full listed price. The customer instead pays this % extra,
+                      baked silently into every item's displayed price on the user app — the restaurant
+                      never sees or sets the inflated price, and no commission is deducted from this restaurant.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label>Commission Percentage (%)</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      max="100"
+                      placeholder={String(DEFAULT_RESTAURANT_COMMISSION_PERCENTAGE)}
+                      value={detailsForm.commissionPercentage}
+                      onChange={(e) => setDetailsForm((p) => ({ ...p, commissionPercentage: e.target.value }))}
+                    />
+                    <p className="text-xs text-slate-500 mt-1">
+                      Deducted automatically from this restaurant's payout on each order subtotal. The
+                      customer pays the listed item price unchanged.
+                    </p>
+                  </div>
+                </div>
+              )}
             </section>
 
             <section className="bg-white rounded-xl border border-slate-200 p-6">

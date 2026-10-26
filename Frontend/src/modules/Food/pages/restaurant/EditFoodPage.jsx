@@ -72,6 +72,7 @@ export default function EditFoodPage() {
   const [menuSections, setMenuSections] = useState([])
   const [availableCategories, setAvailableCategories] = useState([])
   const [isPureVegRestaurant, setIsPureVegRestaurant] = useState(false)
+  const [userCommissionPercentage, setUserCommissionPercentage] = useState(0)
   const [isCategoryInactive, setIsCategoryInactive] = useState(false)
 
   // Lenis smooth scrolling
@@ -266,6 +267,9 @@ export default function EditFoodPage() {
         if (pureVeg) {
           setFormData((prev) => ({ ...prev, foodType: "Veg" }))
         }
+        setUserCommissionPercentage(
+          profile?.pricingModel === "userCommission" ? Number(profile?.userCommissionPercentage) || 0 : 0,
+        )
       } catch {}
     }
 
@@ -729,6 +733,13 @@ export default function EditFoodPage() {
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#32C45A] focus:border-transparent outline-none"
                       required
                     />
+                    {userCommissionPercentage > 0 && formData.price && Number(formData.price) > 0 && (
+                      <p className="mt-1.5 text-xs text-amber-700">
+                        Customer will see {"₹"}
+                        {Math.round(Number(formData.price) * (1 + userCommissionPercentage / 100) * 100) / 100} on the menu
+                        (includes {userCommissionPercentage}% user commission). You still get {"₹"}{formData.price}.
+                      </p>
+                    )}
                   </div>
                 ) : (
                   <div className="rounded-lg border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">

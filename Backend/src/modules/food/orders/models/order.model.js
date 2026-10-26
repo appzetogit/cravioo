@@ -16,6 +16,8 @@ const orderItemSchema = new mongoose.Schema(
         sourceId: { type: String, required: true, trim: true },
         sourceName: { type: String, default: '', trim: true },
         price: { type: Number, required: true, min: 0 },
+        /** User-commission markup baked into `price` for this unit; 0 for restaurants on the default commission model. */
+        userCommissionMarkupPerUnit: { type: Number, default: 0, min: 0 },
         quantity: { type: Number, required: true, min: 1 },
         isVeg: { type: Boolean, default: true },
         image: { type: String, default: '' },
@@ -131,6 +133,8 @@ const pricingSchema = new mongoose.Schema(
         referralDiscount: { type: Number, default: 0, min: 0 },
         restaurantCommissionPercentage: { type: Number, default: 0, min: 0 },
         restaurantCommission: { type: Number, default: 0, min: 0 },
+        /** User-commission markup charged to the customer; platform profit, never deducted from restaurant. */
+        userCommissionMarkup: { type: Number, default: 0, min: 0 },
         /** Food Quick surcharge (Phase 2.2). 0 for Basic. Never merge into deliveryFee. */
         quickDeliveryFee: { type: Number, default: 0, min: 0 },
         quickPlatformShare: { type: Number, default: 0, min: 0 },
@@ -616,6 +620,7 @@ const LOCKED_MONEY_PATHS = [
     'pricing.discount',
     'pricing.restaurantCommissionPercentage',
     'pricing.restaurantCommission',
+    'pricing.userCommissionMarkup',
     'pricing.total',
     'pricing.currency',
     'pricing.couponCode',

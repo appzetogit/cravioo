@@ -72,6 +72,7 @@ export default function AdminEditFoodPage() {
   const [availableCategories, setAvailableCategories] = useState([])
   const [restaurants, setRestaurants] = useState([])
   const [isPureVegRestaurant, setIsPureVegRestaurant] = useState(false)
+  const [userCommissionPercentage, setUserCommissionPercentage] = useState(0)
   const [isCategoryInactive, setIsCategoryInactive] = useState(false)
 
   // Lenis smooth scrolling
@@ -243,6 +244,7 @@ export default function AdminEditFoodPage() {
   useEffect(() => {
     if (!formData.restaurantId) {
       setIsPureVegRestaurant(false)
+      setUserCommissionPercentage(0)
       return
     }
     const selectedRestaurant = restaurants.find(r => String(r.id || r._id) === String(formData.restaurantId))
@@ -251,6 +253,11 @@ export default function AdminEditFoodPage() {
     if (pureVeg && formData.foodType !== "Veg") {
       setFormData((prev) => ({ ...prev, foodType: "Veg" }))
     }
+    setUserCommissionPercentage(
+      selectedRestaurant?.pricingModel === "userCommission"
+        ? Number(selectedRestaurant?.userCommissionPercentage) || 0
+        : 0,
+    )
   }, [formData.restaurantId, restaurants, formData.foodType])
 
   const [newTag, setNewTag] = useState("")
@@ -730,6 +737,13 @@ export default function AdminEditFoodPage() {
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#32C45A] focus:border-transparent outline-none"
                       required
                     />
+                    {userCommissionPercentage > 0 && formData.price && Number(formData.price) > 0 && (
+                      <p className="mt-1.5 text-xs text-amber-700">
+                        Customer will see {"₹"}
+                        {Math.round(Number(formData.price) * (1 + userCommissionPercentage / 100) * 100) / 100} on the menu
+                        (includes {userCommissionPercentage}% user commission). Restaurant still gets {"₹"}{formData.price}.
+                      </p>
+                    )}
                   </div>
                 ) : (
                   <div className="rounded-lg border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">

@@ -61,12 +61,15 @@ export async function createInitialTransaction(order) {
         Number(order.pricing?.totalDeliveryFee ?? order.pricing?.deliveryFee ?? 0) || 0;
 
     const restaurantCommission = Number(order.pricing?.restaurantCommission || 0) || 0;
+    // User-commission restaurants: this markup is baked into item prices (and thus
+    // subtotal/restaurantNet above) but belongs to the platform, not the restaurant.
+    const userCommissionMarkup = Number(order.pricing?.userCommissionMarkup || 0) || 0;
 
     if (restaurantDeliveryFee > 0) {
         restaurantNet = Math.max(0, restaurantNet - restaurantDeliveryFee);
     }
 
-    restaurantNet = Math.max(0, restaurantNet - restaurantCommission);
+    restaurantNet = Math.max(0, restaurantNet - restaurantCommission - userCommissionMarkup);
 
     const discount = Number(order.pricing?.discount || 0) || 0;
     const couponCode = order.pricing?.couponCode;
@@ -129,7 +132,7 @@ export async function createInitialTransaction(order) {
       baseRiderShare,
       adminDiscountShare,
     });
-    platformNetProfit = Math.max(0, Number(platformNetProfit) || 0) + taxAmount;
+    platformNetProfit = Math.max(0, Number(platformNetProfit) || 0) + taxAmount + userCommissionMarkup;
 
     restaurantNet = Math.round((Number(restaurantNet) || 0) * 100) / 100;
     platformNetProfit = Math.round((Number(platformNetProfit) || 0) * 100) / 100;
@@ -192,6 +195,7 @@ export async function createInitialTransaction(order) {
             referralDiscount: Number(order.pricing?.referralDiscount || order.referralDiscount || 0) || 0,
             restaurantCommissionPercentage: Number(order.pricing?.restaurantCommissionPercentage || 0) || 0,
             restaurantCommission: Number(order.pricing?.restaurantCommission || 0) || 0,
+            userCommissionMarkup,
             quickDeliveryFee,
             quickPlatformShare,
             quickRiderBonus,
@@ -207,6 +211,7 @@ export async function createInitialTransaction(order) {
             // Food economics only at create — Quick Restaurant Share realized post-delivery.
             restaurantShare: Math.max(0, restaurantNet),
             restaurantCommission,
+            userCommissionMarkup,
             sellerShare: Math.max(0, sellerShare),
             sellerCommission: Math.max(0, sellerCommission),
             riderShare,
@@ -487,6 +492,8 @@ export async function applyRefundToTransaction(
         Math.round((Number(amounts.sellerCommission) || 0) * remainRatio * 100) / 100;
     amounts.restaurantCommission =
         Math.round((Number(amounts.restaurantCommission) || 0) * remainRatio * 100) / 100;
+    amounts.userCommissionMarkup =
+        Math.round((Number(amounts.userCommissionMarkup) || 0) * remainRatio * 100) / 100;
     amounts.taxAmount =
         Math.round((Number(amounts.taxAmount) || 0) * remainRatio * 100) / 100;
     amounts.adminDiscountShare =

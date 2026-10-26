@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import { FoodItem } from '../../admin/models/food.model.js';
 import { getFoodDisplayPrice, serializeFoodVariants } from '../../admin/services/foodVariant.service.js';
+import { applyUserCommissionMarkup } from '../../constants/commission.constants.js';
 import { listApprovedRestaurants } from './restaurant.service.js';
 import { ItemSlotTiming } from '../models/itemSlotTiming.model.js';
 import {
@@ -52,6 +53,7 @@ export async function listUnder250Restaurants(query = {}) {
     }
 
     const restaurantMap = new Map();
+    const pricingById = new Map();
     const objectIds = [];
 
     approvedRestaurants.forEach((restaurant, index) => {
@@ -59,6 +61,10 @@ export async function listUnder250Restaurants(query = {}) {
         if (!id || !mongoose.Types.ObjectId.isValid(id)) return;
 
         objectIds.push(new mongoose.Types.ObjectId(id));
+        pricingById.set(id, {
+            pricingModel: restaurant?.pricingModel,
+            userCommissionPercentage: restaurant?.userCommissionPercentage,
+        });
         const fallbackImage = pickRestaurantImage(restaurant);
         restaurantMap.set(id, {
             id,
@@ -122,14 +128,14 @@ export async function listUnder250Restaurants(query = {}) {
             continue;
         }
 
-        const displayPrice = getFoodDisplayPrice(food);
-        if (!Number.isFinite(displayPrice) || displayPrice <= 0 || displayPrice > MAX_UNDER_250_PRICE) {
-            continue;
-        }
-
         const restaurantKey = String(food.restaurantId);
         const restaurant = restaurantMap.get(restaurantKey);
         if (!restaurant) continue;
+
+        const displayPrice = applyUserCommissionMarkup(getFoodDisplayPrice(food), pricingById.get(restaurantKey));
+        if (!Number.isFinite(displayPrice) || displayPrice <= 0 || displayPrice > MAX_UNDER_250_PRICE) {
+            continue;
+        }
 
         const sectionName = (food?.categoryName || food?.category || 'Menu').trim() || 'Menu';
         const foodType = String(food?.foodType || '').toLowerCase();
@@ -156,7 +162,10 @@ export async function listUnder250Restaurants(query = {}) {
             category: sectionName,
             sectionName,
             subsectionName: '',
-            variants: serializeFoodVariants(food.variants),
+            variants: serializeFoodVariants(food.variants).map((v) => ({
+                ...v,
+                price: applyUserCommissionMarkup(v.price, pricingById.get(restaurantKey)),
+            })),
             itemSlotTimingId: slotId || null,
             itemSlotTiming: slotDoc ? serializeItemSlotTiming(slotDoc) : null,
         });

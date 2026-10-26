@@ -69,6 +69,8 @@ export default function RestaurantCommission() {
         restaurantId: res.restaurantId || `REST${String(index + 1).padStart(5, "0")}`,
         name: res.name || res.restaurantName || "N/A",
         commissionPercentage: resolveRestaurantCommissionPercentage(res.commissionPercentage),
+        pricingModel: res.pricingModel === "userCommission" ? "userCommission" : "commission",
+        userCommissionPercentage: res.userCommissionPercentage || 0,
         isActive: res.isActive !== false,
       }))
       
@@ -556,7 +558,16 @@ export default function RestaurantCommission() {
                         </td>
                         {/* Commission */}
                         <td className="px-6 py-4 font-semibold text-slate-900">
-                          {res.commissionPercentage}%
+                          {res.pricingModel === "userCommission" ? (
+                            <span className="inline-flex items-center gap-1.5">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[11px] font-semibold">
+                                User Commission
+                              </span>
+                              <span className="text-slate-900">{res.userCommissionPercentage}%</span>
+                            </span>
+                          ) : (
+                            `${res.commissionPercentage}%`
+                          )}
                         </td>
                         {/* Status */}
                         <td className="px-6 py-4">

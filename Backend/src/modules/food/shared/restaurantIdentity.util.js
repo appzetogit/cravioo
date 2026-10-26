@@ -16,7 +16,11 @@
  */
 import mongoose from 'mongoose';
 import { FoodRestaurant } from '../restaurant/models/restaurant.model.js';
-import { resolveRestaurantCommissionPercentage } from '../constants/commission.constants.js';
+import {
+  resolveRestaurantCommissionPercentage,
+  isUserCommissionRestaurant,
+  resolveUserCommissionPercentage,
+} from '../constants/commission.constants.js';
 
 const OBJECT_ID_RE = /^[a-fA-F0-9]{24}$/;
 
@@ -63,6 +67,8 @@ const IDENTITY_SELECT = [
   'zoneId',
   'status',
   'commissionPercentage',
+  'pricingModel',
+  'userCommissionPercentage',
   'quickDeliveryEnabled',
   'scheduleOrderEnabled',
   'isAcceptingOrders',
@@ -116,6 +122,9 @@ export function toNormalizedFoodRestaurantSource(restaurant) {
     commissionPercentage: resolveRestaurantCommissionPercentage(
       restaurant.commissionPercentage,
     ),
+    /** True when this restaurant is on the user-commission model — see commission.constants.js */
+    isUserCommissionRestaurant: isUserCommissionRestaurant(restaurant),
+    userCommissionPercentage: resolveUserCommissionPercentage(restaurant.userCommissionPercentage),
     quickDeliveryEnabled: restaurant.quickDeliveryEnabled === true,
     scheduleOrderEnabled: restaurant.scheduleOrderEnabled !== false,
     isAcceptingOrders: restaurant.isAcceptingOrders !== false,

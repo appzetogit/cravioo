@@ -5,7 +5,7 @@ import { FoodOrder, FoodSettings } from '../models/order.model.js';
 import { logger } from '../../../../utils/logger.js';
 import { FoodUser } from '../../../../core/users/user.model.js';
 import { FoodRestaurant } from '../../restaurant/models/restaurant.model.js';
-import { resolveRestaurantCommissionPercentage } from '../../constants/commission.constants.js';
+import { resolveRestaurantCommissionPercentage, isUserCommissionRestaurant, applyUserCommissionMarkup } from '../../constants/commission.constants.js';
 import { FoodDeliveryPartner } from '../../delivery/models/deliveryPartner.model.js';
 import { FoodZone } from '../../admin/models/zone.model.js';
 import { FoodFeeSettings } from '../../admin/models/feeSettings.model.js';
@@ -732,8 +732,16 @@ async function applyServerFoodItemPricing(items = [], sourceMap = new Map()) {
         }
         unitPrice = Number(variant.price || 0);
         item.variantName = variant.name || item.variantName || "";
-        item.variantPrice = unitPrice;
       }
+
+      // User-commission restaurants: customer pays a markup on top of the listed
+      // price, restaurant keeps the full original price — see commission.constants.js.
+      const restaurantPrice = unitPrice;
+      unitPrice = applyUserCommissionMarkup(unitPrice, source);
+      if (item?.variantId) item.variantPrice = unitPrice;
+      // Per-unit markup × quantity, summed below into pricing.userCommissionMarkup —
+      // this is what the restaurant keeps unaffected while becoming platform profit.
+      item.userCommissionMarkupPerUnit = Math.max(0, unitPrice - restaurantPrice);
 
       item.price = unitPrice;
       item.name = foodDoc.name || item.name;
@@ -786,6 +794,17 @@ function sumItemsSubtotal(items = [], typeFilter = null) {
       (sum, item) => sum + (Number(item?.price) || 0) * (Number(item?.quantity) || 1),
       0,
     );
+}
+
+/** Total user-commission markup baked into item prices (platform profit, restaurant unaffected). */
+function sumUserCommissionMarkup(items = []) {
+  return Math.round(
+    (Array.isArray(items) ? items : []).reduce(
+      (sum, item) =>
+        sum + (Number(item?.userCommissionMarkupPerUnit) || 0) * (Number(item?.quantity) || 1),
+      0,
+    ) * 100,
+  ) / 100;
 }
 
 function getPointLatLng(locationLike) {
@@ -3054,9 +3073,14 @@ export async function createOrder(userId, dto) {
     }
   }
 
-  const commissionPercentage = primaryRestaurant
-    ? resolveRestaurantCommissionPercentage(primaryRestaurant.commissionPercentage)
-    : 0;
+  // User-commission restaurants never pay platform commission — the customer's
+  // markup (collected via item prices in applyServerFoodItemPricing) is the
+  // platform's earning instead. Mutually exclusive with the commission model.
+  const commissionPercentage =
+    primaryRestaurant && !isUserCommissionRestaurant(primaryRestaurant)
+      ? resolveRestaurantCommissionPercentage(primaryRestaurant.commissionPercentage)
+      : 0;
+  const userCommissionMarkup = sumUserCommissionMarkup(items);
 
   // Restaurant commission applies only to food GMV (never quick), after restaurant-borne discount.
   const foodCommissionSubtotal =
@@ -3131,6 +3155,8 @@ export async function createOrder(userId, dto) {
     discount: Math.max(0, Number(serverPricing.discount || 0)),
     restaurantCommissionPercentage: commissionPercentage,
     restaurantCommission,
+    /** Markup collected from the customer for user-commission restaurants; pure platform profit. */
+    userCommissionMarkup,
     quickDeliveryFee: Math.max(0, Number(serverPricing.quickDeliveryFee || 0)),
     quickPlatformShare: Math.max(0, Number(serverPricing.quickPlatformShare || 0)),
     quickRiderBonus: Math.max(0, Number(serverPricing.quickRiderBonus || 0)),
@@ -3288,9 +3314,12 @@ export async function createOrder(userId, dto) {
     adminDiscountShare: 0,
   });
   // GST collected from customer attributed to platform for remittance/reporting.
+  // User-commission markup is pure platform profit (never deducted from restaurant).
   platformProfit = Math.max(
     0,
-    (Number(platformProfit) || 0) + (Number(normalizedPricing.tax) || 0),
+    (Number(platformProfit) || 0) +
+      (Number(normalizedPricing.tax) || 0) +
+      (Number(normalizedPricing.userCommissionMarkup) || 0),
   );
 
   const dispatchLegs = await Promise.all(

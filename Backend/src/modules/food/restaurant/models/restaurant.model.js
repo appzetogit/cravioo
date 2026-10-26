@@ -407,6 +407,25 @@ const restaurantSchema = new mongoose.Schema(
       min: 0,
       max: 100
     },
+    /**
+     * Pricing model for this restaurant. 'commission' (default, existing behavior):
+     * platform deducts commissionPercentage from the restaurant's payout, customer
+     * pays the listed item price unchanged. 'userCommission': restaurant keeps the
+     * full listed item price, customer instead pays a marked-up price (inflated by
+     * userCommissionPercentage) — restaurant never sees/sets the inflated price.
+     * Mutually exclusive with the commission model — see resolveRestaurantPricingModel().
+     */
+    pricingModel: {
+      type: String,
+      enum: ['commission', 'userCommission'],
+      default: 'commission'
+    },
+    userCommissionPercentage: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 100
+    },
     /** Admin-only: which restaurants are connected to PetPooja for POS billing/invoices. */
     petpooja: {
       enabled: { type: Boolean, default: false },

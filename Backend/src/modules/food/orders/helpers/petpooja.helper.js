@@ -47,15 +47,20 @@ export const buildPetpoojaOrderInfo = (order, restaurant) => {
       collect_cash: order.payment?.method === 'cash' ? two(pricing.total) : '0',
       enable_delivery: '1',
     },
-    OrderItem: (order.items || []).map((item) => ({
-      id: item.itemId,
-      name: item.name,
-      price: two(item.price),
-      final_price: two(item.price),
-      quantity: String(item.quantity),
-      description: item.notes || '',
-      variation_name: item.variantName || '',
-    })),
+    OrderItem: (order.items || []).map((item) => {
+      // User-commission restaurants: item.price is the customer-facing marked-up price.
+      // PetPooja is the restaurant's own POS — it must see their real menu price.
+      const restaurantPrice = Math.max(0, (Number(item.price) || 0) - (Number(item.userCommissionMarkupPerUnit) || 0));
+      return {
+        id: item.itemId,
+        name: item.name,
+        price: two(restaurantPrice),
+        final_price: two(restaurantPrice),
+        quantity: String(item.quantity),
+        description: item.notes || '',
+        variation_name: item.variantName || '',
+      };
+    }),
     Tax: [],
     Discount: pricing.discount
       ? [{ title: pricing.couponCode || 'Discount', amount: two(pricing.discount) }]

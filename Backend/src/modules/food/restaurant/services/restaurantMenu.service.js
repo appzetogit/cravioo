@@ -4,6 +4,7 @@ import { FoodRestaurant } from '../models/restaurant.model.js';
 import { FoodItem } from '../../admin/models/food.model.js';
 import { FoodCategory } from '../../admin/models/category.model.js';
 import { getFoodDisplayPrice, getFoodDisplayOtherPrice, serializeFoodVariants } from '../../admin/services/foodVariant.service.js';
+import { applyUserCommissionMarkup } from '../../constants/commission.constants.js';
 import {
     backfillLegacyCategoryWorkflow,
     isCategoryVisibleInPublicMenu
@@ -18,7 +19,12 @@ import {
 } from './itemSlotTiming.util.js';
 
 const buildMenuFromFoods = async (foods = [], filterPublicOnly = false, options = {}) => {
-    const { slotTimings = [], referenceDate = new Date(), applySlotFilter = false } = options;
+    const { slotTimings = [], referenceDate = new Date(), applySlotFilter = false, restaurant = null } = options;
+    // Markup only ever applies to customer-facing menus (filterPublicOnly), never to a
+    // restaurant owner's own menu view — they must always see their true listed price.
+    const markupPrice = (price) => (filterPublicOnly ? applyUserCommissionMarkup(price, restaurant) : price);
+    const markupVariants = (variants) =>
+        variants.map((v) => ({ ...v, price: markupPrice(v.price) }));
     const slotMap = buildSlotTimingMap(slotTimings);
     const visibleFoods = applySlotFilter
         ? filterFoodsByActiveSlotTimings(foods, slotTimings, referenceDate)
@@ -89,10 +95,10 @@ const buildMenuFromFoods = async (foods = [], filterPublicOnly = false, options 
             needsCategoryAssignment: !categoryDoc,
             name: food.name,
             description: food.description || '',
-            price: getFoodDisplayPrice(food),
+            price: markupPrice(getFoodDisplayPrice(food)),
             otherPrice: getFoodDisplayOtherPrice(food),
-            variants: serializeFoodVariants(food.variants),
-            variations: serializeFoodVariants(food.variants),
+            variants: markupVariants(serializeFoodVariants(food.variants)),
+            variations: markupVariants(serializeFoodVariants(food.variants)),
             image: food.image || '',
             images: Array.isArray(food.images) && food.images.length > 0 ? food.images.filter(Boolean) : (food.image ? [food.image] : []),
             foodType: food.foodType || 'Non-Veg',
@@ -166,21 +172,22 @@ export async function getPublicApprovedRestaurantMenu(restaurantIdOrSlug) {
     if (!value) throw new ValidationError('Restaurant id is required');
 
     let restaurant = null;
+    const PRICING_SELECT = '_id status pricingModel userCommissionPercentage';
     if (/^[0-9a-fA-F]{24}$/.test(value)) {
         restaurant = await FoodRestaurant.findOne({ _id: value, status: 'approved' })
-            .select('_id status')
+            .select(PRICING_SELECT)
             .lean();
     } else if (/^REST\d{6}$/i.test(value)) {
         restaurant = await FoodRestaurant.findOne({
             restaurantId: value.toUpperCase(),
             status: 'approved',
         })
-            .select('_id status')
+            .select(PRICING_SELECT)
             .lean();
     } else {
         const normalized = value.trim().toLowerCase().replace(/-/g, ' ').replace(/\s+/g, ' ');
         restaurant = await FoodRestaurant.findOne({ restaurantNameNormalized: normalized, status: 'approved' })
-            .select('_id status')
+            .select(PRICING_SELECT)
             .lean();
     }
 
@@ -197,7 +204,8 @@ export async function getPublicApprovedRestaurantMenu(restaurantIdOrSlug) {
     return buildMenuFromFoods(foods, true, {
         slotTimings,
         applySlotFilter: true,
-        referenceDate: new Date()
+        referenceDate: new Date(),
+        restaurant
     });
 }
 

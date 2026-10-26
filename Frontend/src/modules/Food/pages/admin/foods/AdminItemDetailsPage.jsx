@@ -173,6 +173,7 @@ export default function AdminItemDetailsPage() {
   const [loadingItem, setLoadingItem] = useState(false)
   const [keyboardInset, setKeyboardInset] = useState(0)
   const [isPureVegRestaurant, setIsPureVegRestaurant] = useState(false)
+  const [userCommissionPercentage, setUserCommissionPercentage] = useState(0)
   const [categoryLiveStatus, setCategoryLiveStatus] = useState(null)
 
   const [suggestedImages, setSuggestedImages] = useState([])
@@ -601,6 +602,9 @@ export default function AdminItemDetailsPage() {
         if (pureVeg) {
           setFoodType("Veg")
         }
+        setUserCommissionPercentage(
+          profile?.pricingModel === "userCommission" ? Number(profile?.userCommissionPercentage) || 0 : 0,
+        )
       } catch (error) {
         debugWarn("Failed to load restaurant profile:", error)
         if (isMounted) setIsPureVegRestaurant(false)
@@ -1850,6 +1854,13 @@ export default function AdminItemDetailsPage() {
                                 <EditIcon className="w-4 h-4 text-gray-500" />
                               </button>
                             </div>
+                            {userCommissionPercentage > 0 && basePrice && Number(basePrice) > 0 && (
+                              <p className="mt-1.5 text-xs text-amber-700">
+                                Customer will see {"\u20B9"}
+                                {Math.round(Number(basePrice) * (1 + userCommissionPercentage / 100) * 100) / 100} on the menu
+                                (includes {userCommissionPercentage}% user commission). Restaurant still gets {"\u20B9"}{basePrice}.
+                              </p>
+                            )}
                           </div>
 
                           <div className="relative">
