@@ -24,7 +24,7 @@ const buildMenuFromFoods = async (foods = [], filterPublicOnly = false, options 
     // restaurant owner's own menu view — they must always see their true listed price.
     const markupPrice = (price) => (filterPublicOnly ? applyUserCommissionMarkup(price, restaurant) : price);
     const markupVariants = (variants) =>
-        variants.map((v) => ({ ...v, price: markupPrice(v.price) }));
+        variants.map((v) => ({ ...v, price: markupPrice(v.price), otherPrice: markupPrice(v.otherPrice) }));
     const slotMap = buildSlotTimingMap(slotTimings);
     const visibleFoods = applySlotFilter
         ? filterFoodsByActiveSlotTimings(foods, slotTimings, referenceDate)
@@ -96,7 +96,7 @@ const buildMenuFromFoods = async (foods = [], filterPublicOnly = false, options 
             name: food.name,
             description: food.description || '',
             price: markupPrice(getFoodDisplayPrice(food)),
-            otherPrice: getFoodDisplayOtherPrice(food),
+            otherPrice: markupPrice(getFoodDisplayOtherPrice(food)),
             variants: markupVariants(serializeFoodVariants(food.variants)),
             variations: markupVariants(serializeFoodVariants(food.variants)),
             image: food.image || '',
