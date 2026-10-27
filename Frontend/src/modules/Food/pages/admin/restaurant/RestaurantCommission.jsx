@@ -560,7 +560,7 @@ export default function RestaurantCommission() {
                         DEFAULT COMMISSION <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
                       </div>
                     </th>
-                    <th className="px-6 py-4">STATUS</th>
+                    <th className="px-6 py-4">VISIBLE ON APP</th>
                     <th className="px-6 py-4 text-center w-32">ACTION</th>
                   </tr>
                 </thead>

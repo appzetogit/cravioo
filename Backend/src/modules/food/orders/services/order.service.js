@@ -2901,6 +2901,17 @@ export async function calculateOrder(userId, dto, options = {}) {
     serviceZone: serviceZone
       ? { zoneId: serviceZone.zoneId, status: serviceZone.status, zone: serviceZone.zone }
       : null,
+    /**
+     * Slim server-priced items — lets the frontend reconcile its locally-cached cart
+     * price (captured at add-to-cart time) with the authoritative price, e.g. when a
+     * restaurant's user-commission markup changes after the item was already added.
+     * Match by itemId + variantId, never by array index/order.
+     */
+    items: items.map((item) => ({
+      itemId: item.itemId,
+      variantId: item.variantId || null,
+      price: Number(item.price) || 0,
+    })),
     /** Reuse fee doc downstream (createOrder) — avoid duplicate Mongo read. */
     feeSettingsDoc: feeDoc || null,
   };

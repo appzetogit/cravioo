@@ -215,7 +215,7 @@ export default function Cart() {
 
   // Defensive check: Ensure CartProvider is available
   const cartContext = useCart() || {};
-  const { cart = [], updateQuantity, addToCart, getCartCount = () => 0, clearCart, cleanCartForRestaurant } = cartContext;
+  const { cart = [], updateQuantity, addToCart, getCartCount = () => 0, clearCart, cleanCartForRestaurant, updateCartPrices } = cartContext;
 
   const { getDefaultAddress, getDefaultPaymentMethod, setDefaultAddress, addresses, paymentMethods, userProfile, vegMode, activeAddress, activeAddressId, setActiveAddressId } = useProfile()
   const { createOrder } = useOrders()
@@ -1077,6 +1077,7 @@ export default function Cart() {
       onSoftFallback: () => {
         suppressPricingRecalcRef.current = true
       },
+      updateCartPrices,
     })
     return { ...result, ...applied }
   }
@@ -1687,6 +1688,7 @@ const handleApplyCoupon = async (coupon) => {
         onSoftFallback: () => {
           suppressPricingRecalcRef.current = true
         },
+        updateCartPrices,
       })
       // Pricing already applied — suppress the effect that would re-fire on coupon state.
       suppressPricingRecalcRef.current = true
@@ -1753,6 +1755,7 @@ const handleApplyCouponCode = async () => {
       onSoftFallback: () => {
         suppressPricingRecalcRef.current = true
       },
+      updateCartPrices,
     })
     suppressPricingRecalcRef.current = true
     setCouponCode(inputCode)

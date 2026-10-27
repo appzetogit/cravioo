@@ -37,6 +37,9 @@ const defaultCartContext = {
   replaceCart: () => {
     debugWarn('CartProvider not available - replaceCart called');
   },
+  updateCartPrices: () => {
+    debugWarn('CartProvider not available - updateCartPrices called');
+  },
 }
 
 const CartContext = createContext(defaultCartContext)
@@ -377,6 +380,31 @@ export function CartProvider({ children }) {
 
   const clearCart = useCallback(() => setCart([]), [])
 
+  /**
+   * Reconciles cart item prices with server-authoritative values from a checkout
+   * pricing response (e.g. a restaurant's user-commission markup changed after the
+   * item was added to cart). Matched by itemId+variantId, never by array order.
+   * `items` is [{ itemId, variantId, price }].
+   */
+  const updateCartPrices = useCallback((items) => {
+    if (!Array.isArray(items) || items.length === 0) return
+    const priceByKey = new Map(
+      items.map((it) => [`${it.itemId}:${it.variantId || ""}`, Number(it.price) || 0]),
+    )
+    setCart((prev) => {
+      const safePrev = normalizeCartData(prev)
+      let changed = false
+      const next = safePrev.map((item) => {
+        const key = `${item.itemId}:${item.variantId || ""}`
+        const serverPrice = priceByKey.get(key)
+        if (serverPrice === undefined || serverPrice === item.price) return item
+        changed = true
+        return { ...item, price: serverPrice }
+      })
+      return changed ? next : safePrev
+    })
+  }, [])
+
   const replaceCart = useCallback((items) => {
     const normalizedItems = normalizeCartData(items).filter((item) => {
       const quantity = Number(item?.quantity)
@@ -525,11 +553,12 @@ export function CartProvider({ children }) {
       clearCart,
       cleanCartForRestaurant,
       replaceCart,
+      updateCartPrices,
     }),
     // normalizedCart instead of cart: avoids re-creating value object on cart ref change when data is same
     [normalizedCart, cartForAnimation, lastAddEvent, lastRemoveEvent,
      addToCart, removeFromCart, updateQuantity, getCartCount, isInCart, getCartItem,
-     clearCart, cleanCartForRestaurant, replaceCart]
+     clearCart, cleanCartForRestaurant, replaceCart, updateCartPrices]
   )
 
   return (

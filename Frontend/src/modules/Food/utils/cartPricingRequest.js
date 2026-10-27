@@ -59,6 +59,13 @@ export function createCartPricingRequestController() {
   let lastCompletedFingerprint = null;
   /** @type {object | null} */
   let lastCompletedResult = null;
+  /** @type {number} */
+  let lastCompletedAt = 0;
+  // Reuse a completed quote only briefly — long enough to absorb duplicate re-renders
+  // with an identical payload, short enough that server-side pricing changes (zone DSU
+  // settings, a restaurant's commission model, etc. — none of which appear in the
+  // request payload) can't be served as a stale quote for the rest of the cart session.
+  const REUSE_WINDOW_MS = 10000;
 
   const begin = () => {
     latestRequestId += 1;
@@ -124,11 +131,13 @@ export function createCartPricingRequestController() {
       };
     }
 
-    // Skip network when the exact same quote just completed successfully.
+    // Skip network when the exact same quote just completed successfully, within the
+    // reuse window (see REUSE_WINDOW_MS above).
     if (
       !force &&
       lastCompletedFingerprint === fingerprint &&
-      lastCompletedResult?.pricing
+      lastCompletedResult?.pricing &&
+      Date.now() - lastCompletedAt < REUSE_WINDOW_MS
     ) {
       return {
         ...lastCompletedResult,
@@ -154,16 +163,23 @@ export function createCartPricingRequestController() {
           };
         }
         const pricing = response?.data?.data?.pricing || null;
+        // Server-authoritative per-item prices (e.g. user-commission markup) — matched
+        // back onto local cart items by itemId+variantId, never by array order.
+        const items = Array.isArray(response?.data?.data?.items)
+          ? response.data.data.items
+          : null;
         const result = {
           stale: false,
           requestId,
           requestedDeliveryMode,
           pricing,
+          items,
           response,
           fingerprint,
         };
         lastCompletedFingerprint = fingerprint;
         lastCompletedResult = result;
+        lastCompletedAt = Date.now();
         return result;
       } catch (error) {
         if (isAbortError(error) || !isLatest(requestId)) {
@@ -205,10 +221,18 @@ export function applyCartPricingResult({
   setDeliveryType,
   setQuickFallbackNotice,
   onSoftFallback,
+  updateCartPrices,
 }) {
   if (!result || result.stale) return { applied: false, softFallback: false };
-  const { pricing, requestedDeliveryMode } = result;
+  const { pricing, requestedDeliveryMode, items } = result;
   if (!pricing) return { applied: false, softFallback: false };
+
+  // Reconcile locally-cached cart item prices (captured at add-to-cart time) with the
+  // server's authoritative price for this checkout — e.g. a restaurant's user-commission
+  // markup changed after the item was added. Match by itemId+variantId, not array order.
+  if (Array.isArray(items) && items.length > 0) {
+    updateCartPrices?.(items);
+  }
 
   const softFallback = shouldSoftFallbackQuickSelection({
     requestedDeliveryMode,
