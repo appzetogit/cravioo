@@ -292,7 +292,11 @@ export default function RestaurantsList() {
         setLoading(true)
         setError(null)
 
-        const response = await adminAPI.getApprovedRestaurants({})
+        // No status filter: a restaurant that's been disabled/banned must stay visible
+        // here — it's the admin's main page to find it and re-enable it. Previously
+        // this always fetched status:'approved' only, so a disabled restaurant would
+        // vanish from this list entirely on the next reload with no way to recover it.
+        const response = await adminAPI.getRestaurants({})
 
         if (cancelled) return
 

@@ -58,7 +58,10 @@ export default function RestaurantCommission() {
   const fetchRestaurants = async () => {
     try {
       setIsLoading(true)
-      const response = await adminAPI.getRestaurants({ limit: 1000, status: 'approved' })
+      // No status filter: a restaurant disabled via the Status toggle below must stay
+      // visible here (it's the only way to find and re-enable it) — never silently
+      // disappear from this page the way it previously did.
+      const response = await adminAPI.getRestaurants({ limit: 1000 })
       const body = response?.data
       const data = body?.data
       
@@ -80,6 +83,7 @@ export default function RestaurantCommission() {
         pricingModel: res.pricingModel === "userCommission" ? "userCommission" : "commission",
         userCommissionPercentage: res.userCommissionPercentage || 0,
         isActive: res.isActive !== false,
+        status: res.status || "approved",
       }))
       
       setRestaurants(mapped)
@@ -174,23 +178,41 @@ export default function RestaurantCommission() {
     setSortConfig({ key, direction })
   }
 
-  // Handle Toggle Status
-  const handleToggleStatus = async (restaurant) => {
+  // Status toggle — disabling a restaurant here REJECTS it platform-wide (removes it
+  // from menus/search/home everywhere, not just this page), so it needs confirmation.
+  const [statusConfirmTarget, setStatusConfirmTarget] = useState(null)
+
+  const applyStatusChange = async (restaurant) => {
     try {
       setUpdatingStatusId(restaurant.id)
       const newStatus = !restaurant.isActive
-      
+
       await adminAPI.updateRestaurantStatus(restaurant._id || restaurant.id, newStatus)
-      
+
       setRestaurants(prev =>
-        prev.map(r => r.id === restaurant.id ? { ...r, isActive: newStatus } : r)
+        prev.map(r => r.id === restaurant.id
+          ? { ...r, isActive: newStatus, status: newStatus ? "approved" : "rejected" }
+          : r)
       )
-      toast.success(`Restaurant status updated successfully`)
+      toast.success(
+        newStatus
+          ? `${restaurant.name} is active again and visible on the app`
+          : `${restaurant.name} disabled — hidden from the app everywhere until re-enabled`
+      )
     } catch (err) {
       debugError("Failed to update status:", err)
       toast.error("Failed to update status")
     } finally {
       setUpdatingStatusId(null)
+    }
+  }
+
+  const handleToggleStatus = (restaurant) => {
+    // Re-enabling is safe to do immediately; only disabling needs a confirm step.
+    if (restaurant.isActive) {
+      setStatusConfirmTarget(restaurant)
+    } else {
+      applyStatusChange(restaurant)
     }
   }
 
@@ -572,8 +594,15 @@ export default function RestaurantCommission() {
                         </td>
                         {/* Name */}
                         <td className="px-6 py-4">
-                          <span className="text-blue-600 font-semibold cursor-pointer hover:underline">
-                            {res.name}
+                          <span className="inline-flex items-center gap-2">
+                            <span className="text-blue-600 font-semibold cursor-pointer hover:underline">
+                              {res.name}
+                            </span>
+                            {!res.isActive && (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-red-100 text-red-700 text-[10px] font-bold uppercase tracking-wide">
+                                Disabled
+                              </span>
+                            )}
                           </span>
                         </td>
                         {/* Custom Restaurant ID — e.g. REST00001 */}
@@ -913,6 +942,59 @@ export default function RestaurantCommission() {
               </DialogFooter>
             </form>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Disable Restaurant Confirmation Modal */}
+      <Dialog open={Boolean(statusConfirmTarget)} onOpenChange={(open) => { if (!open) setStatusConfirmTarget(null) }}>
+        <DialogContent className="max-w-md bg-white p-0 overflow-hidden rounded-2xl border-none shadow-2xl">
+          <DialogHeader className="px-6 pt-6 pb-4 border-b border-slate-100 bg-red-50/50">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center">
+                <AlertTriangle className="w-5 h-5 text-red-600" />
+              </div>
+              <div>
+                <DialogTitle className="text-xl font-bold text-slate-900">Disable Restaurant</DialogTitle>
+                <p className="text-xs text-slate-500 mt-0.5">This hides the restaurant everywhere, not just here</p>
+              </div>
+            </div>
+          </DialogHeader>
+
+          {statusConfirmTarget && (
+            <div className="p-6">
+              <p className="text-sm text-slate-600 leading-relaxed">
+                Disabling <span className="font-bold text-slate-900">{statusConfirmTarget.name}</span> marks it{" "}
+                <span className="font-semibold text-red-600">rejected</span> and removes it from the customer
+                app, menu search, and home page — not just this commission list.
+              </p>
+              <p className="text-xs text-slate-500 mt-2 italic bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+                You can switch it back on from this same toggle at any time.
+              </p>
+            </div>
+          )}
+
+          <DialogFooter className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex flex-row items-center justify-end gap-3">
+            <button
+              type="button"
+              onClick={() => setStatusConfirmTarget(null)}
+              className="px-4 py-2 text-sm font-semibold rounded-lg bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 transition-all"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const target = statusConfirmTarget
+                setStatusConfirmTarget(null)
+                applyStatusChange(target)
+              }}
+              disabled={updatingStatusId === statusConfirmTarget?.id}
+              className="px-5 py-2 text-sm font-semibold rounded-lg bg-red-600 text-white hover:bg-red-700 transition-all flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+            >
+              {updatingStatusId === statusConfirmTarget?.id && <Loader2 className="w-4 h-4 animate-spin" />}
+              Disable Restaurant
+            </button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
