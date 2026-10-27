@@ -82,7 +82,9 @@ export default function RestaurantCommission() {
         commissionPercentage: resolveRestaurantCommissionPercentage(res.commissionPercentage),
         pricingModel: res.pricingModel === "userCommission" ? "userCommission" : "commission",
         userCommissionPercentage: res.userCommissionPercentage || 0,
-        isActive: res.isActive !== false,
+        // There is no `isActive` DB field — `status` is the real source of truth for
+        // whether a restaurant is visible on the app (status: 'rejected' = hidden).
+        isActive: (res.status || "approved") !== "rejected",
         status: res.status || "approved",
       }))
       

@@ -346,7 +346,9 @@ export default function RestaurantsList() {
             ownerPhone: restaurant.ownerPhone || restaurant.phone || "N/A",
             zone: zoneLabelFromRestaurant(restaurant),
             approvalStatus: normalizeApprovalStatus(restaurant),
-            isActive: restaurant.isActive !== false,
+            // There is no `isActive` DB field — `status` is the real source of truth for
+            // whether a restaurant is banned/hidden (status: 'rejected' = banned/hidden).
+            isActive: normalizeApprovalStatus(restaurant) !== "rejected",
             isListed: restaurant.isListed || false,
             displayPosition: restaurant.displayPosition ?? null,
             productCount: restaurant.productCount || 0,
@@ -1143,7 +1145,6 @@ export default function RestaurantsList() {
         estimatedDeliveryTime: "",
         openingTime: "",
         closingTime: "",
-        isActive: true,
         quickDeliveryEnabled: false,
       }
     }
@@ -1177,7 +1178,6 @@ export default function RestaurantsList() {
       estimatedDeliveryTime: estimatedDeliveryTimeValue,
       openingTime: openingTimeValue,
       closingTime: closingTimeValue,
-      isActive: restaurant.isActive !== false,
       quickDeliveryEnabled: restaurant.quickDeliveryEnabled === true,
     }
   }
@@ -1267,7 +1267,6 @@ export default function RestaurantsList() {
         estimatedDeliveryTime: detailsForm.estimatedDeliveryTime.trim(),
         openingTime: normalizedOpeningTime,
         closingTime: normalizedClosingTime,
-        isActive: detailsForm.isActive,
         quickDeliveryEnabled: detailsForm.quickDeliveryEnabled === true,
       }
 
@@ -1289,7 +1288,6 @@ export default function RestaurantsList() {
                 ownerName: updatedRestaurant.ownerName || item.ownerName,
                 ownerPhone: updatedRestaurant.ownerPhone || updatedRestaurant.phone || item.ownerPhone,
                 zone: updatedRestaurant.location?.area || updatedRestaurant.location?.city || item.zone,
-                isActive: updatedRestaurant.isActive !== false,
                 logo: getPrimaryRestaurantImage(updatedRestaurant, item.logo),
                 originalData: {
                   ...(item.originalData || {}),
@@ -2050,16 +2048,9 @@ export default function RestaurantsList() {
                       <input type="text" value={detailsForm.estimatedDeliveryTime} onChange={(e) => setDetailsForm((prev) => ({ ...prev, estimatedDeliveryTime: e.target.value }))} className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm" />
                     </div>
                     <div className="md:col-span-2 flex items-center gap-3">
-                      <input
-                        id="restaurant-status-active"
-                        type="checkbox"
-                        checked={detailsForm.isActive}
-                        onChange={(e) => setDetailsForm((prev) => ({ ...prev, isActive: e.target.checked }))}
-                        className="h-4 w-4 rounded border-slate-300 text-blue-600"
-                      />
-                      <label htmlFor="restaurant-status-active" className="text-sm text-slate-700">
-                        Restaurant is active
-                      </label>
+                      <p className="text-xs text-slate-500 italic">
+                        Use the Ban/Unban button to change whether this restaurant is visible on the app.
+                      </p>
                     </div>
                     <div className="md:col-span-2 rounded-xl border border-slate-200 bg-slate-50 p-4">
                       <div className="flex items-start justify-between gap-3">

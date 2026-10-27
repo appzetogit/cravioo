@@ -448,6 +448,8 @@ export async function getRestaurants(query) {
             .skip(skip)
             .limit(limit)
             .select('restaurantId restaurantName location area city profileImage coverImages menuImages status ownerName ownerPhone zoneId commissionPercentage pricingModel userCommissionPercentage isListed productCount pureVegRestaurant createdAt updatedAt showWithoutMenu displayPosition')
+            // Note: there is no `isActive` schema field — `status` ('approved'/'rejected') is
+            // the real source of truth for whether a restaurant is visible on the app.
             .populate('zoneId', 'name zoneName')
             .lean(),
         FoodRestaurant.countDocuments(filter)

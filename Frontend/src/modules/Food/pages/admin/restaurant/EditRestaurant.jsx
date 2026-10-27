@@ -109,7 +109,6 @@ const normalizeDetailsFormFromRestaurant = (restaurant) => {
     offer: restaurant?.offer || "",
     openingTime: restaurant?.openingTime || restaurant?.deliveryTimings?.openingTime || "",
     closingTime: restaurant?.closingTime || restaurant?.deliveryTimings?.closingTime || "",
-    isActive: restaurant?.isActive !== false,
     commissionPercentage: resolveRestaurantCommissionPercentage(restaurant?.commissionPercentage),
     pricingModel: restaurant?.pricingModel === "userCommission" ? "userCommission" : "commission",
     userCommissionPercentage: restaurant?.userCommissionPercentage || 0,
@@ -347,7 +346,6 @@ export default function EditRestaurant() {
         offer: detailsForm.offer,
         openingTime: detailsForm.openingTime,
         closingTime: detailsForm.closingTime,
-        isActive: detailsForm.isActive !== false,
         commissionPercentage:
           detailsForm.commissionPercentage === ""
             ? DEFAULT_RESTAURANT_COMMISSION_PERCENTAGE
