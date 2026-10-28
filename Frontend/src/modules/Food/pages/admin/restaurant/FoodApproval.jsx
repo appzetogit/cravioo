@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react"
-import { Search, CheckCircle2, XCircle, Eye, Clock, Loader2 } from "lucide-react"
+import { Search, CheckCircle2, XCircle, Eye, Clock, Loader2, CheckSquare, Square } from "lucide-react"
 import { Card } from "@food/components/ui/card"
 import {
   Dialog,
@@ -73,6 +73,8 @@ export default function FoodApproval() {
   const [showRejectModal, setShowRejectModal] = useState(false)
   const [rejectReason, setRejectReason] = useState("")
   const [processing, setProcessing] = useState(false)
+  const [selectedIds, setSelectedIds] = useState(new Set())
+  const [isBulkApproving, setIsBulkApproving] = useState(false)
   const isMountedRef = useRef(true)
 
   // Fetch pending food approval requests
@@ -147,6 +149,75 @@ export default function FoodApproval() {
   }, [foodRequests, searchQuery])
 
   const totalRequests = filteredRequests.length
+
+  // Only pending (actionable) rows can be selected/bulk-approved.
+  const actionableVisibleIds = useMemo(
+    () => filteredRequests.filter((r) => r.isActionable).map((r) => r._id || r.id),
+    [filteredRequests]
+  )
+  const isAllSelected = actionableVisibleIds.length > 0 && actionableVisibleIds.every((id) => selectedIds.has(id))
+  const isIndeterminate = !isAllSelected && actionableVisibleIds.some((id) => selectedIds.has(id))
+
+  const toggleSelectAll = () => {
+    if (isAllSelected) {
+      setSelectedIds(new Set())
+    } else {
+      setSelectedIds(new Set(actionableVisibleIds))
+    }
+  }
+
+  const toggleSelectOne = (id) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  // Reset selection whenever the underlying list changes (approve/reject/refresh).
+  useEffect(() => {
+    setSelectedIds((prev) => {
+      const validIds = new Set(foodRequests.map((r) => r._id || r.id))
+      const next = new Set([...prev].filter((id) => validIds.has(id)))
+      return next.size === prev.size ? prev : next
+    })
+  }, [foodRequests])
+
+  const handleBulkApprove = async () => {
+    if (!canEdit) {
+      toast.error("Permission denied")
+      return
+    }
+    const targets = filteredRequests.filter((r) => selectedIds.has(r._id || r.id))
+    if (targets.length === 0) return
+
+    try {
+      setIsBulkApproving(true)
+      const results = await Promise.allSettled(
+        targets.map((r) =>
+          r.entityType === 'addon'
+            ? adminAPI.approveRestaurantAddon(r._id || r.id)
+            : adminAPI.approveFoodItem(r._id || r.id)
+        )
+      )
+
+      const successCount = results.filter((r) => r.status === "fulfilled").length
+      const failCount = results.length - successCount
+
+      if (successCount > 0) toast.success(`Approved ${successCount} item(s)`)
+      if (failCount > 0) toast.error(`Failed to approve ${failCount} item(s)`)
+
+      setSelectedIds(new Set())
+      await fetchFoodRequests()
+      refreshAdminAlerts()
+    } catch (error) {
+      debugError('Bulk approve error:', error)
+      toast.error('Bulk approval failed')
+    } finally {
+      setIsBulkApproving(false)
+    }
+  }
 
   // Handle approve food item or addon
   const handleApprove = async (request) => {
@@ -260,6 +331,16 @@ export default function FoodApproval() {
                 {totalRequests}
               </span>
             </div>
+            {canEdit && selectedIds.size > 0 && (
+              <button
+                onClick={handleBulkApprove}
+                disabled={isBulkApproving}
+                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isBulkApproving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                Approve Selected ({selectedIds.size})
+              </button>
+            )}
           </div>
 
           {/* Search Bar */}
@@ -289,6 +370,27 @@ export default function FoodApproval() {
                 <table className="min-w-full divide-y divide-gray-200 text-sm">
                   <thead style={{ backgroundColor: "rgba(0, 111, 189, 0.1)" }}>
                     <tr>
+                      {canEdit && (
+                        <th className="px-3 py-3 w-10">
+                          <button
+                            type="button"
+                            onClick={toggleSelectAll}
+                            disabled={actionableVisibleIds.length === 0}
+                            className="flex items-center justify-center w-5 h-5 rounded text-[#006fbd] hover:text-[#005a99] transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                            title={isAllSelected ? "Deselect All" : "Select All"}
+                          >
+                            {isAllSelected ? (
+                              <CheckSquare className="w-5 h-5" />
+                            ) : isIndeterminate ? (
+                              <div className="w-5 h-5 rounded border-2 border-[#006fbd] bg-blue-50 flex items-center justify-center">
+                                <div className="w-2.5 h-0.5 bg-[#006fbd] rounded" />
+                              </div>
+                            ) : (
+                              <Square className="w-5 h-5 text-gray-400" />
+                            )}
+                          </button>
+                        </th>
+                      )}
                       <th className="px-3 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                         S.No
                       </th>
@@ -321,13 +423,30 @@ export default function FoodApproval() {
                   <tbody className="divide-y divide-gray-200 bg-white">
                     {filteredRequests.length === 0 ? (
                       <tr>
-                        <td colSpan="9" className="px-3 py-8 text-center text-sm text-gray-500">
+                        <td colSpan={canEdit ? 10 : 9} className="px-3 py-8 text-center text-sm text-gray-500">
                           {loading ? "Loading..." : "No food or add-on records found."}
                         </td>
                       </tr>
                     ) : (
-                      filteredRequests.map((request, index) => (
-                        <tr key={request._id || request.id} className="hover:bg-gray-50">
+                      filteredRequests.map((request, index) => {
+                        const requestId = request._id || request.id
+                        return (
+                        <tr key={requestId} className="hover:bg-gray-50">
+                          {canEdit && (
+                            <td className="px-3 py-3">
+                              <button
+                                type="button"
+                                onClick={() => toggleSelectOne(requestId)}
+                                disabled={!request.isActionable}
+                                className="flex items-center justify-center w-5 h-5 rounded text-[#006fbd] hover:text-[#005a99] transition-colors disabled:opacity-20 disabled:cursor-not-allowed"
+                              >
+                                {selectedIds.has(requestId)
+                                  ? <CheckSquare className="w-5 h-5" />
+                                  : <Square className="w-5 h-5 text-gray-300" />
+                                }
+                              </button>
+                            </td>
+                          )}
                           <td className="px-3 py-3 whitespace-nowrap text-sm text-gray-700 font-semibold">
                             {index + 1}
                           </td>
@@ -398,7 +517,8 @@ export default function FoodApproval() {
                             </div>
                           </td>
                         </tr>
-                      ))
+                        )
+                      })
                     )}
                   </tbody>
                 </table>

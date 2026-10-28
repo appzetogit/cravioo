@@ -920,10 +920,6 @@ export default function AdminItemDetailsPage() {
       return { message: "Please choose whether this item has variants" }
     }
 
-    if (images.length === 0) {
-      return { message: "Please add at least one image" }
-    }
-
     if (!itemName.trim()) {
       return { message: "Please enter an item name" }
     }
