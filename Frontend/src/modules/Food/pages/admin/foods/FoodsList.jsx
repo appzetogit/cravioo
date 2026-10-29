@@ -176,9 +176,12 @@ export default function FoodsList() {
 
       const foodsRes = await adminAPI.getFoods({ limit: 1000 })
       const list = foodsRes?.data?.data?.foods || []
+      const approvedOnly = Array.isArray(list)
+        ? list.filter((f) => String(f?.approvalStatus || "").toLowerCase() === "approved")
+        : []
       setFoods(
-                Array.isArray(list)
-                  ? list.map((f) => ({
+                Array.isArray(approvedOnly)
+                  ? approvedOnly.map((f) => ({
                       id: String(f.id || f._id || ""),
                       _id: f._id || f.id,
                       name: f.name || "Unnamed Item",
