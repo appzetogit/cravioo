@@ -83,7 +83,9 @@ export default function FoodApproval() {
       if (!silent) {
         setLoading(true)
       }
-      const response = await adminAPI.getPendingFoodApprovals()
+      // Explicit high limit — the backend defaults to 200, which can silently cut off
+      // older pending items once total pending count across all restaurants exceeds it.
+      const response = await adminAPI.getPendingFoodApprovals({ limit: 1000 })
       const data = response?.data?.data?.requests || response?.data?.requests || []
       if (!isMountedRef.current) return
       setFoodRequests(data)

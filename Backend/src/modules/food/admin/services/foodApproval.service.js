@@ -12,7 +12,7 @@ const toRestaurantDisplayId = (mongoId) => {
 };
 
 export async function listPendingFoodApprovals(query = {}) {
-    const limit = Math.min(Math.max(parseInt(query.limit, 10) || 200, 1), 1000);
+    const limit = Math.min(Math.max(parseInt(query.limit, 10) || 1000, 1), 5000);
     const page = Math.max(parseInt(query.page, 10) || 1, 1);
     const skip = (page - 1) * limit;
 
