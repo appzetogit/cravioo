@@ -567,8 +567,16 @@ export const verifyRestaurantOtpAndLogin = async (phone, otp, fcmToken, platform
   })
     .sort({ createdAt: 1 })
     .limit(50);
+  // Skip deleted/deactivated outlets entirely when picking which one to log into —
+  // a deleted older outlet must never block login to a healthy newer one sharing the phone.
+  const liveOutletCandidates = outletCandidates.filter(
+    (r) => r.isDeleted !== true && r.accountStatus !== "deleted",
+  );
   const restaurant =
-    outletCandidates.find((r) => r.status === "approved") || outletCandidates[0] || null;
+    liveOutletCandidates.find((r) => r.status === "approved") ||
+    liveOutletCandidates[0] ||
+    outletCandidates[0] ||
+    null;
   if (!restaurant) {
     // Phone has been successfully verified, but no restaurant exists yet.
     // Frontend will use this to redirect into registration/onboarding.
