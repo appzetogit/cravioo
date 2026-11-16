@@ -567,50 +567,6 @@ export default function OutletInfo() {
 
         </div>
 
-        {/* Banners — shown behind the scrolling gallery on the customer's restaurant page. No approval needed. */}
-        <div className="mx-4 mt-4 rounded-2xl border border-slate-200 bg-white p-4 lg:mx-0">
-          <div className="mb-3 flex items-center justify-between">
-            <div>
-              <h3 className="text-sm font-bold text-gray-900">Banners</h3>
-              <p className="text-xs text-gray-500">Shown in your gallery on the customer app. Add as many as you like.</p>
-            </div>
-            <button
-              onClick={() => bannerImageInputRef.current?.click()}
-              disabled={uploadingBanner}
-              className="flex items-center gap-1.5 rounded-lg bg-black px-3 py-2 text-xs font-medium text-white transition-colors hover:bg-gray-800 disabled:opacity-50"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              <span>{uploadingBanner ? "Uploading..." : "Add banner"}</span>
-            </button>
-            <input
-              ref={bannerImageInputRef}
-              type="file"
-              accept="image/*"
-              multiple
-              className="hidden"
-              onChange={(e) => handleBannerAdd(Array.from(e.target.files || []))}
-            />
-          </div>
-          {banners.length > 0 ? (
-            <div className="flex flex-wrap gap-2.5">
-              {banners.map((img, index) => (
-                <div key={index} className="relative h-16 w-28 overflow-hidden rounded-lg border border-slate-200 bg-gray-100">
-                  <img src={img.url} alt={`Banner ${index + 1}`} className="h-full w-full object-cover" />
-                  <button
-                    onClick={() => handleBannerDelete(index)}
-                    disabled={uploadingBanner}
-                    className="absolute right-1 top-1 rounded-full bg-red-500/95 p-1 transition-colors hover:bg-red-600"
-                  >
-                    <Trash2 className="h-3 w-3 text-white" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-xs text-gray-400">No banners added yet.</p>
-          )}
-        </div>
-
         {/* Restaurant Header Info */}
         <div className="relative z-30 mb-8 px-4 -mt-12 lg:px-0 lg:-mt-14">
           <div className="flex items-end gap-4">
@@ -656,6 +612,50 @@ export default function OutletInfo() {
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Banners — shown behind the scrolling gallery on the customer's restaurant page. No approval needed. */}
+        <div className="mx-4 mb-4 rounded-2xl border border-slate-200 bg-white p-4 lg:mx-0">
+          <div className="mb-3 flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-bold text-gray-900">Banners</h3>
+              <p className="text-xs text-gray-500">Shown in your gallery on the customer app. Add as many as you like.</p>
+            </div>
+            <button
+              onClick={() => bannerImageInputRef.current?.click()}
+              disabled={uploadingBanner}
+              className="flex items-center gap-1.5 rounded-lg bg-black px-3 py-2 text-xs font-medium text-white transition-colors hover:bg-gray-800 disabled:opacity-50"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              <span>{uploadingBanner ? "Uploading..." : "Add banner"}</span>
+            </button>
+            <input
+              ref={bannerImageInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              onChange={(e) => handleBannerAdd(Array.from(e.target.files || []))}
+            />
+          </div>
+          {banners.length > 0 ? (
+            <div className="flex flex-wrap gap-2.5">
+              {banners.map((img, index) => (
+                <div key={index} className="relative h-16 w-28 overflow-hidden rounded-lg border border-slate-200 bg-gray-100">
+                  <img src={img.url} alt={`Banner ${index + 1}`} className="h-full w-full object-cover" />
+                  <button
+                    onClick={() => handleBannerDelete(index)}
+                    disabled={uploadingBanner}
+                    className="absolute right-1 top-1 rounded-full bg-red-500/95 p-1 transition-colors hover:bg-red-600"
+                  >
+                    <Trash2 className="h-3 w-3 text-white" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-gray-400">No banners added yet.</p>
+          )}
         </div>
 
         {/* Info Sections */}

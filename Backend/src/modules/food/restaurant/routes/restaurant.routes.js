@@ -116,6 +116,22 @@ const handleAdvertisementUpload = (req, res, next) => {
     });
 };
 
+// Multer surfaces an over-limit file by erroring mid-stream — without an explicit
+// callback here, that error can leave the connection hanging instead of responding
+// promptly (observed as a client-side timeout with zero server-side trace).
+const handleMultiImageUpload = (fieldName, maxCount) => (req, res, next) => {
+    upload.array(fieldName, maxCount)(req, res, (err) => {
+        if (!err) return next();
+        if (err?.code === 'LIMIT_FILE_SIZE') {
+            return sendError(res, 400, 'File size too large. Maximum 5MB allowed per file.');
+        }
+        if (err?.code === 'LIMIT_UNEXPECTED_FILE') {
+            return sendError(res, 400, `Too many files. Maximum ${maxCount} allowed.`);
+        }
+        return sendError(res, 400, err.message || 'Failed to upload files');
+    });
+};
+
 /**
  * Privileged restaurant APIs: approved outlets, or previously-approved outlets
  * awaiting re-verification. First-time pending accounts are limited to /current.
@@ -256,7 +272,7 @@ router.post(
     authMiddleware,
     requireRestaurant,
     requireApprovedRestaurant,
-    upload.array('files', 20),
+    handleMultiImageUpload('files', 20),
     async (req, res, next) => {
         await invalidateCache('restaurant_detail:*');
         next();
@@ -268,7 +284,7 @@ router.post(
     authMiddleware,
     requireRestaurant,
     requireApprovedRestaurant,
-    upload.array('files', 20),
+    handleMultiImageUpload('files', 20),
     async (req, res, next) => {
         await invalidateCache('restaurant_menu:*');
     await invalidateCache('restaurant_menus_batch:*');
@@ -282,7 +298,7 @@ router.post(
     authMiddleware,
     requireRestaurant,
     requireApprovedRestaurant,
-    upload.array('files', 20),
+    handleMultiImageUpload('files', 20),
     async (req, res, next) => {
         await invalidateCache('restaurant_detail:*');
         next();
