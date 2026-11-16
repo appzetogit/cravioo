@@ -111,6 +111,7 @@ const pricingSchema = new mongoose.Schema(
         packagingFeeGst: { type: Number, default: 0, min: 0 },
         packagingFeeGstRate: { type: Number, default: 0, min: 0 },
         packagingFee: { type: Number, default: 0, min: 0 },
+        packagingFeeOwner: { type: String, enum: ['restaurant', 'admin'], default: 'restaurant' },
         deliveryFee: { type: Number, default: 0, min: 0 },
         totalDeliveryFee: { type: Number, default: 0, min: 0 },
         userDeliveryFee: { type: Number, default: 0, min: 0 },

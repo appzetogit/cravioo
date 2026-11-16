@@ -114,6 +114,9 @@ export default function RestaurantReport() {
       { key: "totalDiscountGiven", label: "Total Discount Given" },
       { key: "totalAdminCommission", label: "Total Admin Commission" },
       { key: "totalVATTAX", label: "Total VAT/TAX" },
+      { key: "packagingFeeOwner", label: "Packaging Fee Goes To" },
+      { key: "restaurantPackagingFeeShare", label: "Restaurant Packaging Fee" },
+      { key: "adminPackagingFeeShare", label: "Admin Packaging Fee" },
       { key: "averageRatings", label: "Average Ratings" },
       { key: "zoneName", label: "Zone" },
     ]
@@ -129,6 +132,9 @@ export default function RestaurantReport() {
         totalDiscountGiven: restaurant.totalDiscountGiven || "\u20B90.00",
         totalAdminCommission: restaurant.totalAdminCommission || "\u20B90.00",
         totalVATTAX: restaurant.totalVATTAX || "\u20B90.00",
+        packagingFeeOwner: restaurant.packagingFeeOwner === "admin" ? "Admin" : "Restaurant",
+        restaurantPackagingFeeShare: restaurant.restaurantPackagingFeeShare || "\u20B90.00",
+        adminPackagingFeeShare: restaurant.adminPackagingFeeShare || "\u20B90.00",
         averageRatings: rating === 0 ? "0 (0 reviews)" : `${rating.toFixed(1)} (${reviews} reviews)`,
         zoneName: restaurant.zoneName || "N/A",
       }
@@ -483,6 +489,12 @@ export default function RestaurantReport() {
                   </th>
                   <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
                     <div className="flex items-center gap-1">
+                      <span>Packaging Fee</span>
+                      <ArrowUpDown className="w-3 h-3 text-slate-400" />
+                    </div>
+                  </th>
+                  <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
+                    <div className="flex items-center gap-1">
                       <span>Average Ratings</span>
                       <ArrowUpDown className="w-3 h-3 text-slate-400" />
                     </div>
@@ -492,7 +504,7 @@ export default function RestaurantReport() {
               <tbody className="bg-white divide-y divide-slate-100">
                 {filteredRestaurants.length === 0 ? (
                   <tr>
-                    <td colSpan={12} className="px-6 py-20 text-center">
+                    <td colSpan={13} className="px-6 py-20 text-center">
                       <div className="flex flex-col items-center justify-center">
                         <p className="text-lg font-semibold text-slate-700 mb-1">No Data Found</p>
                         <p className="text-sm text-slate-500">No restaurants match your search</p>
@@ -558,6 +570,19 @@ export default function RestaurantReport() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="text-sm text-slate-700">{restaurant.totalVATTAX}</span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {restaurant.packagingFeeOwner === "admin" ? (
+                          <div className="flex flex-col">
+                            <span className="text-sm font-medium text-purple-700">{restaurant.adminPackagingFeeShare}</span>
+                            <span className="text-[10px] font-bold uppercase tracking-wide text-purple-500">Admin</span>
+                          </div>
+                        ) : (
+                          <div className="flex flex-col">
+                            <span className="text-sm font-medium text-slate-900">{restaurant.restaurantPackagingFeeShare}</span>
+                            <span className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Restaurant</span>
+                          </div>
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="text-sm text-slate-700">{renderStars(restaurant.averageRatings, restaurant.reviews)}</span>

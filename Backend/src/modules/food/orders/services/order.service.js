@@ -2859,6 +2859,8 @@ export async function calculateOrder(userId, dto, options = {}) {
       tax,
       ...gstBreakdown,
       packagingFee,
+      /** Who keeps packagingFee's net amount at settlement — 'restaurant' or 'admin'. See restaurant.model.js. */
+      packagingFeeOwner: primaryRestaurant.packagingFeeOwner === 'admin' ? 'admin' : 'restaurant',
       deliveryFee: selectedDeliveryFee,
       totalDeliveryFee,
       userDeliveryFee,
@@ -3136,6 +3138,7 @@ export async function createOrder(userId, dto) {
     packagingFeeGst: Math.max(0, Number(serverPricing.packagingFeeGst || 0)),
     packagingFeeGstRate: Math.max(0, Number(serverPricing.packagingFeeGstRate || 0)),
     packagingFee: Math.max(0, Number(serverPricing.packagingFee || 0)),
+    packagingFeeOwner: serverPricing.packagingFeeOwner === 'admin' ? 'admin' : 'restaurant',
     deliveryFee: resolvedDeliveryFee,
     totalDeliveryFee: useExpressMixedFees
       ? resolvedDeliveryFee

@@ -111,6 +111,9 @@ export default function OrderDetails({ orderId: propOrderId, isSidebar = false, 
             ) ?? 0
 
           const packagingFee = firstNumber(pricing.packagingFee, order.packagingFee) ?? 0
+          // When admin owns the packaging fee for this restaurant, the restaurant panel
+          // never shows or counts it — not on the bill line, not in Restaurant Earning.
+          const restaurantPackagingFee = pricing.packagingFeeOwner === 'admin' ? 0 : packagingFee
           const deliveryFee = firstNumber(pricing.deliveryFee, order.deliveryFee) ?? 0
           const platformFee = firstNumber(pricing.platformFee, order.platformFee) ?? 0
           const discount = firstNumber(pricing.discount, order.discount) ?? 0
@@ -227,7 +230,7 @@ export default function OrderDetails({ orderId: propOrderId, isSidebar = false, 
             billing: {
               itemSubtotal,
               taxes,
-              packagingFee,
+              packagingFee: restaurantPackagingFee,
               deliveryFee,
               platformFee,
               discount,

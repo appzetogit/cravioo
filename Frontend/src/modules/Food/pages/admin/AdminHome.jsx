@@ -238,6 +238,12 @@ export default function AdminHome() {
   const ptQuickShare = Number(ptBreakdown.quickPlatformShare || 0)
   // totalAdminEarnings already = ptBreakdown.net (source of truth: FoodTransaction snapshot)
 
+  // Packaging fee split by who keeps it per restaurant (restaurant default, or admin — see
+  // Restaurant Commission screen's "Packaging Fee Goes To" toggle).
+  const packagingFeeBreakdown = dashboardData?.packagingFee || {}
+  const packagingFeeAdminShare = Number(packagingFeeBreakdown.adminShare || 0)
+  const packagingFeeRestaurantShare = Number(packagingFeeBreakdown.restaurantShare || 0)
+
   const activityFeed = dashboardData?.liveSignals || []
   const topCustomers = dashboardData?.topCustomers || []
   const platformFeePlusCommissionLabel = `Platform fee: ${formatCurrency(ptPlatformFee)}`
@@ -410,6 +416,17 @@ export default function AdminHome() {
             iconBg="bg-emerald-100/80"
             iconColor="text-emerald-700"
             to="/admin/food/transaction-report"
+            canAccess={canAccessPath}
+          />
+          <StatCard
+            title="Packaging Fee (Admin's)"
+            value={formatCurrency(packagingFeeAdminShare, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            helper={`Restaurant's share: ${formatCurrency(packagingFeeRestaurantShare)} · set per restaurant`}
+            icon={<IndianRupee className="h-3.5 w-3.5 sm:h-4 sm:w-4" />}
+            cardBg="bg-[#FAF5FF] border-purple-200/60 hover:border-purple-300/80"
+            iconBg="bg-purple-100/80"
+            iconColor="text-purple-700"
+            to="/admin/food/restaurants/commission"
             canAccess={canAccessPath}
           />
           <StatCard

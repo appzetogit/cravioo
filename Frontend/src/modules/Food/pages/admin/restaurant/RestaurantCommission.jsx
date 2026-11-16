@@ -36,6 +36,7 @@ export default function RestaurantCommission() {
   const [commissionInput, setCommissionInput] = useState("")
   const [editPricingModel, setEditPricingModel] = useState("commission")
   const [userCommissionInput, setUserCommissionInput] = useState("")
+  const [editPackagingFeeOwner, setEditPackagingFeeOwner] = useState("restaurant")
   
   // Multi-select state (only used in "all" tab)
   const [selectedIds, setSelectedIds] = useState(new Set())
@@ -82,6 +83,7 @@ export default function RestaurantCommission() {
         commissionPercentage: resolveRestaurantCommissionPercentage(res.commissionPercentage),
         pricingModel: res.pricingModel === "userCommission" ? "userCommission" : "commission",
         userCommissionPercentage: res.userCommissionPercentage || 0,
+        packagingFeeOwner: res.packagingFeeOwner === "admin" ? "admin" : "restaurant",
         // There is no `isActive` DB field — `status` is the real source of truth for
         // whether a restaurant is visible on the app (status: 'rejected' = hidden).
         isActive: (res.status || "approved") !== "rejected",
@@ -270,6 +272,7 @@ export default function RestaurantCommission() {
     setEditPricingModel(restaurant.pricingModel === "userCommission" ? "userCommission" : "commission")
     setCommissionInput(String(restaurant.commissionPercentage))
     setUserCommissionInput(String(restaurant.userCommissionPercentage || ""))
+    setEditPackagingFeeOwner(restaurant.packagingFeeOwner === "admin" ? "admin" : "restaurant")
     setIsEditModalOpen(true)
   }
 
@@ -288,8 +291,8 @@ export default function RestaurantCommission() {
     try {
       setIsSaving(true)
       const payload = isUserCommission
-        ? { pricingModel: "userCommission", userCommissionPercentage: pct }
-        : { pricingModel: "commission", commissionPercentage: pct }
+        ? { pricingModel: "userCommission", userCommissionPercentage: pct, packagingFeeOwner: editPackagingFeeOwner }
+        : { pricingModel: "commission", commissionPercentage: pct, packagingFeeOwner: editPackagingFeeOwner }
       await adminAPI.updateRestaurant(selectedRestaurant._id || selectedRestaurant.id, payload)
 
       setRestaurants(prev =>
@@ -603,6 +606,11 @@ export default function RestaurantCommission() {
                             {!res.isActive && (
                               <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-red-100 text-red-700 text-[10px] font-bold uppercase tracking-wide">
                                 Disabled
+                              </span>
+                            )}
+                            {res.packagingFeeOwner === "admin" && (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 text-[10px] font-bold uppercase tracking-wide">
+                                Packaging: Admin
                               </span>
                             )}
                           </span>
@@ -923,6 +931,41 @@ export default function RestaurantCommission() {
                     </div>
                   </div>
                 )}
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">
+                    Packaging Fee Goes To
+                  </label>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setEditPackagingFeeOwner("restaurant")}
+                      className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                        editPackagingFeeOwner !== "admin"
+                          ? "bg-blue-600 text-white border-blue-600"
+                          : "bg-white text-slate-700 border-slate-300"
+                      }`}
+                    >
+                      Restaurant
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditPackagingFeeOwner("admin")}
+                      className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                        editPackagingFeeOwner === "admin"
+                          ? "bg-amber-500 text-white border-amber-500"
+                          : "bg-white text-slate-700 border-slate-300"
+                      }`}
+                    >
+                      Admin
+                    </button>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1.5">
+                    Customer pays the same packaging fee either way. When set to Admin, this
+                    restaurant never earns or sees the packaging fee — it goes to platform
+                    profit instead. Applies to every item in this restaurant's orders.
+                  </p>
+                </div>
               </div>
 
               <DialogFooter className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex flex-row items-center justify-end gap-3">

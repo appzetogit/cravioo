@@ -69,6 +69,7 @@ const IDENTITY_SELECT = [
   'commissionPercentage',
   'pricingModel',
   'userCommissionPercentage',
+  'packagingFeeOwner',
   'quickDeliveryEnabled',
   'scheduleOrderEnabled',
   'isAcceptingOrders',
@@ -125,6 +126,8 @@ export function toNormalizedFoodRestaurantSource(restaurant) {
     /** True when this restaurant is on the user-commission model — see commission.constants.js */
     isUserCommissionRestaurant: isUserCommissionRestaurant(restaurant),
     userCommissionPercentage: resolveUserCommissionPercentage(restaurant.userCommissionPercentage),
+    /** Who keeps packaging fee for this restaurant's orders — 'restaurant' (default) or 'admin'. */
+    packagingFeeOwner: restaurant.packagingFeeOwner === 'admin' ? 'admin' : 'restaurant',
     quickDeliveryEnabled: restaurant.quickDeliveryEnabled === true,
     scheduleOrderEnabled: restaurant.scheduleOrderEnabled !== false,
     isAcceptingOrders: restaurant.isAcceptingOrders !== false,

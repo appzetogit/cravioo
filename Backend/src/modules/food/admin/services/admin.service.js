@@ -447,7 +447,7 @@ export async function getRestaurants(query) {
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(limit)
-            .select('restaurantId restaurantName location area city profileImage coverImages menuImages status ownerName ownerPhone zoneId commissionPercentage pricingModel userCommissionPercentage isListed productCount pureVegRestaurant createdAt updatedAt showWithoutMenu displayPosition')
+            .select('restaurantId restaurantName location area city profileImage coverImages menuImages status ownerName ownerPhone zoneId commissionPercentage pricingModel userCommissionPercentage packagingFeeOwner isListed productCount pureVegRestaurant createdAt updatedAt showWithoutMenu displayPosition')
             // Note: there is no `isActive` schema field — `status` ('approved'/'rejected') is
             // the real source of truth for whether a restaurant is visible on the app.
             .populate('zoneId', 'name zoneName')
@@ -715,6 +715,34 @@ export async function getDashboardStats(query = {}) {
                             ]
                         },
                         { $ifNull: ['$amounts.quickPlatformShare', 0] },
+                        0
+                    ]
+                }
+            },
+            txRestaurantPackagingFeeSum: {
+                $sum: {
+                    $cond: [
+                        {
+                            $or: [
+                                { $in: ['$status', ['captured', 'settled']] },
+                                { $eq: ['$order.orderStatus', 'delivered'] }
+                            ]
+                        },
+                        { $ifNull: ['$amounts.restaurantPackagingFeeShare', 0] },
+                        0
+                    ]
+                }
+            },
+            txAdminPackagingFeeSum: {
+                $sum: {
+                    $cond: [
+                        {
+                            $or: [
+                                { $in: ['$status', ['captured', 'settled']] },
+                                { $eq: ['$order.orderStatus', 'delivered'] }
+                            ]
+                        },
+                        { $ifNull: ['$amounts.adminPackagingFeeShare', 0] },
                         0
                     ]
                 }
@@ -1132,6 +1160,8 @@ export async function getDashboardStats(query = {}) {
     const txPlatformFee = Number(txTotals.txPlatformFeeSum || 0);
     const txRestaurantCommission = Number(txTotals.txRestaurantCommissionSum || 0);
     const txQuickPlatformShare = Number(txTotals.txQuickPlatformShareSum || 0);
+    const txRestaurantPackagingFee = Number(txTotals.txRestaurantPackagingFeeSum || 0);
+    const txAdminPackagingFee = Number(txTotals.txAdminPackagingFeeSum || 0);
 
     // Use frozen tx value as source of truth (matches report Admin Earning exactly).
     const finalTotalAdminEarnings =
@@ -1188,6 +1218,12 @@ export async function getDashboardStats(query = {}) {
             restaurantCommission: finalCommissionTotal,
             quickPlatformShare: txQuickPlatformShare,
             net: finalTotalAdminEarnings,
+        },
+        /** Packaging fee split by who keeps it (admin.packagingFeeOwner is per-restaurant). */
+        packagingFee: {
+            restaurantShare: txRestaurantPackagingFee,
+            adminShare: txAdminPackagingFee,
+            total: txRestaurantPackagingFee + txAdminPackagingFee,
         },
         restaurants: {
             total: Number(restaurantsTotal || 0),
@@ -1693,7 +1729,7 @@ export async function getRestaurantReport(query = {}) {
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(limit)
-            .select('restaurantName profileImage rating totalRatings status zoneId')
+            .select('restaurantName profileImage rating totalRatings status zoneId packagingFeeOwner')
             .populate('zoneId', 'name zoneName')
             .lean(),
         FoodRestaurant.countDocuments(restaurantFilter)
@@ -1774,6 +1810,8 @@ export async function getRestaurantReport(query = {}) {
                     txPlatformNetProfit: { $sum: { $ifNull: ['$amounts.platformNetProfit', 0] } },
                     txRestaurantShare:    { $sum: { $ifNull: ['$amounts.restaurantShare', 0] } },
                     txRestaurantCommission: { $sum: { $ifNull: ['$amounts.restaurantCommission', 0] } },
+                    txRestaurantPackagingFeeShare: { $sum: { $ifNull: ['$amounts.restaurantPackagingFeeShare', 0] } },
+                    txAdminPackagingFeeShare: { $sum: { $ifNull: ['$amounts.adminPackagingFeeShare', 0] } },
                     txAdminDiscountShare:  { $sum: { $ifNull: ['$amounts.adminDiscountShare', 0] } },
                     txRestDiscountShare:   { $sum: { $ifNull: ['$amounts.restaurantDiscountShare', 0] } },
                     txQuickRestaurantShareRealized: {
@@ -1818,6 +1856,8 @@ export async function getRestaurantReport(query = {}) {
                 txPlatformNetProfit: Number(x.txPlatformNetProfit || 0),
                 txRestaurantShare: Number(x.txRestaurantShare || 0),
                 txRestaurantCommission: Number(x.txRestaurantCommission || 0),
+                txRestaurantPackagingFeeShare: Number(x.txRestaurantPackagingFeeShare || 0),
+                txAdminPackagingFeeShare: Number(x.txAdminPackagingFeeShare || 0),
                 txAdminDiscountShare: Number(x.txAdminDiscountShare || 0),
                 txRestDiscountShare: Number(x.txRestDiscountShare || 0),
                 txQuickRestaurantShareRealized: Number(x.txQuickRestaurantShareRealized || 0),
@@ -1896,6 +1936,9 @@ export async function getRestaurantReport(query = {}) {
             totalRestaurantCommission: formatCurrency(restaurantCommissionForDisplay),
             restaurantEarning: formatCurrency(Math.max(0, restaurantEarning)),
             totalVATTAX: formatCurrency(o.totalVATTAX),
+            packagingFeeOwner: restaurant.packagingFeeOwner === 'admin' ? 'admin' : 'restaurant',
+            restaurantPackagingFeeShare: formatCurrency(tx?.txRestaurantPackagingFeeShare || 0),
+            adminPackagingFeeShare: formatCurrency(tx?.txAdminPackagingFeeShare || 0),
             averageRatings: Number(restaurant.rating || 0),
             reviews: Number(restaurant.totalRatings || 0),
             status: restaurant.status || 'pending',
@@ -4395,6 +4438,15 @@ export async function updateRestaurantById(id, body = {}) {
             }
             doc.userCommissionPercentage = userCommission;
         }
+    }
+
+    // Who keeps the packaging fee for this restaurant's orders — applies to every item
+    // on this restaurant's orders, never configured per food item. See restaurant.model.js.
+    if (body.packagingFeeOwner !== undefined) {
+        if (!['restaurant', 'admin'].includes(body.packagingFeeOwner)) {
+            throw new ValidationError("packagingFeeOwner must be 'restaurant' or 'admin'");
+        }
+        doc.packagingFeeOwner = body.packagingFeeOwner;
     }
 
     await doc.save();

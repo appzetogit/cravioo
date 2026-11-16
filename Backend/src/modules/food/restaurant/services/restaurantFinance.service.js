@@ -334,6 +334,10 @@ function mapTransactionToCycleOrder(tx) {
         0,
         Number(order?.pricing?.total ?? 0) - Number(order?.pricing?.tax ?? 0) || 0
     );
+    // When admin owns packaging fee for this restaurant, the restaurant never sees/
+    // earns it — same customer total, different split (see restaurant.model.js).
+    const packagingFeeGoesToAdmin = order?.pricing?.packagingFeeOwner === 'admin';
+    const restaurantPackagingFee = packagingFeeGoesToAdmin ? 0 : Number(order?.pricing?.packagingFee ?? 0) || 0;
     /**
      * Restaurant-owned gross: item subtotal + packaging only.
      * Delivery/platform fees are platform revenue and must never appear here,
@@ -341,7 +345,7 @@ function mapTransactionToCycleOrder(tx) {
      */
     const restaurantGross = Math.max(
         0,
-        Number(order?.pricing?.subtotal ?? 0) + Number(order?.pricing?.packagingFee ?? 0)
+        Number(order?.pricing?.subtotal ?? 0) + restaurantPackagingFee
     );
     const restaurantShare = Number(tx.amounts?.restaurantShare) || 0;
     const customerPaid = Number(tx.amounts?.totalCustomerPaid) || 0;
@@ -362,10 +366,14 @@ function mapTransactionToCycleOrder(tx) {
         orderTotal: orderTotalExclTax,
         /** Restaurant gross = item subtotal + packaging (excludes platform/delivery fees) */
         restaurantGross,
-        /** Packaging: customer paid `packagingFeeGross` (GST-inclusive); GST goes to the platform, restaurant is credited `packagingFee`. */
-        packagingFee: Number(order?.pricing?.packagingFee ?? 0) || 0,
-        packagingFeeGross: Number(order?.pricing?.packagingFeeGross ?? order?.pricing?.packagingFee ?? 0) || 0,
-        packagingFeeGst: Number(order?.pricing?.packagingFeeGst ?? 0) || 0,
+        /**
+         * Packaging: customer paid `packagingFeeGross` (GST-inclusive); GST goes to the
+         * platform, restaurant is credited `packagingFee` — unless admin owns it for this
+         * restaurant, in which case the restaurant panel shows 0 here entirely.
+         */
+        packagingFee: restaurantPackagingFee,
+        packagingFeeGross: packagingFeeGoesToAdmin ? 0 : Number(order?.pricing?.packagingFeeGross ?? order?.pricing?.packagingFee ?? 0) || 0,
+        packagingFeeGst: packagingFeeGoesToAdmin ? 0 : Number(order?.pricing?.packagingFeeGst ?? 0) || 0,
         /** What the customer paid (incl. tax / fees when present on ledger) */
         totalAmount: customerPaid,
         /** Restaurant earning / share — correct payout field */

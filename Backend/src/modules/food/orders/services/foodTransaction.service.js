@@ -18,7 +18,7 @@ export async function createInitialTransaction(order) {
         ? String(order.orderType)
         : 'food';
     const restaurantId = order?.restaurantId || null;
-    
+
     // Split logic
     const totalCustomerPaid = order.pricing?.total || 0;
     const riderShare = order.riderEarning || 0;
@@ -27,12 +27,18 @@ export async function createInitialTransaction(order) {
     let sellerShare = 0;
     let sellerCommission = 0;
 
+    // Packaging fee's net amount goes to whichever side the restaurant's
+    // packagingFeeOwner is set to — customer always pays the same total either way.
+    const packagingFeeNet = Number(order.pricing?.packagingFee || 0) || 0;
+    const packagingFeeGoesToAdmin = order.pricing?.packagingFeeOwner === 'admin';
+    const restaurantPackagingFeeShare = packagingFeeGoesToAdmin ? 0 : packagingFeeNet;
+
     if (order.orderType === 'mixed') {
         const foodSubtotal = (order.items || [])
             .filter(i => i.type === 'food')
             .reduce((sum, i) => sum + (Number(i.price) * Number(i.quantity)), 0);
-        
-        restaurantNet = foodSubtotal + (order.pricing?.packagingFee || 0);
+
+        restaurantNet = foodSubtotal + restaurantPackagingFeeShare;
 
         // Seller logic (from receivable rules)
         const quickItems = (order.items || []).filter(i => i.type === 'quick');
@@ -51,7 +57,7 @@ export async function createInitialTransaction(order) {
         const quickSubtotal = Number(order.pricing?.subtotal || 0) || 0;
         sellerShare = Math.max(0, quickSubtotal - sellerCommission);
     } else {
-        restaurantNet = (order.pricing?.subtotal || 0) + (order.pricing?.packagingFee || 0);
+        restaurantNet = (order.pricing?.subtotal || 0) + restaurantPackagingFeeShare;
         sellerShare = 0;
         sellerCommission = 0;
     }
@@ -132,7 +138,8 @@ export async function createInitialTransaction(order) {
       baseRiderShare,
       adminDiscountShare,
     });
-    platformNetProfit = Math.max(0, Number(platformNetProfit) || 0) + taxAmount + userCommissionMarkup;
+    platformNetProfit = Math.max(0, Number(platformNetProfit) || 0) + taxAmount + userCommissionMarkup
+        + (packagingFeeGoesToAdmin ? packagingFeeNet : 0);
 
     restaurantNet = Math.round((Number(restaurantNet) || 0) * 100) / 100;
     platformNetProfit = Math.round((Number(platformNetProfit) || 0) * 100) / 100;
@@ -176,6 +183,7 @@ export async function createInitialTransaction(order) {
             packagingFeeGst: Number(order.pricing?.packagingFeeGst || 0) || 0,
             packagingFeeGstRate: Number(order.pricing?.packagingFeeGstRate || 0) || 0,
             packagingFee: Number(order.pricing?.packagingFee || 0) || 0,
+            packagingFeeOwner: packagingFeeGoesToAdmin ? 'admin' : 'restaurant',
             deliveryFee: Number(order.pricing?.deliveryFee || 0) || 0,
             totalDeliveryFee,
             userDeliveryFee: Number(order.pricing?.userDeliveryFee ?? order.pricing?.deliveryFee ?? 0) || 0,
@@ -216,6 +224,9 @@ export async function createInitialTransaction(order) {
             sellerCommission: Math.max(0, sellerCommission),
             riderShare,
             platformNetProfit,
+            // Split out for admin reporting — always sums to packagingFeeNet, never both.
+            restaurantPackagingFeeShare,
+            adminPackagingFeeShare: packagingFeeGoesToAdmin ? packagingFeeNet : 0,
             taxAmount: order.pricing?.tax || 0,
             adminDiscountShare,
             restaurantDiscountShare,
@@ -494,6 +505,10 @@ export async function applyRefundToTransaction(
         Math.round((Number(amounts.restaurantCommission) || 0) * remainRatio * 100) / 100;
     amounts.userCommissionMarkup =
         Math.round((Number(amounts.userCommissionMarkup) || 0) * remainRatio * 100) / 100;
+    amounts.restaurantPackagingFeeShare =
+        Math.round((Number(amounts.restaurantPackagingFeeShare) || 0) * remainRatio * 100) / 100;
+    amounts.adminPackagingFeeShare =
+        Math.round((Number(amounts.adminPackagingFeeShare) || 0) * remainRatio * 100) / 100;
     amounts.taxAmount =
         Math.round((Number(amounts.taxAmount) || 0) * remainRatio * 100) / 100;
     amounts.adminDiscountShare =
