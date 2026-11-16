@@ -15,6 +15,7 @@ import {
     uploadRestaurantMenuImageController,
     uploadRestaurantCoverImagesController,
     uploadRestaurantMenuImagesController,
+    uploadRestaurantBannersController,
     getRestaurantComplaintsController,
     deleteRestaurantAccountController,
     getRestaurantReferralStatsController,
@@ -275,6 +276,18 @@ router.post(
         next();
     },
     uploadRestaurantMenuImagesController
+);
+router.post(
+    '/profile/banners',
+    authMiddleware,
+    requireRestaurant,
+    requireApprovedRestaurant,
+    upload.array('files', 20),
+    async (req, res, next) => {
+        await invalidateCache('restaurant_detail:*');
+        next();
+    },
+    uploadRestaurantBannersController
 );
 
 const invalidateCategoryCacheMiddleware = async (req, res, next) => {

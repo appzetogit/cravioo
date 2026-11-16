@@ -238,6 +238,11 @@ const restaurantSchema = new mongoose.Schema(
       type: [String],
       default: [],
     },
+    /** Restaurant-uploaded banners shown in the public restaurant-detail gallery — no admin approval needed. */
+    banners: {
+      type: [String],
+      default: [],
+    },
     profileImage: {
       type: String,
     },
@@ -425,6 +430,19 @@ const restaurantSchema = new mongoose.Schema(
       default: 0,
       min: 0,
       max: 100
+    },
+    /**
+     * Who keeps the packaging fee the customer pays for this restaurant's orders.
+     * 'restaurant' (default, existing behavior): packaging fee's net amount goes into
+     * the restaurant's payout, same as today. 'admin': the customer still pays the same
+     * packaging fee, but its net amount goes to platform profit instead — the restaurant
+     * never sees it in its earnings/order breakdown. Set per-restaurant by admin, applies
+     * to every item on that restaurant's orders (not settable per food item).
+     */
+    packagingFeeOwner: {
+      type: String,
+      enum: ['restaurant', 'admin'],
+      default: 'restaurant'
     },
     /** Admin-only: which restaurants are connected to PetPooja for POS billing/invoices. */
     petpooja: {

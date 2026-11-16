@@ -1514,6 +1514,18 @@ export const restaurantAPI = {
       contextModule: "restaurant",
     });
   },
+  /** Banners shown in the customer-facing restaurant gallery — no approval needed. */
+  uploadBanners: (files = []) => {
+    const normalizedFiles = Array.from(files || []).filter(Boolean);
+    if (normalizedFiles.length === 0) {
+      return Promise.reject(new Error("At least one file is required"));
+    }
+    const formData = new FormData();
+    normalizedFiles.forEach((file) => formData.append("files", file));
+    return apiClient.post("/food/restaurant/profile/banners", formData, {
+      contextModule: "restaurant",
+    });
+  },
   /** Delete current restaurant account. */
   deleteAccount: () =>
     apiClient.delete("/food/restaurant/delete-account", {

@@ -14,12 +14,15 @@ export const buildRestaurantGallery = (restaurant) => {
   const covers = (Array.isArray(restaurant.coverImages) ? restaurant.coverImages : [])
     .map(toImageUrl)
     .filter(Boolean);
+  const banners = (Array.isArray(restaurant.banners) ? restaurant.banners : [])
+    .map(toImageUrl)
+    .filter(Boolean);
   const menus = (Array.isArray(restaurant.menuImages) ? restaurant.menuImages : [])
     .map(toImageUrl)
     .filter(Boolean);
   const profile = toImageUrl(restaurant.profileImage);
   const primary = toImageUrl(restaurant.image);
 
-  const combined = [...covers, ...menus, profile, primary].filter(Boolean);
+  const combined = [...covers, ...banners, ...menus, profile, primary].filter(Boolean);
   return combined.filter((url, index) => combined.indexOf(url) === index);
 };

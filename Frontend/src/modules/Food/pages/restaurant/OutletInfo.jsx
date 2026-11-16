@@ -57,6 +57,8 @@ export default function OutletInfo() {
   const [mainImage, setMainImage] = useState("")
   const [thumbnailImage, setThumbnailImage] = useState("")
   const [coverImages, setCoverImages] = useState([])
+  const [banners, setBanners] = useState([])
+  const [uploadingBanner, setUploadingBanner] = useState(false)
   const [showEditNameDialog, setShowEditNameDialog] = useState(false)
   const [editNameValue, setEditNameValue] = useState("")
   const [showEditFoodTypeDialog, setShowEditFoodTypeDialog] = useState(false)
@@ -74,6 +76,7 @@ export default function OutletInfo() {
   
   const profileImageInputRef = useRef(null)
   const menuImageInputRef = useRef(null)
+  const bannerImageInputRef = useRef(null)
   const [activePicker, setActivePicker] = useState(null) // { type: 'profile' | 'cover', ref: any, title: string, multiple: boolean }
 
   // Format address from location object
@@ -185,6 +188,10 @@ export default function OutletInfo() {
             setMainImage(formattedMenus[0].url)
           } else {
             setCoverImages([])
+          }
+
+          if (data.banners && Array.isArray(data.banners)) {
+            setBanners(data.banners.map(img => typeof img === 'string' ? { url: img } : img))
           }
         }
       } catch (error) {
@@ -366,6 +373,49 @@ export default function OutletInfo() {
     }
   }
 
+  // Add banners — no approval needed, applied live (unlike cover/menu images).
+  const handleBannerAdd = async (files) => {
+    if (!files || (Array.isArray(files) && files.length === 0)) return
+    const fileArray = Array.isArray(files) ? files : [files]
+
+    try {
+      setUploadingBanner(true)
+      const uploadResponse = await restaurantAPI.uploadBanners(fileArray)
+      const uploaded = uploadResponse?.data?.data?.banners || []
+      if (uploaded.length > 0) {
+        const allBanners = [...banners]
+        uploaded.forEach((b) => {
+          if (b?.url && !allBanners.find((img) => img.url === b.url)) {
+            allBanners.push({ url: b.url, publicId: b.publicId || null })
+          }
+        })
+        setBanners(allBanners)
+        toast.success(`Successfully uploaded ${uploaded.length} banner(s)`)
+      }
+    } catch (error) {
+      toast.error(error?.response?.data?.message || "Failed to upload banner(s)")
+    } finally {
+      setUploadingBanner(false)
+    }
+  }
+
+  // Handle banner deletion
+  const handleBannerDelete = async (indexToDelete) => {
+    if (!window.confirm("Are you sure you want to delete this banner?")) return
+
+    try {
+      setUploadingBanner(true)
+      const updatedBanners = banners.filter((_, index) => index !== indexToDelete)
+      await restaurantAPI.updateProfile({ banners: updatedBanners.map((img) => img.url) })
+      setBanners(updatedBanners)
+      toast.success("Banner deleted successfully")
+    } catch (error) {
+      toast.error("Failed to delete banner.")
+    } finally {
+      setUploadingBanner(false)
+    }
+  }
+
   // Handle edit name dialog
   const handleOpenEditDialog = () => {
     setEditNameValue(restaurantName)
@@ -515,6 +565,50 @@ export default function OutletInfo() {
             </div>
           )}
 
+        </div>
+
+        {/* Banners — shown behind the scrolling gallery on the customer's restaurant page. No approval needed. */}
+        <div className="mx-4 mt-4 rounded-2xl border border-slate-200 bg-white p-4 lg:mx-0">
+          <div className="mb-3 flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-bold text-gray-900">Banners</h3>
+              <p className="text-xs text-gray-500">Shown in your gallery on the customer app. Add as many as you like.</p>
+            </div>
+            <button
+              onClick={() => bannerImageInputRef.current?.click()}
+              disabled={uploadingBanner}
+              className="flex items-center gap-1.5 rounded-lg bg-black px-3 py-2 text-xs font-medium text-white transition-colors hover:bg-gray-800 disabled:opacity-50"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              <span>{uploadingBanner ? "Uploading..." : "Add banner"}</span>
+            </button>
+            <input
+              ref={bannerImageInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              onChange={(e) => handleBannerAdd(Array.from(e.target.files || []))}
+            />
+          </div>
+          {banners.length > 0 ? (
+            <div className="flex flex-wrap gap-2.5">
+              {banners.map((img, index) => (
+                <div key={index} className="relative h-16 w-28 overflow-hidden rounded-lg border border-slate-200 bg-gray-100">
+                  <img src={img.url} alt={`Banner ${index + 1}`} className="h-full w-full object-cover" />
+                  <button
+                    onClick={() => handleBannerDelete(index)}
+                    disabled={uploadingBanner}
+                    className="absolute right-1 top-1 rounded-full bg-red-500/95 p-1 transition-colors hover:bg-red-600"
+                  >
+                    <Trash2 className="h-3 w-3 text-white" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-gray-400">No banners added yet.</p>
+          )}
         </div>
 
         {/* Restaurant Header Info */}

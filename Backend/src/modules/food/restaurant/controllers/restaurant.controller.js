@@ -9,6 +9,7 @@ import {
     uploadRestaurantMenuImage,
     uploadRestaurantCoverImages,
     uploadRestaurantMenuImages,
+    uploadRestaurantBanners,
     listPublicOffers,
     getRestaurantComplaints,
     deleteRestaurantAccount,
@@ -212,6 +213,16 @@ export const uploadRestaurantMenuImagesController = async (req, res, next) => {
         const restaurantId = req.user?.userId;
         const result = await uploadRestaurantMenuImages(restaurantId, req.files || []);
         return sendResponse(res, 200, 'Menu photos uploaded successfully', result);
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const uploadRestaurantBannersController = async (req, res, next) => {
+    try {
+        const restaurantId = req.user?.userId;
+        const result = await uploadRestaurantBanners(restaurantId, req.files || []);
+        return sendResponse(res, 200, 'Banners uploaded successfully', result);
     } catch (error) {
         next(error);
     }

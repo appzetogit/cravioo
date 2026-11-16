@@ -1665,6 +1665,7 @@ export const getCurrentRestaurantProfile = async (restaurantId) => {
                 'profileImage',
                 'coverImages',
                 'menuImages',
+                'banners',
                 'openingTime',
                 'closingTime',
                 'openDays',
@@ -1828,7 +1829,7 @@ export const updateRestaurantProfile = async (restaurantId, body = {}) => {
     }
 
     const currentRestaurant = await FoodRestaurant.findById(restaurantId)
-        .select('restaurantName restaurantNameNormalized ownerPhone ownerPhoneDigits ownerPhoneLast10 primaryContactNumber primaryContactNumberLast10 status fssaiNumber fssaiImage fssaiExpiry zoneId wasEverApproved approvedAt isActive reVerification pendingProfileChanges location addressLine1 addressLine2 area city state pincode landmark accountHolderName accountNumber ifscCode accountType upiId upiQrImage profileImage coverImages menuImages cuisines ownerName ownerEmail pureVegRestaurant panNumber nameOnPan panImage gstRegistered gstNumber gstLegalName gstAddress gstImage')
+        .select('restaurantName restaurantNameNormalized ownerPhone ownerPhoneDigits ownerPhoneLast10 primaryContactNumber primaryContactNumberLast10 status fssaiNumber fssaiImage fssaiExpiry zoneId wasEverApproved approvedAt isActive reVerification pendingProfileChanges location addressLine1 addressLine2 area city state pincode landmark accountHolderName accountNumber ifscCode accountType upiId upiQrImage profileImage coverImages menuImages banners cuisines ownerName ownerEmail pureVegRestaurant panNumber nameOnPan panImage gstRegistered gstNumber gstLegalName gstAddress gstImage')
         .lean();
 
     if (!currentRestaurant) {
@@ -2147,6 +2148,18 @@ export const updateRestaurantProfile = async (restaurantId, body = {}) => {
 
     if (body.profileImage !== undefined) {
         update.profileImage = toUrl(body.profileImage) || '';
+    }
+
+    // Banners are customer-facing gallery images with no approval workflow (unlike
+    // coverImages/menuImages above) — always applied live, never staged for review.
+    if (body.banners !== undefined) {
+        if (!Array.isArray(body.banners)) {
+            throw new ValidationError('banners must be an array');
+        }
+        update.banners = body.banners
+            .map((m) => toUrl(m))
+            .filter(Boolean)
+            .slice(0, 20);
     }
 
     if (body.panNumber !== undefined) {
@@ -2542,6 +2555,49 @@ export const uploadRestaurantMenuImages = async (restaurantId, files = []) => {
         message: staged
             ? 'Menu images submitted for admin approval. Customers still see your current images until approved.'
             : undefined,
+    };
+};
+
+/**
+ * Restaurant banners shown in the public restaurant-detail gallery — unlike cover/menu
+ * images, these never need admin approval and apply live immediately.
+ */
+export const uploadRestaurantBanners = async (restaurantId, files = []) => {
+    if (!restaurantId) throw new ValidationError('Invalid restaurant id');
+    if (!Array.isArray(files) || files.length === 0) {
+        throw new ValidationError('At least one image file is required');
+    }
+
+    const validFiles = files.filter((file) => file?.buffer);
+    if (validFiles.length === 0) {
+        throw new ValidationError('At least one valid image file is required');
+    }
+
+    const currentRestaurant = await FoodRestaurant.findById(restaurantId)
+        .select('banners')
+        .lean();
+    if (!currentRestaurant) throw new ValidationError('Restaurant not found');
+
+    const uploadedUrls = await Promise.all(
+        validFiles.slice(0, 20).map((file) => uploadImageBuffer(file.buffer, 'food/restaurants/banners'))
+    );
+    const existingBanners = Array.isArray(currentRestaurant.banners)
+        ? currentRestaurant.banners.map((image) => toUrl(image)).filter(Boolean)
+        : [];
+    const nextBanners = [...existingBanners];
+
+    uploadedUrls.forEach((url) => {
+        if (!nextBanners.includes(url)) nextBanners.push(url);
+    });
+
+    await FoodRestaurant.findByIdAndUpdate(
+        restaurantId,
+        { $set: { banners: nextBanners.slice(0, 20) } },
+        { new: true }
+    ).lean();
+
+    return {
+        banners: uploadedUrls.map((url) => ({ url, publicId: null })),
     };
 };
 
