@@ -22,3 +22,10 @@ fudron_user/
 
 config.bat
 node_modules
+
+# Flutter apps live in their own repo (Akshatk88/Cravioo-Apps)
+Cravioo_delivery/
+Cravioo_restaurent/
+Cravioo_user/
+*.jks
+**/android/key.properties
