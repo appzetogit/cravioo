@@ -319,6 +319,9 @@ const toRestaurantProfile = (doc) => {
     const coverImages = Array.isArray(doc.coverImages)
         ? doc.coverImages.map((m) => toUrl(m)).filter(Boolean).map((url) => ({ url, publicId: null }))
         : [];
+    const banners = Array.isArray(doc.banners)
+        ? doc.banners.map((m) => toUrl(m)).filter(Boolean)
+        : [];
 
     return {
         id: doc._id,
@@ -361,6 +364,7 @@ const toRestaurantProfile = (doc) => {
         profileImage: doc.profileImage ? { url: doc.profileImage } : null,
         menuImages,
         coverImages,
+        banners,
         openingTime: normalizeRestaurantTime(doc.openingTime) || null,
         closingTime: normalizeRestaurantTime(doc.closingTime) || null,
         openDays: Array.isArray(doc.openDays) ? doc.openDays : [],
