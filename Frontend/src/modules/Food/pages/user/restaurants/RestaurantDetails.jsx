@@ -489,6 +489,12 @@ function RestaurantDetailsContent() {
                 : Array.isArray(onboardingStep2?.menuImageUrls)
                   ? onboardingStep2.menuImageUrls
                   : []
+          const normalizedBanners =
+            Array.isArray(actualRestaurant?.banners) && actualRestaurant.banners.length > 0
+              ? actualRestaurant.banners
+              : Array.isArray(apiRestaurant?.banners) && apiRestaurant.banners.length > 0
+                ? apiRestaurant.banners
+                : []
           const normalizedRestaurantOffers = actualRestaurant?.restaurantOffers || apiRestaurant?.restaurantOffers || {}
 
           // Transform API data to match expected format with comprehensive fallbacks
@@ -557,6 +563,7 @@ function RestaurantDetailsContent() {
             profileImage: normalizedProfileImage,
             coverImages: normalizedCoverImages,
             menuImages: normalizedMenuImages,
+            banners: normalizedBanners,
             // Menu sections for display (will be populated from menu API)
             menuSections: [],
             // Onboarding data including FSSAI license
