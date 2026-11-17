@@ -5,6 +5,16 @@ and admin panels. Both are already live on the web admin/restaurant panels —
 this doc is for implementing the equivalent screens in the Flutter apps
 (Cravioo_restaurent, Cravioo_user).
 
+**Revision note:** this version adds the fixes found during a full
+end-to-end verification pass after the initial release — a banner-upload
+hang on oversize files, banners not surviving a page refresh, banners not
+showing on the customer app, and packaging fee still leaking into a few
+restaurant-side screens and the restaurant's own POS billing when
+admin-owned. All of those are now fixed server-side (see the per-section
+notes below) — nothing here requires a Flutter-side workaround, just making
+sure the Flutter apps trust the now-corrected server fields rather than
+re-deriving their own totals from raw `pricing.packagingFee`.
+
 ---
 
 ## 1. Restaurant Banners
@@ -90,6 +100,8 @@ coverImages → banners → menuImages → profileImage
 - Max 20 banners kept per restaurant (oldest truncated silently if exceeded via the upload endpoint; via the PATCH path, whatever array you send is kept as-is up to 20).
 - Each file ≤ 5MB (global upload middleware limit), standard image types.
 - No approval workflow — banner changes are visible to customers instantly.
+- **A file over 5MB now returns an immediate `400` with `{"message": "File size too large. Maximum 5MB allowed per file."}`.** (Earlier builds let an oversize file hang the request with no response until the client's own timeout fired — fixed; Flutter should treat any `LIMIT_FILE_SIZE`-style 400 here as "pick a smaller image," not retry.)
+- Storage is local disk on the server (served back at `https://cravioo.in/uploads/...`), not Cloudinary — URLs returned are already final, no separate CDN step.
 
 ---
 
@@ -149,25 +161,34 @@ admin-reporting only, not needed by Flutter:
 
 ### What the Restaurant Flutter app must change
 
-On the restaurant order-detail screen, check
-`order.pricing.packagingFeeOwner` (or equivalently, the restaurant's own
-`packagingFeeOwner` field — they'll always agree for that restaurant's own
-orders):
+Check `order.pricing.packagingFeeOwner` (or equivalently, the restaurant's
+own `packagingFeeOwner` field — they'll always agree for that restaurant's
+own orders):
 
 - If `"restaurant"` (default): show the "Packaging fee" bill line and
   include it in "Restaurant Earning" exactly as today.
 - If `"admin"`: **hide the "Packaging fee" line entirely** and **exclude it
   from Restaurant Earning / order gross**. The restaurant should not see or
   count this money anywhere in its panel — not on the order detail screen,
-  not in the earnings/finance summary, not in payout totals.
+  not in the earnings/finance summary, not in payout totals, not in a
+  new-order popup/notification, not in the restaurant's own POS printout.
 
-The backend already does this correctly for all amounts the restaurant app
-reads: `GET /food/restaurant/orders/:id`'s `pricing.packagingFeeOwner`, and
-`GET /food/restaurant/finance`'s per-order `packagingFee`/`restaurantGross`
-fields are already zeroed out server-side when `packagingFeeOwner ===
-'admin'`. The Flutter restaurant app just needs to stop rendering the
-packaging-fee UI block when payload fields come back as `0`/owner is
-`admin` — no new client-side math needed, the server already did it.
+The backend already pre-zeroes this server-side for every surface the
+restaurant app reads, so Flutter just needs to stop rendering the
+packaging-fee UI block when the payload field comes back as `0` / owner is
+`admin` — no client-side math needed, the server already did it. Confirmed
+zeroed server-side on:
+- `GET /food/restaurant/orders/:id` → `pricing.packagingFeeOwner` +
+  `pricing.packagingFee`
+- `GET /food/restaurant/orders` (list) → same per-order `pricing` fields
+- `GET /food/restaurant/finance` → per-order `packagingFee`/`restaurantGross`
+- New-order push/socket payload → `pricing.packagingFeeOwner` present, same
+  rule applies if the Flutter app computes its own "what you'll earn" total
+  from the raw `pricing` object instead of trusting a pre-computed field
+- The restaurant's own PetPooja POS billing (`packing_charges`) — zeroed
+  server-side before being sent to PetPooja, so the restaurant's own POS
+  receipt/till never shows packaging money it won't actually receive. No
+  Flutter action needed here, informational only.
 
 ### What the Admin Flutter app (if any) must change
 If there's an admin Flutter app with a restaurant-commission or
@@ -182,6 +203,11 @@ Body: { "packagingFeeOwner": "restaurant" | "admin" }
 
 (Same endpoint used for commission/pricing-model updates — send only the
 fields you're changing.)
+
+Add this toggle to **both** screens if the admin app has two separate flows
+for "first-time set commission for a restaurant" and "edit an existing
+restaurant's commission" (the web admin panel does, and both now carry this
+toggle) — don't put it in only one of them.
 
 Dashboard stats endpoint (`GET /food/admin/dashboard-stats`) now also
 returns:
@@ -216,5 +242,8 @@ returns:
 | GET | `/food/admin/restaurants` | Now also returns `packagingFeeOwner` | Extended |
 | POST | `/food/order/calculate`, order creation | `pricing.packagingFeeOwner` added to response | Extended |
 | GET | `/food/restaurant/orders/:id` | `pricing.packagingFeeOwner` added; packaging fields pre-zeroed for admin-owned restaurants | Extended |
+| GET | `/food/restaurant/orders` (list) | Same `pricing.packagingFeeOwner`/`packagingFee` handling as the single-order endpoint | Extended |
 | GET | `/food/restaurant/finance` | Per-order `packagingFee`/`restaurantGross` pre-zeroed for admin-owned restaurants | Extended |
 | GET | `/food/admin/dashboard-stats` | New `packagingFee: {restaurantShare, adminShare, total}` block | Extended |
+| GET | `/food/admin/reports/restaurants` | New `packagingFeeOwner`, `restaurantPackagingFeeShare`, `adminPackagingFeeShare` per restaurant row | Extended |
+| — | Restaurant's own PetPooja POS payload (`packing_charges`) | Zeroed when that restaurant's `packagingFeeOwner` is `'admin'` | Extended |
