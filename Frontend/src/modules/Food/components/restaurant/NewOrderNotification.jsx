@@ -16,7 +16,10 @@ export default function NewOrderNotification({ order, onClose, onViewOrder }) {
     if (order.restaurantBill != null) return Number(order.restaurantBill) || 0;
     const subtotal = Number(order.pricing?.subtotal ?? order.pricing?.itemSubtotal) || 0;
     const taxes = Number(order.pricing?.tax ?? order.pricing?.taxes) || 0;
-    const packagingFee = Number(order.pricing?.packagingFee) || 0;
+    // When admin owns packaging fee for this restaurant, it's not the restaurant's money.
+    const packagingFee = order.pricing?.packagingFeeOwner === 'admin'
+      ? 0
+      : Number(order.pricing?.packagingFee) || 0;
     const discount = Number(order.pricing?.discount) || 0;
     const computed = Math.max(0, subtotal + taxes + packagingFee - discount);
     if (computed > 0) return computed;

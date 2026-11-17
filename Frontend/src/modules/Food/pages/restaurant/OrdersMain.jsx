@@ -948,7 +948,10 @@ const getPopupOrderTotal = (orderLike) => {
       );
     }, 0);
 
-  const packagingFee = Number(orderLike.pricing?.packagingFee) || 0;
+  // When admin owns packaging fee for this restaurant, it's not the restaurant's money.
+  const packagingFee = orderLike.pricing?.packagingFeeOwner === 'admin'
+    ? 0
+    : Number(orderLike.pricing?.packagingFee) || 0;
   const { quickShare } = resolveQuickRestaurantShare(orderLike);
 
   return Math.max(0, subtotal + packagingFee + quickShare);
@@ -976,7 +979,10 @@ const computeRestaurantBreakdown = (orderLike, visibleItemsFallback) => {
         : 0)
   );
 
-  const packagingFee = Math.max(0, Number(pricing.packagingFee) || 0);
+  // When admin owns packaging fee for this restaurant, it's not the restaurant's money.
+  const packagingFee = pricing.packagingFeeOwner === 'admin'
+    ? 0
+    : Math.max(0, Number(pricing.packagingFee) || 0);
   const { quickShare, quickSharePct } = resolveQuickRestaurantShare(orderLike);
 
   // Commission with multi-source fallback — fixes issue where commission row

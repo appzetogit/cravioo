@@ -41,7 +41,9 @@ export const buildPetpoojaOrderInfo = (order, restaurant) => {
       tax_total: two((pricing.tax || 0) + (pricing.foodGst || 0)),
       discount_total: two(pricing.discount || 0),
       delivery_charges: two(pricing.deliveryFee || pricing.totalDeliveryFee),
-      packing_charges: two(pricing.packagingFee),
+      // Admin-owned packaging fee never reaches the restaurant — their own POS must not
+      // record it as packing revenue (mirrors the userCommissionMarkupPerUnit adjustment below).
+      packing_charges: two(pricing.packagingFeeOwner === 'admin' ? 0 : pricing.packagingFee),
       description: order.note || '',
       created_on: new Date(order.createdAt || Date.now()).toISOString(),
       collect_cash: order.payment?.method === 'cash' ? two(pricing.total) : '0',

@@ -229,7 +229,9 @@ export default function AllOrdersPage() {
       totalPrice: (() => {
         const itemSum = items.reduce((sum, item) => sum + (Number(item.price) || 0) * (Number(item.quantity) || 0), 0);
         const subtotal = itemSum > 0 ? itemSum : (Number(order.pricing?.itemSubtotal) || Number(order.pricing?.subtotal) || 0);
-        const packagingFee = Number(order.pricing?.packagingFee) || Number(order.packagingFee) || 0;
+        const rawPackagingFee = Number(order.pricing?.packagingFee) || Number(order.packagingFee) || 0;
+        // When admin owns packaging fee for this restaurant, it's not the restaurant's money.
+        const packagingFee = order.pricing?.packagingFeeOwner === 'admin' ? 0 : rawPackagingFee;
         return Math.max(0, subtotal + packagingFee);
       })(),
       reason,

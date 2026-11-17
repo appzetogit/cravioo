@@ -47,7 +47,8 @@ export default function RestaurantCommission() {
     restaurantId: "",
     pricingModel: "commission",
     commissionPercentage: "",
-    userCommissionPercentage: ""
+    userCommissionPercentage: "",
+    packagingFeeOwner: "restaurant"
   })
   
   // Loading states for actions
@@ -223,7 +224,7 @@ export default function RestaurantCommission() {
   // Handle Add Commission Submission
   const handleAddCommission = async (e) => {
     e.preventDefault()
-    const { restaurantId, pricingModel, commissionPercentage, userCommissionPercentage } = newCommissionForm
+    const { restaurantId, pricingModel, commissionPercentage, userCommissionPercentage, packagingFeeOwner } = newCommissionForm
 
     if (!restaurantId) {
       toast.error("Please select a restaurant")
@@ -243,8 +244,8 @@ export default function RestaurantCommission() {
       if (!targetRestaurant) return
 
       const payload = isUserCommission
-        ? { pricingModel: "userCommission", userCommissionPercentage: pct }
-        : { pricingModel: "commission", commissionPercentage: pct }
+        ? { pricingModel: "userCommission", userCommissionPercentage: pct, packagingFeeOwner }
+        : { pricingModel: "commission", commissionPercentage: pct, packagingFeeOwner }
       await adminAPI.updateRestaurant(targetRestaurant._id || targetRestaurant.id, payload)
 
       setRestaurants(prev =>
@@ -257,7 +258,7 @@ export default function RestaurantCommission() {
           : `Commission set to ${pct}% for ${targetRestaurant.name}`
       )
       setIsAddModalOpen(false)
-      setNewCommissionForm({ restaurantId: "", pricingModel: "commission", commissionPercentage: "", userCommissionPercentage: "" })
+      setNewCommissionForm({ restaurantId: "", pricingModel: "commission", commissionPercentage: "", userCommissionPercentage: "", packagingFeeOwner: "restaurant" })
     } catch (err) {
       debugError("Failed to add commission:", err)
       toast.error(err?.response?.data?.message || "Failed to set commission percentage")
@@ -799,6 +800,41 @@ export default function RestaurantCommission() {
                   </div>
                 </div>
               )}
+
+              <div>
+                <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">
+                  Packaging Fee Goes To
+                </label>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setNewCommissionForm(prev => ({ ...prev, packagingFeeOwner: "restaurant" }))}
+                    className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                      newCommissionForm.packagingFeeOwner !== "admin"
+                        ? "bg-blue-600 text-white border-blue-600"
+                        : "bg-white text-slate-700 border-slate-300"
+                    }`}
+                  >
+                    Restaurant
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setNewCommissionForm(prev => ({ ...prev, packagingFeeOwner: "admin" }))}
+                    className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                      newCommissionForm.packagingFeeOwner === "admin"
+                        ? "bg-amber-500 text-white border-amber-500"
+                        : "bg-white text-slate-700 border-slate-300"
+                    }`}
+                  >
+                    Admin
+                  </button>
+                </div>
+                <p className="text-xs text-slate-500 mt-1.5">
+                  Customer pays the same packaging fee either way. When set to Admin, this
+                  restaurant never earns or sees the packaging fee — it goes to platform
+                  profit instead. Applies to every item in this restaurant's orders.
+                </p>
+              </div>
             </div>
 
             <DialogFooter className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex flex-row items-center justify-end gap-3">
