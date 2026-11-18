@@ -50,6 +50,9 @@ export default function DesktopSidebar({ isCollapsed, onToggle }) {
   const [companyName, setCompanyName] = useState(() => getCompanyName() || "rj kitchen");
   const [logoUrl, setLogoUrl] = useState(() => getAppLogo("restaurant"));
   const [profileOpen, setProfileOpen] = useState(false);
+  const [status, setStatus] = useState("Offline");
+  const [outletTimings, setOutletTimings] = useState(null);
+  const [isWithinTimings, setIsWithinTimings] = useState(null);
   const { unreadCount } = useNotificationInbox("restaurant", { limit: 20, pollMs: 5 * 60 * 1000 });
 
   useEffect(() => {
@@ -66,6 +69,72 @@ export default function DesktopSidebar({ isCollapsed, onToggle }) {
     };
     fetchRestaurantData();
   }, []);
+
+  // Mirrors RestaurantNavbar's (mobile header) online/offline status logic so the
+  // same badge is available on desktop, where RestaurantNavbar is hidden (md:hidden).
+  useEffect(() => {
+    const updateStatus = () => {
+      try {
+        const savedStatus = localStorage.getItem("restaurant_online_status");
+        if (savedStatus !== null) {
+          setStatus(JSON.parse(savedStatus) ? "Online" : "Offline");
+        } else {
+          setStatus(restaurantData?.isAcceptingOrders ? "Online" : "Offline");
+        }
+      } catch {
+        setStatus(restaurantData?.isAcceptingOrders ? "Online" : "Offline");
+      }
+    };
+    updateStatus();
+    const handleStatusChange = (event) => {
+      setStatus(event.detail?.isOnline ? "Online" : "Offline");
+    };
+    window.addEventListener("restaurantStatusChanged", handleStatusChange);
+    return () => window.removeEventListener("restaurantStatusChanged", handleStatusChange);
+  }, [restaurantData]);
+
+  useEffect(() => {
+    const loadOutletTimings = () => {
+      restaurantAPI
+        .getOutletTimings()
+        .then((res) => {
+          const data = res?.data?.data?.outletTimings || res?.data?.outletTimings;
+          if (data) setOutletTimings(data);
+        })
+        .catch(() => {});
+    };
+    loadOutletTimings();
+    window.addEventListener("outletTimingsUpdated", loadOutletTimings);
+    return () => window.removeEventListener("outletTimingsUpdated", loadOutletTimings);
+  }, []);
+
+  useEffect(() => {
+    const checkIfOpen = () => {
+      if (!outletTimings) return;
+      const now = new Date();
+      const currentDayFull = now.toLocaleDateString("en-US", { weekday: "long" });
+      const currentTimeInMinutes = now.getHours() * 60 + now.getMinutes();
+      const dayData = outletTimings[currentDayFull];
+      if (!dayData || dayData.isOpen === false || !dayData.openingTime || !dayData.closingTime) {
+        setIsWithinTimings(false);
+        return;
+      }
+      const [openHour, openMinute] = dayData.openingTime.split(":").map(Number);
+      const [closeHour, closeMinute] = dayData.closingTime.split(":").map(Number);
+      const openingTimeInMinutes = openHour * 60 + openMinute;
+      const closingTimeInMinutes = closeHour * 60 + closeMinute;
+      const isWithin =
+        closingTimeInMinutes > openingTimeInMinutes
+          ? currentTimeInMinutes >= openingTimeInMinutes && currentTimeInMinutes <= closingTimeInMinutes
+          : currentTimeInMinutes >= openingTimeInMinutes || currentTimeInMinutes <= closingTimeInMinutes;
+      setIsWithinTimings(isWithin);
+    };
+    checkIfOpen();
+    const interval = setInterval(checkIfOpen, 60000);
+    return () => clearInterval(interval);
+  }, [outletTimings]);
+
+  const displayStatus = status === "Online" && isWithinTimings !== false ? "Online" : "Offline";
 
   const restaurantName = restaurantData?.name || companyName || "rj kitchen";
   const ownerName = restaurantData?.ownerName || restaurantData?.name || "Owner";
@@ -186,6 +255,25 @@ export default function DesktopSidebar({ isCollapsed, onToggle }) {
           </div>
         )}
       </div>
+
+      {!isCollapsed && (
+        <div className="px-5 pb-3 -mt-2">
+          <button
+            onClick={() => navigate("/food/restaurant/status")}
+            className={`flex w-full items-center justify-center gap-1.5 px-2 py-1.5 border rounded-full hover:opacity-80 transition-all ${
+              displayStatus === "Online"
+                ? "bg-[#32C45A]/10 border-[#32C45A]/30"
+                : "bg-gray-100 border-gray-300"
+            }`}
+          >
+            <span className={`w-1.5 h-1.5 rounded-full ${displayStatus === "Online" ? "bg-[#32C45A]" : "bg-gray-500"}`} />
+            <span className={`text-sm font-medium ${displayStatus === "Online" ? "text-[#32C45A]" : "text-gray-700"}`}>
+              {displayStatus}
+            </span>
+            <ChevronRight className={`w-4 h-4 ${displayStatus === "Online" ? "text-[#32C45A]" : "text-gray-700"}`} />
+          </button>
+        </div>
+      )}
 
       {/* Navigation */}
       <div className="flex-1 min-h-0 overflow-y-auto px-3 pb-4 space-y-6 custom-scrollbar overscroll-none">
