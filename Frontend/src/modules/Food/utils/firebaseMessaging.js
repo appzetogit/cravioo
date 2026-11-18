@@ -322,6 +322,19 @@ async function playPushSound(payload = {}) {
       pushDebugLog(PUSH_DEBUG_PREFIX, "Skipping delivery push sound outside delivery module");
       return;
     }
+    // Only ring for actual order alerts in the restaurant/delivery modules — every other
+    // push type (food approved/rejected, category status, profile review, withdrawals,
+    // etc.) should still show its notification but never play the order-alert sound.
+    const RESTAURANT_SOUND_TYPES = new Set(["new_order"]);
+    const DELIVERY_SOUND_TYPES = new Set(["new_order_available", "new_delivery"]);
+    if (moduleName === "restaurant" && !RESTAURANT_SOUND_TYPES.has(pushType)) {
+      pushDebugLog(PUSH_DEBUG_PREFIX, "Skipping push sound for non-order push type in restaurant module", { pushType });
+      return;
+    }
+    if (moduleName === "delivery" && !DELIVERY_SOUND_TYPES.has(pushType)) {
+      pushDebugLog(PUSH_DEBUG_PREFIX, "Skipping push sound for non-order push type in delivery module", { pushType });
+      return;
+    }
 
     pushDebugLog(PUSH_DEBUG_PREFIX, "playPushSound called", {
       notificationKey: getNotificationKey(payload),
