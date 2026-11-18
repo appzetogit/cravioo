@@ -259,9 +259,11 @@ export const requestUserOtp = async (phone) => {
     throw new AuthError("Your account has been deleted/deactivated. Please contact support.");
   }
 
-  const otp = await createOrUpdateOtp(phone);
-  const shouldExposeOtp =
-    config.nodeEnv !== "production" || config.useDefaultOtp || isEmail;
+  // Users get a real, randomly-generated OTP sent via SMS/email — never the shared
+  // default-OTP mode restaurant/delivery logins still use. forceRandom bypasses
+  // config.useDefaultOtp for this call only, without touching the shared flag.
+  const otp = await createOrUpdateOtp(phone, { forceRandom: true });
+  const shouldExposeOtp = config.nodeEnv !== "production" || isEmail;
   return shouldExposeOtp ? { otp } : {};
 };
 

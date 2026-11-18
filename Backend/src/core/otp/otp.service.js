@@ -140,7 +140,7 @@ export const createOrUpdateOtp = async (phone, options = {}) => {
     const isEmail = String(phone || '').includes('@');
 
     let otp;
-    if (shouldUseDefaultOtp || isEmail) {
+    if (shouldUseDefaultOtp) {
         otp = '1234';
         logger.info(`Default OTP '1234' used for ${phone}`);
     } else {
