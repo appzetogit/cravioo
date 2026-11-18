@@ -625,7 +625,11 @@ restaurantSchema.index({ "location.city": 1 });
 restaurantSchema.index({ location: "2dsphere" });
 restaurantSchema.index({ restaurantName: 1, ownerPhone: 1 });
 // Enforce uniqueness at the database level to avoid race conditions in registration.
-// Uses partial filter to avoid blocking older documents that may not yet have normalized fields.
+// Uses partial filter to avoid blocking older documents that may not yet have normalized
+// fields, and to exclude soft-deleted restaurants — otherwise an abandoned/deleted
+// registration permanently occupies the name+phone slot and blocks a real restaurant
+// from ever reusing it (isDeleted defaults to false, so $eq: false also matches docs
+// predating this field).
 restaurantSchema.index(
   { restaurantNameNormalized: 1, ownerPhoneLast10: 1 },
   {
@@ -633,6 +637,7 @@ restaurantSchema.index(
     partialFilterExpression: {
       restaurantNameNormalized: { $type: "string" },
       ownerPhoneLast10: { $type: "string" },
+      isDeleted: { $eq: false },
     },
   },
 );

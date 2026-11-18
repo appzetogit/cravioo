@@ -157,6 +157,16 @@ export const connectDB = async () => {
                     logger.info("Dropping legacy unique index 'primaryContactNumberLast10_1' on 'food_restaurants' for multi-outlet owners...");
                     await frCol.dropIndex('primaryContactNumberLast10_1');
                 }
+                // The name+phone unique index's partialFilterExpression now excludes
+                // isDeleted:true docs (an abandoned/deleted registration was permanently
+                // blocking that name+phone combo for any future restaurant) — same index
+                // name, different options, so it must be dropped before createIndexes()
+                // rebuilds it with the new filter.
+                const nameLastPhoneIndex = frIndexes.find((idx) => idx.name === 'restaurantNameNormalized_1_ownerPhoneLast10_1');
+                if (nameLastPhoneIndex && !nameLastPhoneIndex.partialFilterExpression?.isDeleted) {
+                    logger.info("Rebuilding unique index 'restaurantNameNormalized_1_ownerPhoneLast10_1' on 'food_restaurants' to exclude soft-deleted restaurants...");
+                    await frCol.dropIndex('restaurantNameNormalized_1_ownerPhoneLast10_1');
+                }
                 const { FoodRestaurant } = await import(
                     '../modules/food/restaurant/models/restaurant.model.js'
                 );
