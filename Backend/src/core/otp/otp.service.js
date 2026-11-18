@@ -83,9 +83,13 @@ const sendSmsViaIndiaHub = async (phone, otp) => {
         const resultText = await response.text();
         logger.info(`[SMS] Raw response for ${msisdn}: ${resultText}`);
 
-        // SMS India Hub often returns HTTP 200 OK even for errors — check response body
+        // SMS India Hub often returns HTTP 200 OK even for errors — check response body.
+        // Errors come back either as JSON ({ErrorCode, ErrorMessage}) or as plain text
+        // starting with "Failed" (e.g. "Failed#senderid not valid") — both must be
+        // detected, or a failed send gets logged as a false "success".
         let parsed = null;
         try { parsed = JSON.parse(resultText); } catch (_) { /* plain text response is OK */ }
+        const isPlainTextFailure = !parsed && /^failed/i.test(resultText.trim());
 
         if (parsed && parsed.ErrorCode && parsed.ErrorCode !== '000') {
             const errMsg = `SMS India Hub ERROR for ${phone}: [${parsed.ErrorCode}] ${parsed.ErrorMessage || resultText}`;
@@ -95,6 +99,15 @@ const sendSmsViaIndiaHub = async (phone, otp) => {
             if (parsed.ErrorCode === '006') {
                 // eslint-disable-next-line no-console
                 console.error('❌ [SMS ERROR] ErrorCode 006 = DLT Template mismatch. The message text must EXACTLY match your registered TRAI DLT template. Login to https://cloud.smsindiahub.in and verify the approved template text.');
+            }
+        } else if (isPlainTextFailure) {
+            const errMsg = `SMS India Hub ERROR for ${phone}: ${resultText.trim()}`;
+            logger.error(errMsg);
+            // eslint-disable-next-line no-console
+            console.error(`❌ [SMS ERROR] ${errMsg}`);
+            if (/senderid/i.test(resultText)) {
+                // eslint-disable-next-line no-console
+                console.error('❌ [SMS ERROR] "senderid not valid" — SMS_INDIA_HUB_SENDER_ID in .env does not match an approved sender ID on this SMS India Hub account. Check the dashboard at https://cloud.smsindiahub.in.');
             }
         } else if (!response.ok) {
             logger.error(`SMS API HTTP error for ${phone}: ${response.status} – ${resultText}`);
