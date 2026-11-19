@@ -115,6 +115,7 @@ export default function AdminItemDetailsPage() {
   const [variantChoiceMade, setVariantChoiceMade] = useState(id !== "new")
   const [variants, setVariants] = useState([])
   const [preparationTime, setPreparationTime] = useState("")
+  const [sortOrder, setSortOrder] = useState("")
   const [itemSlotTimingId, setItemSlotTimingId] = useState("")
   const [slotTimings, setSlotTimings] = useState([])
   const [gst, setGst] = useState("5.0")
@@ -398,6 +399,7 @@ export default function AdminItemDetailsPage() {
     setBasePrice(!hasExistingVariants ? item.price?.toString() || "" : "")
     setOtherPrice(!hasExistingVariants ? item.otherPrice?.toString() || "" : "")
     setPreparationTime(item.preparationTime || "")
+    setSortOrder(item.sortOrder !== undefined && item.sortOrder !== null ? String(item.sortOrder) : "")
     setItemSlotTimingId(String(item.itemSlotTimingId || item.itemSlotTiming?.id || ""))
     setGst(item.gst?.toString() || "5.0")
     setIsRecommended(item.isRecommended || false)
@@ -1123,6 +1125,7 @@ export default function AdminItemDetailsPage() {
           foodType: foodType,
           isAvailable: isInStock,
           preparationTime: preparationTime || "",
+          sortOrder: sortOrder !== "" ? Number(sortOrder) : null,
           itemSlotTimingId: itemSlotTimingId || null,
           categoryId: categoryId || undefined,
           categoryName,
@@ -1149,6 +1152,7 @@ export default function AdminItemDetailsPage() {
           foodType: foodType,
           isAvailable: isInStock,
           preparationTime: preparationTime || "",
+          sortOrder: sortOrder !== "" ? Number(sortOrder) : null,
           itemSlotTimingId: itemSlotTimingId || null,
           categoryId: categoryId || undefined,
           categoryName,
@@ -2040,6 +2044,20 @@ export default function AdminItemDetailsPage() {
                           </select>
                           <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500 pointer-events-none" />
                         </div>
+                      </div>
+
+                      {/* Display Order within category */}
+                      <div className="relative">
+                        <label className="block text-xs text-gray-600 mb-1">Display Order</label>
+                        <input
+                          type="number"
+                          min="1"
+                          step="1"
+                          value={sortOrder}
+                          onChange={(e) => setSortOrder(e.target.value)}
+                          placeholder="e.g. 1 (lower shows first)"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg text-sm text-gray-900 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
                       </div>
                       {/* <div>
                 <label className="block text-xs text-gray-600 mb-1">GST</label>

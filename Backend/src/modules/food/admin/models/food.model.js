@@ -31,6 +31,8 @@ const foodSchema = new mongoose.Schema(
         discountAmount: { type: Number, min: 0, default: 0 },
         discount: { type: String, trim: true, default: '' },
         isRecommended: { type: Boolean, default: false },
+        /** Manual display order within its category on the user app. Lower shows first; unset falls back to newest-first. */
+        sortOrder: { type: Number, default: null, index: true },
         tags: { type: [String], default: [] },
         nutrition: { type: [String], default: [] },
         allergies: { type: [String], default: [] },
@@ -43,6 +45,9 @@ const foodSchema = new mongoose.Schema(
         packagingFeeGstRate: { type: Number, min: 0, max: 100, default: 0 },
         approvalStatus: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'approved', index: true },
         rejectionReason: { type: String, trim: true, default: '' },
+        /** Soft-delete: item goes into a 15-day recycle bin instead of being removed immediately. */
+        isDeleted: { type: Boolean, default: false, index: true },
+        deletedAt: { type: Date, default: null },
         requestedAt: { type: Date },
         approvedAt: { type: Date },
         rejectedAt: { type: Date },

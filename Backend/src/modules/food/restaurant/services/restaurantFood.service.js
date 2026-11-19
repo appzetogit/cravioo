@@ -235,6 +235,7 @@ export async function createRestaurantFood(restaurantId, body = {}) {
         availabilityTimeStart: typeof body.availabilityTimeStart === 'string' ? body.availabilityTimeStart.trim() : '',
         availabilityTimeEnd: typeof body.availabilityTimeEnd === 'string' ? body.availabilityTimeEnd.trim() : '',
         originalPrice: typeof body.originalPrice === 'number' ? body.originalPrice : Number(body.originalPrice) || 0,
+        sortOrder: Number.isFinite(Number(body.sortOrder)) ? Number(body.sortOrder) : null,
         approvalStatus: 'pending',
         requestedAt: new Date()
     });
@@ -281,7 +282,7 @@ export async function updateRestaurantFood(restaurantId, foodId, body = {}) {
         throw new ValidationError('Invalid food id');
     }
 
-    const existing = await FoodItem.findOne({ _id: foodId, restaurantId }).lean();
+    const existing = await FoodItem.findOne({ _id: foodId, restaurantId, isDeleted: { $ne: true } }).lean();
     if (!existing) return null;
 
     const update = {};
@@ -346,6 +347,7 @@ export async function updateRestaurantFood(restaurantId, foodId, body = {}) {
     if (body.availabilityTimeStart !== undefined) update.availabilityTimeStart = String(body.availabilityTimeStart || '').trim();
     if (body.availabilityTimeEnd !== undefined) update.availabilityTimeEnd = String(body.availabilityTimeEnd || '').trim();
     if (body.originalPrice !== undefined) update.originalPrice = Number(body.originalPrice) || 0;
+    if (body.sortOrder !== undefined) update.sortOrder = Number.isFinite(Number(body.sortOrder)) ? Number(body.sortOrder) : null;
 
     if (
         body.categoryId !== undefined ||

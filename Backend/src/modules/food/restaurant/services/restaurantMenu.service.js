@@ -109,6 +109,7 @@ const buildMenuFromFoods = async (foods = [], filterPublicOnly = false, options 
             approvedAt: food.approvedAt,
             rejectedAt: food.rejectedAt,
             preparationTime: food.preparationTime || '',
+            sortOrder: food.sortOrder,
             itemSlotTimingId: slotId || null,
             itemSlotTiming: slotDoc ? serializeItemSlotTiming(slotDoc) : null,
             isSlotActive: slotDoc ? isFoodVisibleForSlotTiming(food, slotMap, referenceDate) : true,
@@ -130,6 +131,9 @@ const buildMenuFromFoods = async (foods = [], filterPublicOnly = false, options 
         sortOrder: Number.isFinite(Number(group.sortOrder)) ? Number(group.sortOrder) : 0,
         itemCount: group.items.length,
         items: group.items.sort((a, b) => {
+            const aOrder = Number.isFinite(Number(a.sortOrder)) ? Number(a.sortOrder) : Number.MAX_SAFE_INTEGER;
+            const bOrder = Number.isFinite(Number(b.sortOrder)) ? Number(b.sortOrder) : Number.MAX_SAFE_INTEGER;
+            if (aOrder !== bOrder) return aOrder - bOrder;
             const at = new Date(a.createdAt || a.requestedAt || 0).getTime();
             const bt = new Date(b.createdAt || b.requestedAt || 0).getTime();
             return bt - at;
@@ -153,7 +157,7 @@ export async function getRestaurantMenu(restaurantId) {
     if (!restaurantId || !mongoose.Types.ObjectId.isValid(String(restaurantId))) {
         throw new ValidationError('Invalid restaurant id');
     }
-    const foods = await FoodItem.find({ restaurantId })
+    const foods = await FoodItem.find({ restaurantId, isDeleted: { $ne: true } })
         .sort({ createdAt: -1 })
         .limit(5000)
         .lean();
@@ -194,7 +198,7 @@ export async function getPublicApprovedRestaurantMenu(restaurantIdOrSlug) {
     if (!restaurant?._id) {
         return null;
     }
-    const foods = await FoodItem.find({ restaurantId: restaurant._id, approvalStatus: 'approved' })
+    const foods = await FoodItem.find({ restaurantId: restaurant._id, approvalStatus: 'approved', isDeleted: { $ne: true } })
         .sort({ createdAt: -1 })
         .limit(2000)
         .lean();
@@ -244,6 +248,7 @@ export async function getPublicMenusBatch(restaurantIds = []) {
     const foods = await FoodItem.find({
         restaurantId: { $in: approvedObjectIds },
         approvalStatus: 'approved',
+        isDeleted: { $ne: true },
     })
         .select('restaurantId categoryId categoryName category name image itemSlotTimingId')
         .sort({ createdAt: -1 })
