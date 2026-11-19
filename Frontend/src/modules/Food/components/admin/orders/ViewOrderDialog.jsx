@@ -200,10 +200,12 @@ function FeesAndGstSection({ order }) {
           {open && (
             <div className="mt-2 rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs space-y-2">
               <p className="font-semibold text-slate-700">GST breakdown</p>
-              <div className="flex justify-between text-slate-600">
-                <span>GST on food items{rate(g.foodGstRate)}</span>
-                <span className="font-medium">{money2(g.foodGst)}</span>
-              </div>
+              {g.foodGst > 0 && (
+                <div className="flex justify-between text-slate-600">
+                  <span>GST on food items{rate(g.foodGstRate)}</span>
+                  <span className="font-medium">{money2(g.foodGst)}</span>
+                </div>
+              )}
               {g.platformFeeGst > 0 && (
                 <div className="flex justify-between text-slate-600">
                   <span>
