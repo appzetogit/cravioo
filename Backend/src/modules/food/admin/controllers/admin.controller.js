@@ -2121,7 +2121,7 @@ export async function reactivateAccount(req, res, next) {
             const FoodRestaurant = mongoose.model('FoodRestaurant');
             updatedDoc = await FoodRestaurant.findByIdAndUpdate(
                 id,
-                { $set: { isDeleted: false, deletedAt: null, accountStatus: 'approved', isActive: true, isAcceptingOrders: true } },
+                { $set: { isDeleted: false, deletedAt: null, accountStatus: 'approved', isActive: true, isListed: true, isAcceptingOrders: true } },
                 { new: true }
             );
         } else if (role === 'Delivery Boy') {
@@ -2140,6 +2140,14 @@ export async function reactivateAccount(req, res, next) {
 
         if (!updatedDoc) {
             return res.status(404).json({ success: false, message: 'Account not found' });
+        }
+
+        if (role === 'Restaurant' || role === 'Food Item') {
+            await Promise.all([
+                invalidateCache('restaurants*'),
+                invalidateCache('food_search*'),
+                invalidateCache(`restaurant_detail*`),
+            ]).catch(console.error);
         }
 
         res.status(200).json({

@@ -5675,7 +5675,7 @@ export async function restoreFood(id) {
     if (!id || !mongoose.Types.ObjectId.isValid(id)) return null;
     const restored = await FoodItem.findOneAndUpdate(
         { _id: id, isDeleted: true },
-        { $set: { isDeleted: false, deletedAt: null } },
+        { $set: { isDeleted: false, deletedAt: null, isAvailable: true } },
         { new: true }
     ).lean();
     if (restored && restored.restaurantId && restored.approvalStatus === 'approved') {
