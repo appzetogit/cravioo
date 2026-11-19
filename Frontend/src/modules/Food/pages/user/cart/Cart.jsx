@@ -393,6 +393,7 @@ export default function Cart() {
   const [loadingRestaurant, setLoadingRestaurant] = useState(false)
   const [pricing, setPricing] = useState(null)
   const [loadingPricing, setLoadingPricing] = useState(false)
+  const [restaurantUnavailableMessage, setRestaurantUnavailableMessage] = useState("")
   const [roadDistanceKm, setRoadDistanceKm] = useState(null)
   const [menuData, setMenuData] = useState(null)
 
@@ -1160,8 +1161,11 @@ export default function Cart() {
 
         if (!result.pricing) {
           setPricing(null)
+          setRestaurantUnavailableMessage("")
           return
         }
+
+        setRestaurantUnavailableMessage("")
 
         // Sync coupon object from backend without changing the request key (same code).
         if (result.pricing.appliedCoupon && !appliedCoupon) {
@@ -1177,6 +1181,14 @@ export default function Cart() {
         // Network errors or 404 errors - silently handle, fallback to frontend calculation
         if (error.code !== "ERR_NETWORK" && error.response?.status !== 404) {
           debugError("Error calculating pricing:", error)
+        }
+        // Restaurant went offline (admin override or its own toggle) — show a clear
+        // message instead of letting pricing fields silently zero out one by one.
+        const serverMessage = error?.response?.data?.message || ""
+        if (/unavailable|not accepting orders/i.test(serverMessage)) {
+          setRestaurantUnavailableMessage(serverMessage)
+        } else {
+          setRestaurantUnavailableMessage("")
         }
         // Only clear if this is still the latest request failure path (non-stale throws)
         if (!cancelled) setPricing(null)
@@ -3439,6 +3451,11 @@ return (
     >
       <div className="max-w-7xl mx-auto px-4 md:px-6 py-3 md:py-4">
         <div className="w-full max-w-3xl mx-auto space-y-3">
+          {restaurantUnavailableMessage && (
+            <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-sm text-red-700 dark:text-red-400 font-medium">
+              {restaurantUnavailableMessage}
+            </div>
+          )}
           {/* Pay Using - Slim Pro UI */}
           <div
             className="flex items-center justify-between p-2 bg-gray-50 dark:bg-[#222222] rounded-xl border border-gray-100 dark:border-gray-800 cursor-pointer hover:bg-gray-100 dark:hover:bg-[#282828] active:scale-[0.98] transition-all duration-200 shadow-sm"
@@ -3479,7 +3496,7 @@ return (
           {/* Place Order Button */}
           <button
             onClick={handlePlaceOrder}
-            disabled={isPlacingOrder || (selectedPaymentMethod === "wallet" && walletBalance < total)}
+            disabled={isPlacingOrder || Boolean(restaurantUnavailableMessage) || (selectedPaymentMethod === "wallet" && walletBalance < total)}
             className="w-full bg-gradient-to-r from-[#32C45A] to-[#32C45A] hover:from-[#28A047] hover:to-[#28A047] text-white px-6 h-12 md:h-14 rounded-2xl font-bold shadow-lg shadow-[#32C45A]/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-between transition-transform active:scale-[0.98]"
           >
             {(selectedPaymentMethod === "cashfree" || selectedPaymentMethod === "wallet" || selectedPaymentMethod === "cash") && (
