@@ -1437,8 +1437,15 @@ export default function RestaurantsList() {
         // Close dialog
         setDeleteConfirmDialog(null)
 
-        // Show success message
-        toast.success(`Restaurant "${restaurant.name}" deleted successfully`)
+        // Show success message — point admin to where they can restore it within 15 days
+        toast.success(`Restaurant "${restaurant.name}" moved to recycle bin`, {
+          description: "Can be restored within 15 days from Deleted Accounts.",
+          action: {
+            label: "View",
+            onClick: () => navigate("/admin/food/deleted-accounts"),
+          },
+          duration: 6000,
+        })
       } catch (apiErr) {
         debugError("API Error:", apiErr)
         toast.error(apiErr.response?.data?.message || "Failed to delete restaurant. Please try again.")

@@ -504,7 +504,14 @@ export default function FoodsList() {
       setDeleting(true)
       await adminAPI.deleteFood(food?._id || food?.id)
       setFoods((prev) => prev.filter((f) => String(f.id) !== String(id)))
-      toast.success("Food item deleted successfully")
+      toast.success(`"${food.name}" moved to recycle bin`, {
+        description: "Can be restored within 15 days from Deleted Accounts.",
+        action: {
+          label: "View",
+          onClick: () => navigate("/admin/food/deleted-accounts"),
+        },
+        duration: 6000,
+      })
     } catch (error) {
       debugError("Error deleting food:", error)
       toast.error(error?.response?.data?.message || "Failed to delete food item")
