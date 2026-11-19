@@ -259,14 +259,12 @@ export const requestUserOtp = async (phone) => {
     throw new AuthError("Your account has been deleted/deactivated. Please contact support.");
   }
 
-  // Temporarily back on the shared default-OTP flag (same as restaurant/delivery) —
-  // SMS India Hub is rejecting our Sender ID account-side ("senderid not valid")
-  // even though it's approved on the dashboard; revert forceRandom here once that's
-  // resolved with their support. See otp.service.js's createOrUpdateOtp for the
-  // forceRandom option this flow is deliberately not using right now.
-  const otp = await createOrUpdateOtp(phone);
-  const shouldExposeOtp =
-    config.nodeEnv !== "production" || config.useDefaultOtp || isEmail;
+  // Users get a real, randomly-generated OTP sent via SMS/email — never the shared
+  // default-OTP mode restaurant/delivery logins still use. forceRandom bypasses
+  // config.useDefaultOtp for this call only, without touching the shared flag.
+  // (SMS India Hub's Sender ID issue is resolved — delivery confirmed in their report.)
+  const otp = await createOrUpdateOtp(phone, { forceRandom: true });
+  const shouldExposeOtp = config.nodeEnv !== "production" || isEmail;
   return shouldExposeOtp ? { otp } : {};
 };
 
