@@ -79,6 +79,27 @@ toggle screen, if `adminForcedOffline === true`:
 **No new endpoint needed on the restaurant app side** — just read `adminForcedOffline` from
 the existing "get current restaurant" response and react to it as above.
 
+**User app — cart/checkout screen behavior when the restaurant goes unavailable:**
+When the pricing/calculate call fails because the restaurant is offline (either
+`adminForcedOffline` or its own `isAcceptingOrders` off), the backend returns an error
+response like:
+```json
+{ "success": false, "message": "This restaurant is currently unavailable." }
+```
+On the web app, when this specific error occurs on the cart/checkout screen, we:
+- Show a persistent banner with the server's message.
+- Gray out / disable the entire cart screen (non-interactive) so the user can't attempt
+  to place an order against stale pricing.
+- Keep "Place Order" disabled until the restaurant becomes available again (pricing call
+  succeeds).
+
+**Flutter action:** Mirror this — don't just show a toast and let the user keep tapping
+"Place Order" on a cart that's quietly showing stale/zeroed pricing. On this specific error
+message/pattern (`"unavailable"` or `"not accepting orders"` in the message), lock the
+checkout screen and surface it clearly, rather than letting individual price rows (e.g.
+packaging fee) silently drop to zero one by one, which reads as a bug rather than an
+explanation.
+
 ---
 
 ## 4. Food item display order within a category
@@ -114,11 +135,11 @@ Category ordering itself is unchanged — categories already sorted by their own
 
 ---
 
-## 5. "Under 149" tab label
+## 5. Bottom nav tab label — "149 store"
 
-Web-only text fix — the bottom nav tab already correctly said "Under 149" in the web
-app's component. **If the Flutter app's own bottom navigation bar shows a different label
-(e.g. "Under 250") for this tab, update it to "Under 149"** — this is purely a client-side
+Web-only text fix. The bottom nav tab for the under-149 section now reads **"149 store"**
+(not "Under 149", not "Under 250"). **If the Flutter app's own bottom navigation bar shows
+a different label for this tab, update it to exactly "149 store"** — purely a client-side
 string, no backend/API change involved.
 
 ---
@@ -198,6 +219,37 @@ PATCH /api/food/admin/restaurants/:id/gst-applicable
 Body: { "gstApplicable": true | false }
 ```
 
+**Important — depends on the global GST rate being set:** `foodGst` is computed as
+`gstApplicable ? subtotal * globalGstRate/100 : 0`. If the admin's global GST % (Admin →
+Fee Settings) is itself saved as `0`, `foodGst` will be `0` for every restaurant regardless
+of `gstApplicable` — that's expected, not a bug. If GST isn't showing anywhere for any
+restaurant, check the global Fee Settings GST % first before assuming the per-restaurant
+toggle is broken.
+
+---
+
+## 8. Recycle-bin restore — full visibility reset (bug fix, backend-only)
+
+Earlier restore implementation only cleared `isDeleted`/`deletedAt` and missed resetting
+every field that delete had flipped off. This has been corrected server-side — no
+Flutter action needed, documented here only so you don't need to special-case anything
+when calling the restore endpoint:
+
+- Restoring a restaurant now resets `isListed: true` in addition to `isDeleted: false`,
+  `accountStatus: 'approved'`, `isActive: true`, `isAcceptingOrders: true`.
+- Restoring a food item now resets `isAvailable: true` in addition to `isDeleted: false`.
+- If the restored food item was its restaurant's only/last item, the restaurant's
+  `isListed` is also reset back to `true` (it had been auto-delisted when product count
+  hit zero on delete).
+- Restore now also invalidates the restaurant-menu cache, same as every other
+  menu-mutating endpoint, so changes reflect immediately instead of waiting for TTL.
+
+If your Flutter admin app has its own delete/restore flow for restaurants or food items,
+make sure it calls the same backend endpoints (`DELETE /api/food/admin/foods/:id`,
+`DELETE /api/food/admin/restaurants/:id`, `POST /api/food/admin/deleted-accounts/:id/reactivate`)
+rather than reimplementing the soft-delete/restore logic client-side — all of the
+visibility-field bookkeeping above happens server-side.
+
 ---
 
 ## Summary of new/changed fields at a glance
@@ -212,3 +264,10 @@ Body: { "gstApplicable": true | false }
 | Order pricing | `foodGstApplicable` | boolean | explicit flag for hiding the GST row in UI |
 
 No existing field was renamed or removed; all changes are additive.
+
+**Note on `adminForcedOffline`/`gstApplicable` reliability:** these two fields are read
+from the restaurant document at order-calculation time through an internal normalizer —
+confirmed fixed and live as of this version. If you're implementing against an older
+backend deploy and either field appears to have no effect on pricing/order creation
+despite being set correctly in the database, that was a known bug (fixed) rather than a
+field you need to handle differently.
