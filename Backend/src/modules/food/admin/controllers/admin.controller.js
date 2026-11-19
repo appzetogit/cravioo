@@ -814,7 +814,9 @@ export async function deleteFood(req, res, next) {
         await Promise.all([
             invalidateCache('restaurants*'),
             invalidateCache('food_search*'),
-            invalidateCache(`restaurant_detail*`),
+            invalidateCache('restaurant_detail*'),
+            invalidateCache('restaurant_menu:*'),
+            invalidateCache('restaurant_menus_batch:*'),
         ]).catch(console.error);
         res.status(200).json({ success: true, message: 'Food deleted successfully', data: result });
     } catch (error) {
@@ -2146,7 +2148,9 @@ export async function reactivateAccount(req, res, next) {
             await Promise.all([
                 invalidateCache('restaurants*'),
                 invalidateCache('food_search*'),
-                invalidateCache(`restaurant_detail*`),
+                invalidateCache('restaurant_detail*'),
+                invalidateCache('restaurant_menu:*'),
+                invalidateCache('restaurant_menus_batch:*'),
             ]).catch(console.error);
         }
 

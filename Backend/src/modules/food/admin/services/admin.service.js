@@ -5681,7 +5681,12 @@ export async function restoreFood(id) {
     if (restored && restored.restaurantId && restored.approvalStatus === 'approved') {
         try {
             const { FoodRestaurant } = await import('../../restaurant/models/restaurant.model.js');
-            await FoodRestaurant.findByIdAndUpdate(restored.restaurantId, { $inc: { productCount: 1 } });
+            // Undo deleteFood's side effect: if this was the restaurant's last item,
+            // deleting it had set isListed=false — bring the restaurant back into view too.
+            await FoodRestaurant.findByIdAndUpdate(restored.restaurantId, {
+                $inc: { productCount: 1 },
+                $set: { isListed: true },
+            });
         } catch (err) {
             console.error('Failed to update restaurant product count on food restore:', err);
         }
