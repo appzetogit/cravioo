@@ -242,6 +242,10 @@ export default function RestaurantStatus() {
 
   // Handle delivery status change
   const handleDeliveryStatusChange = async (checked) => {
+    if (checked && restaurantData?.adminForcedOffline) {
+      toast.error("Admin has disabled online status for your restaurant. Please contact support.")
+      return
+    }
     // Going offline always works
     if (!checked) {
       setDeliveryStatus(false)
@@ -488,18 +492,26 @@ export default function RestaurantStatus() {
             <div className="flex-1">
               <p className="text-base font-bold text-gray-900 mb-1.5">Delivery status</p>
               <div className="flex items-center gap-2">
-                <div className={`w-2 h-2 rounded-full ${deliveryStatus ? 'bg-[#32C45A]' : 'bg-gray-600'}`}></div>
+                <div className={`w-2 h-2 rounded-full ${deliveryStatus && !restaurantData?.adminForcedOffline ? 'bg-[#32C45A]' : 'bg-gray-600'}`}></div>
                 <p className="text-sm text-gray-500">
-                  {deliveryStatus ? 'Receiving orders' : 'Not receiving orders'}
+                  {restaurantData?.adminForcedOffline
+                    ? 'Disabled by admin'
+                    : (deliveryStatus ? 'Receiving orders' : 'Not receiving orders')}
                 </p>
               </div>
             </div>
             <Switch
-              checked={deliveryStatus}
+              checked={deliveryStatus && !restaurantData?.adminForcedOffline}
+              disabled={Boolean(restaurantData?.adminForcedOffline)}
               onCheckedChange={handleDeliveryStatusChange}
               className="ml-4 data-[state=unchecked]:bg-gray-300 data-[state=checked]:bg-[#32C45A]"
             />
           </div>
+          {restaurantData?.adminForcedOffline && (
+            <p className="text-xs text-red-600 mt-2">
+              Your restaurant has been turned offline by admin. You cannot receive orders until this is lifted.
+            </p>
+          )}
 
           <p className="text-sm text-gray-700 mb-2">Current delivery slot</p>
           <div className="flex items-center justify-between">

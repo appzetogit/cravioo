@@ -159,6 +159,16 @@ const restaurantSchema = new mongoose.Schema(
       default: true,
       index: true,
     },
+    /**
+     * Admin-level kill switch, independent of the restaurant's own isAcceptingOrders toggle.
+     * When true, restaurant is forced offline everywhere (orders blocked, shown unavailable)
+     * regardless of the restaurant's own toggle or outlet timings.
+     */
+    adminForcedOffline: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
     /** When false, customers cannot place scheduled (future-slot) food orders. Missing → treat as true. */
     scheduleOrderEnabled: {
       type: Boolean,
@@ -194,6 +204,15 @@ const restaurantSchema = new mongoose.Schema(
     gstRegistered: {
       type: Boolean,
       default: false,
+    },
+    /**
+     * Admin-controlled per-restaurant GST applicability on food items, independent of
+     * gstRegistered (business registration info). When false, no GST is calculated or
+     * shown on this restaurant's food items anywhere in the order flow.
+     */
+    gstApplicable: {
+      type: Boolean,
+      default: true,
     },
     gstNumber: {
       type: String,
@@ -456,6 +475,11 @@ const restaurantSchema = new mongoose.Schema(
     isDeleted: {
       type: Boolean,
       default: false
+    },
+    /** Set when soft-deleted by admin. Drives the 15-day recycle-bin purge timer. */
+    deletedAt: {
+      type: Date,
+      default: null
     },
     accountStatus: {
       type: String,

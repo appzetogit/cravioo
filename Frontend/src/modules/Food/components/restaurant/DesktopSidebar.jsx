@@ -134,7 +134,9 @@ export default function DesktopSidebar({ isCollapsed, onToggle }) {
     return () => clearInterval(interval);
   }, [outletTimings]);
 
-  const displayStatus = status === "Online" && isWithinTimings !== false ? "Online" : "Offline";
+  const displayStatus = restaurantData?.adminForcedOffline
+    ? "Offline"
+    : (status === "Online" && isWithinTimings !== false ? "Online" : "Offline");
 
   const restaurantName = restaurantData?.name || companyName || "rj kitchen";
   const ownerName = restaurantData?.ownerName || restaurantData?.name || "Owner";

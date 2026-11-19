@@ -85,6 +85,7 @@ export async function listUnder250Restaurants(query = {}) {
             menuImages: Array.isArray(restaurant?.menuImages) ? restaurant.menuImages : [],
             isActive: restaurant?.isActive,
             isAcceptingOrders: restaurant?.isAcceptingOrders,
+            adminForcedOffline: restaurant?.adminForcedOffline,
             openDays: restaurant?.openDays,
             openingTime: restaurant?.openingTime,
             closingTime: restaurant?.closingTime,
@@ -105,6 +106,7 @@ export async function listUnder250Restaurants(query = {}) {
         restaurantId: { $in: objectIds },
         approvalStatus: 'approved',
         isAvailable: { $ne: false },
+        isDeleted: { $ne: true },
     })
         .select(
             'restaurantId categoryId categoryName category name description price otherPrice variants image images foodType isAvailable itemSlotTimingId'

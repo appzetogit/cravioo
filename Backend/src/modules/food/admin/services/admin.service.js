@@ -347,7 +347,8 @@ export async function globalSearch(query = '') {
             .select('restaurantName city area status')
             .lean(),
         FoodItem.find({
-            $or: [{ name: regex }, { description: regex }]
+            $or: [{ name: regex }, { description: regex }],
+            isDeleted: { $ne: true }
         })
             .limit(5)
             .select('name description price')
@@ -447,7 +448,7 @@ export async function getRestaurants(query) {
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(limit)
-            .select('restaurantId restaurantName location area city profileImage coverImages menuImages status ownerName ownerPhone zoneId commissionPercentage pricingModel userCommissionPercentage packagingFeeOwner isListed productCount pureVegRestaurant createdAt updatedAt showWithoutMenu displayPosition')
+            .select('restaurantId restaurantName location area city profileImage coverImages menuImages status ownerName ownerPhone zoneId commissionPercentage pricingModel userCommissionPercentage packagingFeeOwner isListed adminForcedOffline gstApplicable productCount pureVegRestaurant createdAt updatedAt showWithoutMenu displayPosition')
             // Note: there is no `isActive` schema field — `status` ('approved'/'rejected') is
             // the real source of truth for whether a restaurant is visible on the app.
             .populate('zoneId', 'name zoneName')
@@ -995,7 +996,7 @@ export async function getDashboardStats(query = {}) {
         zoneDeliveryStatsPromise
             ? zoneDeliveryStatsPromise.then((stats) => stats.pending)
             : FoodDeliveryPartner.countDocuments({ status: 'pending' }),
-        FoodItem.countDocuments({ approvalStatus: 'approved', ...zoneScopedRestaurantMatch }),
+        FoodItem.countDocuments({ approvalStatus: 'approved', isDeleted: { $ne: true }, ...zoneScopedRestaurantMatch }),
         FoodAddon.countDocuments({ approvalStatus: 'approved', isDeleted: { $ne: true }, ...zoneScopedRestaurantMatch }),
         zoneId
             ? FoodOrder.distinct('userId', { ...orderMatch, userId: { $ne: null } }).then((ids) => ids.length)
@@ -1771,7 +1772,8 @@ export async function getRestaurantReport(query = {}) {
             {
                 $match: {
                     restaurantId: { $in: restaurantIds },
-                    approvalStatus: 'approved'
+                    approvalStatus: 'approved',
+                    isDeleted: { $ne: true }
                 }
             },
             {
@@ -4503,6 +4505,7 @@ export async function deleteRestaurant(id) {
         {
             $set: {
                 isDeleted: true,
+                deletedAt: new Date(),
                 accountStatus: 'deleted',
                 isActive: false,
                 isListed: false,
@@ -4530,13 +4533,43 @@ export async function toggleRestaurantListing(id, isListed) {
     }
 
     if (isListed && !restaurant.showWithoutMenu) {
-        const itemCount = await FoodItem.countDocuments({ restaurantId: id });
+        const itemCount = await FoodItem.countDocuments({ restaurantId: id, isDeleted: { $ne: true } });
         if (itemCount <= 0) {
             throw new ValidationError('Cannot make visible. Restaurant has no menu items. Enable "Show w/o menu" first.');
         }
     }
 
     restaurant.isListed = Boolean(isListed);
+    await restaurant.save();
+    return restaurant.toObject();
+}
+
+/** Admin per-restaurant GST applicability toggle. When false, food items for this restaurant are GST-exempt. */
+export async function toggleRestaurantGstApplicable(id, gstApplicable) {
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+        throw new ValidationError('Invalid restaurant ID');
+    }
+    const { FoodRestaurant } = await import('../../restaurant/models/restaurant.model.js');
+    const restaurant = await FoodRestaurant.findById(id);
+    if (!restaurant) {
+        throw new ValidationError('Restaurant not found');
+    }
+    restaurant.gstApplicable = Boolean(gstApplicable);
+    await restaurant.save();
+    return restaurant.toObject();
+}
+
+/** Admin-level kill switch: forces a restaurant offline/online regardless of its own isAcceptingOrders toggle. */
+export async function toggleRestaurantAdminOnlineStatus(id, adminForcedOffline) {
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+        throw new ValidationError('Invalid restaurant ID');
+    }
+    const { FoodRestaurant } = await import('../../restaurant/models/restaurant.model.js');
+    const restaurant = await FoodRestaurant.findById(id);
+    if (!restaurant) {
+        throw new ValidationError('Restaurant not found');
+    }
+    restaurant.adminForcedOffline = Boolean(adminForcedOffline);
     await restaurant.save();
     return restaurant.toObject();
 }
@@ -4576,7 +4609,7 @@ export async function toggleShowWithoutMenu(id, showWithoutMenu) {
     // Auto turn off visibility if turning off showWithoutMenu and productCount is 0
     if (!restaurant.showWithoutMenu) {
         const { FoodItem } = await import('../../admin/models/food.model.js');
-        const itemCount = await FoodItem.countDocuments({ restaurantId: id });
+        const itemCount = await FoodItem.countDocuments({ restaurantId: id, isDeleted: { $ne: true } });
         if (itemCount <= 0) {
             restaurant.isListed = false;
         }
@@ -4987,7 +5020,7 @@ export async function deleteCategory(id) {
     // Deleting a category must cascade into FoodItems to prevent orphaned product records.
     // `productCount` on FoodRestaurant tracks only APPROVED items (mirrors deleteFood behavior).
     const approvedItemsByRestaurant = await FoodItem.aggregate([
-        { $match: { categoryId: id, approvalStatus: 'approved' } },
+        { $match: { categoryId: id, approvalStatus: 'approved', isDeleted: { $ne: true } } },
         { $group: { _id: '$restaurantId', count: { $sum: 1 } } },
     ]);
 
@@ -5256,7 +5289,7 @@ export async function getFoods(query) {
     const limit = Math.min(Math.max(parseInt(query.limit, 10) || 100, 1), 1000);
     const page = Math.max(parseInt(query.page, 10) || 1, 1);
     const skip = (page - 1) * limit;
-    const filter = {};
+    const filter = { isDeleted: { $ne: true } };
 
     if (query.restaurantId && mongoose.Types.ObjectId.isValid(query.restaurantId)) {
         filter.restaurantId = query.restaurantId;
@@ -5514,6 +5547,7 @@ export async function createFood(body) {
         availabilityTimeStart: typeof body.availabilityTimeStart === 'string' ? body.availabilityTimeStart.trim() : '',
         availabilityTimeEnd: typeof body.availabilityTimeEnd === 'string' ? body.availabilityTimeEnd.trim() : '',
         originalPrice: typeof body.originalPrice === 'number' ? body.originalPrice : Number(body.originalPrice) || 0,
+        sortOrder: Number.isFinite(Number(body.sortOrder)) ? Number(body.sortOrder) : null,
         approvalStatus: 'approved'
     });
     await doc.save();
@@ -5534,7 +5568,7 @@ export async function createFood(body) {
 export async function updateFood(id, body) {
     if (!id || !mongoose.Types.ObjectId.isValid(id)) return null;
     const doc = await FoodItem.findById(id);
-    if (!doc) return null;
+    if (!doc || doc.isDeleted) return null;
     const restaurant = await FoodRestaurant.findById(doc.restaurantId)
         .select('pureVegRestaurant')
         .lean();
@@ -5567,7 +5601,8 @@ export async function updateFood(id, body) {
     if (body.availabilityTimeStart !== undefined) doc.availabilityTimeStart = String(body.availabilityTimeStart || '').trim();
     if (body.availabilityTimeEnd !== undefined) doc.availabilityTimeEnd = String(body.availabilityTimeEnd || '').trim();
     if (body.originalPrice !== undefined) doc.originalPrice = Number(body.originalPrice) || 0;
-    
+    if (body.sortOrder !== undefined) doc.sortOrder = Number.isFinite(Number(body.sortOrder)) ? Number(body.sortOrder) : null;
+
     if (body.categoryId !== undefined || body.categoryName !== undefined || body.category !== undefined || body.foodType !== undefined) {
         const nextCategoryName = body.categoryName !== undefined
             ? String(body.categoryName || '').trim()
@@ -5587,7 +5622,12 @@ export async function updateFood(id, body) {
 
 export async function deleteFood(id) {
     if (!id || !mongoose.Types.ObjectId.isValid(id)) return null;
-    const deleted = await FoodItem.findByIdAndDelete(id).lean();
+    // Soft-delete: item goes to the 15-day recycle bin instead of being removed immediately.
+    const deleted = await FoodItem.findOneAndUpdate(
+        { _id: id, isDeleted: { $ne: true } },
+        { $set: { isDeleted: true, deletedAt: new Date(), isAvailable: false } },
+        { new: true }
+    ).lean();
     if (deleted && deleted.restaurantId && deleted.approvalStatus === 'approved') {
         try {
             const { FoodRestaurant } = await import('../../restaurant/models/restaurant.model.js');
@@ -5606,6 +5646,47 @@ export async function deleteFood(id) {
         }
     }
     return deleted ? { id } : null;
+}
+
+const RECYCLE_BIN_RETENTION_MS = 15 * 24 * 60 * 60 * 1000;
+
+/**
+ * Permanently purges restaurants/food items that have sat in the soft-delete recycle bin
+ * for more than 15 days. Called opportunistically whenever the admin bin is viewed —
+ * no separate scheduler/infra dependency needed for a 15-day-granularity cleanup.
+ */
+export async function purgeExpiredRecycleBinEntries() {
+    const cutoff = new Date(Date.now() - RECYCLE_BIN_RETENTION_MS);
+    try {
+        const { FoodRestaurant } = await import('../../restaurant/models/restaurant.model.js');
+        await FoodRestaurant.deleteMany({ isDeleted: true, deletedAt: { $ne: null, $lte: cutoff } });
+    } catch (err) {
+        console.error('Failed to purge expired restaurants from recycle bin:', err);
+    }
+    try {
+        await FoodItem.deleteMany({ isDeleted: true, deletedAt: { $ne: null, $lte: cutoff } });
+    } catch (err) {
+        console.error('Failed to purge expired food items from recycle bin:', err);
+    }
+}
+
+/** Restores a soft-deleted food item from the recycle bin. */
+export async function restoreFood(id) {
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) return null;
+    const restored = await FoodItem.findOneAndUpdate(
+        { _id: id, isDeleted: true },
+        { $set: { isDeleted: false, deletedAt: null } },
+        { new: true }
+    ).lean();
+    if (restored && restored.restaurantId && restored.approvalStatus === 'approved') {
+        try {
+            const { FoodRestaurant } = await import('../../restaurant/models/restaurant.model.js');
+            await FoodRestaurant.findByIdAndUpdate(restored.restaurantId, { $inc: { productCount: 1 } });
+        } catch (err) {
+            console.error('Failed to update restaurant product count on food restore:', err);
+        }
+    }
+    return restored;
 }
 
 /** Admin creates a restaurant (JSON body with image URLs already uploaded). Single API. */
@@ -9164,7 +9245,7 @@ export async function getSidebarBadges() {
                 ]
             }),
             FoodDeliveryPartner.countDocuments({ status: 'pending' }),
-            FoodItem.countDocuments({ approvalStatus: 'pending' }),
+            FoodItem.countDocuments({ approvalStatus: 'pending', isDeleted: { $ne: true } }),
             FoodAddon.countDocuments({ approvalStatus: 'pending' }),
             FoodOrder.countDocuments({ orderStatus: { $in: ['created', 'placed'] } }),
             FoodOrder.countDocuments({ paymentMethod: 'offline_payment', orderStatus: { $in: ['created', 'placed'] } }),

@@ -668,6 +668,20 @@ export const adminAPI = {
       { showWithoutMenu: Boolean(showWithoutMenu) },
       { contextModule: "admin" },
     ),
+  /** Admin-level kill switch: forces a restaurant offline/online regardless of its own toggle. */
+  toggleRestaurantAdminOnlineStatus: (id, adminForcedOffline) =>
+    apiClient.patch(
+      `/food/admin/restaurants/${String(id)}/online-status`,
+      { adminForcedOffline: Boolean(adminForcedOffline) },
+      { contextModule: "admin" },
+    ),
+  /** Per-restaurant GST applicability. When false, restaurant's food items are GST-exempt. */
+  toggleRestaurantGstApplicable: (id, gstApplicable) =>
+    apiClient.patch(
+      `/food/admin/restaurants/${String(id)}/gst-applicable`,
+      { gstApplicable: Boolean(gstApplicable) },
+      { contextModule: "admin" },
+    ),
   /** Set (or clear with null) manual display position controlling user-app listing order. */
   updateRestaurantPosition: (id, position) =>
     apiClient.patch(

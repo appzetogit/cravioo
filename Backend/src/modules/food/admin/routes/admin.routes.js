@@ -137,6 +137,8 @@ router.patch('/restaurants/:id/status', checkPermission('food::restaurant_manage
 router.delete('/restaurants/:id', checkPermission('food::restaurant_management::restaurants::list', 'delete'), adminController.deleteRestaurant);
 router.patch('/restaurants/:id/visibility', checkPermission('food::restaurant_management::restaurants::list', 'edit'), adminController.toggleRestaurantListing);
 router.patch('/restaurants/:id/show-without-menu', checkPermission('food::restaurant_management::restaurants::list', 'edit'), adminController.toggleShowWithoutMenu);
+router.patch('/restaurants/:id/online-status', checkPermission('food::restaurant_management::restaurants::list', 'edit'), adminController.toggleRestaurantAdminOnlineStatus);
+router.patch('/restaurants/:id/gst-applicable', checkPermission('food::restaurant_management::restaurants::list', 'edit'), adminController.toggleRestaurantGstApplicable);
 router.patch('/restaurants/:id/position', checkPermission('food::restaurant_management::restaurants::list', 'edit'), adminController.updateRestaurantPosition);
 router.patch('/restaurants/:id/location', checkPermission('food::restaurant_management::restaurants::list', 'edit'), adminController.updateRestaurantLocation);
 router.patch('/restaurants/:id/menu', checkPermission('food::restaurant_management::restaurants::list', 'edit'), adminController.updateRestaurantMenuById);

@@ -142,6 +142,17 @@ export const getRestaurantAvailabilityStatus = (restaurant, now = new Date(), op
   const ignoreOperationalStatus = options?.ignoreOperationalStatus === true
   const isActive = restaurant.isActive !== false
   const isAcceptingOrders = restaurant.isAcceptingOrders !== false
+  const adminForcedOffline = restaurant.adminForcedOffline === true
+
+  if (!ignoreOperationalStatus && adminForcedOffline) {
+    return {
+      isOpen: false,
+      isActive,
+      isAcceptingOrders,
+      isWithinTimings: false,
+      reason: "admin-offline",
+    }
+  }
 
   if (!ignoreOperationalStatus && !isActive) {
     return {

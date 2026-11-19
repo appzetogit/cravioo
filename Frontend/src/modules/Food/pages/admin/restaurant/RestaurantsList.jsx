@@ -350,6 +350,8 @@ export default function RestaurantsList() {
             // whether a restaurant is banned/hidden (status: 'rejected' = banned/hidden).
             isActive: normalizeApprovalStatus(restaurant) !== "rejected",
             isListed: restaurant.isListed || false,
+            adminForcedOffline: restaurant.adminForcedOffline || false,
+            gstApplicable: restaurant.gstApplicable !== false,
             displayPosition: restaurant.displayPosition ?? null,
             productCount: restaurant.productCount || 0,
             rating: restaurant.ratings?.average || restaurant.rating || 0,
@@ -1478,6 +1480,54 @@ export default function RestaurantsList() {
     }
   }
 
+  const handleToggleAdminOnlineStatus = async (restaurant) => {
+    if (!canEdit) {
+      toast.error("Permission denied")
+      return
+    }
+    try {
+      const restaurantId = restaurant._id || restaurant.id;
+      const nextForcedOffline = !restaurant.adminForcedOffline;
+      await adminAPI.toggleRestaurantAdminOnlineStatus(restaurantId, nextForcedOffline);
+
+      setRestaurants(prev =>
+        prev.map(r =>
+          (r.id === restaurant.id || r._id === restaurant._id)
+            ? { ...r, adminForcedOffline: nextForcedOffline }
+            : r
+        )
+      );
+      toast.success(`Restaurant is now forced ${nextForcedOffline ? 'OFFLINE' : 'back online'} by admin`);
+    } catch (err) {
+      debugError("Error toggling admin online status:", err);
+      toast.error(err.response?.data?.message || "Failed to update online status");
+    }
+  }
+
+  const handleToggleGstApplicable = async (restaurant) => {
+    if (!canEdit) {
+      toast.error("Permission denied")
+      return
+    }
+    try {
+      const restaurantId = restaurant._id || restaurant.id;
+      const nextGstApplicable = !restaurant.gstApplicable;
+      await adminAPI.toggleRestaurantGstApplicable(restaurantId, nextGstApplicable);
+
+      setRestaurants(prev =>
+        prev.map(r =>
+          (r.id === restaurant.id || r._id === restaurant._id)
+            ? { ...r, gstApplicable: nextGstApplicable }
+            : r
+        )
+      );
+      toast.success(`GST is now ${nextGstApplicable ? 'applicable' : 'exempt'} for this restaurant's food items`);
+    } catch (err) {
+      debugError("Error toggling GST applicability:", err);
+      toast.error(err.response?.data?.message || "Failed to update GST setting");
+    }
+  }
+
   const handleToggleShowWithoutMenu = async (restaurant) => {
     if (!canEdit) {
       toast.error("Permission denied")
@@ -1825,6 +1875,50 @@ export default function RestaurantsList() {
                                   }`}
                                 />
                               </button>
+                            </div>
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className="text-[11px] text-slate-500 min-w-[75px]">Force Offline:</span>
+                              <button
+                                onClick={() => handleToggleAdminOnlineStatus(restaurant)}
+                                disabled={!canEdit}
+                                title={!canEdit ? "Cannot edit online status" : "Admin override: force this restaurant offline regardless of its own toggle"}
+                                className={`relative inline-flex h-4 w-7 shrink-0 cursor-pointer items-center justify-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-red-600 ${
+                                  !canEdit ? 'opacity-50 cursor-not-allowed' : ''
+                                }`}
+                              >
+                                <span aria-hidden="true" className={`absolute mx-auto h-full w-7 rounded-full transition-colors ${restaurant.adminForcedOffline ? 'bg-red-500' : 'bg-slate-200'}`} />
+                                <span
+                                  aria-hidden="true"
+                                  className={`pointer-events-none absolute left-0 inline-block h-3 w-3 transform rounded-full border border-slate-200 bg-white shadow ring-0 transition-transform duration-200 ease-in-out ${
+                                    restaurant.adminForcedOffline ? 'translate-x-3' : 'translate-x-0.5'
+                                  }`}
+                                />
+                              </button>
+                              {restaurant.adminForcedOffline && (
+                                <span className="text-[10px] font-semibold text-red-600">OFFLINE</span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className="text-[11px] text-slate-500 min-w-[75px]">GST Applicable:</span>
+                              <button
+                                onClick={() => handleToggleGstApplicable(restaurant)}
+                                disabled={!canEdit}
+                                title={!canEdit ? "Cannot edit GST setting" : "Toggle GST applicability for this restaurant's food items"}
+                                className={`relative inline-flex h-4 w-7 shrink-0 cursor-pointer items-center justify-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 ${
+                                  !canEdit ? 'opacity-50 cursor-not-allowed' : ''
+                                }`}
+                              >
+                                <span aria-hidden="true" className={`absolute mx-auto h-full w-7 rounded-full transition-colors ${restaurant.gstApplicable ? 'bg-green-500' : 'bg-slate-200'}`} />
+                                <span
+                                  aria-hidden="true"
+                                  className={`pointer-events-none absolute left-0 inline-block h-3 w-3 transform rounded-full border border-slate-200 bg-white shadow ring-0 transition-transform duration-200 ease-in-out ${
+                                    restaurant.gstApplicable ? 'translate-x-3' : 'translate-x-0.5'
+                                  }`}
+                                />
+                              </button>
+                              {!restaurant.gstApplicable && (
+                                <span className="text-[10px] font-semibold text-amber-600">EXEMPT</span>
+                              )}
                             </div>
                           </div>
                         </td>
@@ -3097,7 +3191,7 @@ export default function RestaurantsList() {
               </div>
 
               <p className="text-sm text-slate-700 mb-6">
-                Are you sure you want to delete this restaurant? This action cannot be undone and will permanently remove all restaurant data, including orders, menu items, and settings.
+                Are you sure you want to delete this restaurant? It will be moved to the recycle bin and can be restored within 15 days from the Deleted Accounts page. After 15 days it will be permanently removed.
               </p>
 
               <div className="flex items-center gap-3">

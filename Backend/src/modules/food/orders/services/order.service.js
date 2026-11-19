@@ -690,6 +690,7 @@ async function applyServerFoodItemPricing(items = [], sourceMap = new Map()) {
     _id: { $in: objectIds },
     approvalStatus: "approved",
     isAvailable: true,
+    isDeleted: { $ne: true },
   })
     .select("restaurantId name price variants image images foodType packagingFee packagingFeeGstRate")
     .lean();
@@ -1206,7 +1207,7 @@ async function fetchPickupSourcesByType(items = []) {
     foodSourceIds.length && restaurantQueryParts.length
       ? await FoodRestaurant.find({ $or: restaurantQueryParts })
           .select(
-            "restaurantId restaurantName location addressLine1 area city state zoneId status commissionPercentage quickDeliveryEnabled scheduleOrderEnabled isAcceptingOrders kitchenPrepMinutes profileImage",
+            "restaurantId restaurantName location addressLine1 area city state zoneId status commissionPercentage quickDeliveryEnabled scheduleOrderEnabled isAcceptingOrders adminForcedOffline gstApplicable kitchenPrepMinutes profileImage",
           )
           .lean()
       : [];
@@ -2628,6 +2629,10 @@ export async function calculateOrder(userId, dto, options = {}) {
   if (!primaryRestaurant) throw new ValidationError("Restaurant not found");
   if (primaryRestaurant.status !== "approved")
     throw new ValidationError("Restaurant not available");
+  if (primaryRestaurant.adminForcedOffline)
+    throw new ValidationError("This restaurant is currently unavailable.");
+  if (!primaryRestaurant.isAcceptingOrders)
+    throw new ValidationError("Restaurant not accepting orders");
   const primaryRestaurantId = primaryRestaurant.sourceId;
 
   // Platform fee is GST-inclusive; `platformFee` below is the NET part (what platform earns) —
@@ -2725,13 +2730,15 @@ export async function calculateOrder(userId, dto, options = {}) {
 
   const gstRate = feeSettings.gstRate;
   const discountedSubtotal = Math.max(0, subtotal - discount);
-  const foodTax = Number.isFinite(gstRate) && gstRate > 0
+  const restaurantGstApplicable = primaryRestaurant?.gstApplicable !== false;
+  const foodTax = restaurantGstApplicable && Number.isFinite(gstRate) && gstRate > 0
     ? Math.round(discountedSubtotal * (gstRate / 100))
     : 0;
   const tax = roundCurrency(foodTax + platformSplit.gst + packagingSplit.gst);
   const gstBreakdown = {
     foodGst: foodTax,
-    foodGstRate: Number.isFinite(gstRate) ? gstRate : 0,
+    foodGstRate: restaurantGstApplicable && Number.isFinite(gstRate) ? gstRate : 0,
+    foodGstApplicable: restaurantGstApplicable,
     platformFeeGross: platformSplit.gross,
     platformFeeGst: platformSplit.gst,
     platformFeeGstRate: platformSplit.ratePct,
@@ -2935,6 +2942,10 @@ export async function createOrder(userId, dto) {
   if (hasFoodItems) {
     if (!primaryRestaurant) throw new ValidationError("Restaurant not found");
     if (primaryRestaurant.status !== "approved")
+      throw new ValidationError("Restaurant not accepting orders");
+    if (primaryRestaurant.adminForcedOffline)
+      throw new ValidationError("This restaurant is currently unavailable.");
+    if (!primaryRestaurant.isAcceptingOrders)
       throw new ValidationError("Restaurant not accepting orders");
 
     // Admin paused this restaurant's zone — block new orders server-side

@@ -637,6 +637,49 @@ export async function toggleRestaurantListing(req, res, next) {
     }
 }
 
+export async function toggleRestaurantGstApplicable(req, res, next) {
+    try {
+        const { id } = req.params;
+        const { gstApplicable } = req.body;
+        if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ success: false, message: 'Invalid restaurant id' });
+        }
+        if (typeof gstApplicable !== 'boolean') {
+            return res.status(400).json({ success: false, message: 'gstApplicable boolean flag is required' });
+        }
+        const updated = await adminService.toggleRestaurantGstApplicable(id, gstApplicable);
+        await Promise.all([
+            invalidateCache('restaurants*'),
+            invalidateCache(`restaurant_detail*`),
+        ]).catch(console.error);
+        res.status(200).json({ success: true, message: 'Restaurant GST setting updated successfully', data: { restaurant: updated } });
+    } catch (error) {
+        next(error);
+    }
+}
+
+export async function toggleRestaurantAdminOnlineStatus(req, res, next) {
+    try {
+        const { id } = req.params;
+        const { adminForcedOffline } = req.body;
+        if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ success: false, message: 'Invalid restaurant id' });
+        }
+        if (typeof adminForcedOffline !== 'boolean') {
+            return res.status(400).json({ success: false, message: 'adminForcedOffline boolean flag is required' });
+        }
+        const updated = await adminService.toggleRestaurantAdminOnlineStatus(id, adminForcedOffline);
+        await Promise.all([
+            invalidateCache('restaurants*'),
+            invalidateCache('food_search*'),
+            invalidateCache(`restaurant_detail*`),
+        ]).catch(console.error);
+        res.status(200).json({ success: true, message: 'Restaurant online status updated successfully', data: { restaurant: updated } });
+    } catch (error) {
+        next(error);
+    }
+}
+
 export async function updateRestaurantPosition(req, res, next) {
     try {
         const { id } = req.params;
@@ -1988,11 +2031,15 @@ export async function getDeletedAccounts(req, res, next) {
         const FoodUser = mongoose.model('FoodUser');
         const FoodRestaurant = mongoose.model('FoodRestaurant');
         const FoodDeliveryPartner = mongoose.model('FoodDeliveryPartner');
+        const { FoodItem } = await import('../models/food.model.js');
+        const { purgeExpiredRecycleBinEntries } = await import('../services/admin.service.js');
+        await purgeExpiredRecycleBinEntries();
 
-        const [users, restaurants, deliveryPartners] = await Promise.all([
+        const [users, restaurants, deliveryPartners, foodItems] = await Promise.all([
             FoodUser.find({ $or: [{ isDeleted: true }, { accountStatus: 'deleted' }] }).select('name phone email updatedAt').lean(),
-            FoodRestaurant.find({ $or: [{ isDeleted: true }, { accountStatus: 'deleted' }] }).select('restaurantName phone email ownerName ownerPhone updatedAt').lean(),
+            FoodRestaurant.find({ $or: [{ isDeleted: true }, { accountStatus: 'deleted' }] }).select('restaurantName phone email ownerName ownerPhone updatedAt deletedAt').lean(),
             FoodDeliveryPartner.find({ $or: [{ isDeleted: true }, { accountStatus: 'deleted' }] }).select('name phone email vehicleNumber updatedAt').lean(),
+            FoodItem.find({ isDeleted: true }).select('name categoryName restaurantId deletedAt').populate({ path: 'restaurantId', select: 'restaurantName' }).lean(),
         ]);
 
         const list = [];
@@ -2014,7 +2061,7 @@ export async function getDeletedAccounts(req, res, next) {
             phone: r.phone || r.ownerPhone || 'N/A',
             email: r.email || 'N/A',
             detail: `Owner: ${r.ownerName || 'N/A'}`,
-            deletedAt: r.updatedAt
+            deletedAt: r.deletedAt || r.updatedAt
         }));
 
         deliveryPartners.forEach(d => list.push({
@@ -2025,6 +2072,16 @@ export async function getDeletedAccounts(req, res, next) {
             email: d.email || 'N/A',
             detail: d.vehicleNumber ? `Vehicle: ${d.vehicleNumber}` : 'Delivery Boy',
             deletedAt: d.updatedAt
+        }));
+
+        foodItems.forEach(f => list.push({
+            id: f._id,
+            role: 'Food Item',
+            name: f.name || 'N/A',
+            phone: 'N/A',
+            email: 'N/A',
+            detail: `Restaurant: ${f.restaurantId?.restaurantName || 'N/A'}${f.categoryName ? ` · ${f.categoryName}` : ''}`,
+            deletedAt: f.deletedAt
         }));
 
         list.sort((a, b) => new Date(b.deletedAt) - new Date(a.deletedAt));
@@ -2064,7 +2121,7 @@ export async function reactivateAccount(req, res, next) {
             const FoodRestaurant = mongoose.model('FoodRestaurant');
             updatedDoc = await FoodRestaurant.findByIdAndUpdate(
                 id,
-                { $set: { isDeleted: false, accountStatus: 'approved', isActive: true, isAcceptingOrders: true } },
+                { $set: { isDeleted: false, deletedAt: null, accountStatus: 'approved', isActive: true, isAcceptingOrders: true } },
                 { new: true }
             );
         } else if (role === 'Delivery Boy') {
@@ -2074,6 +2131,9 @@ export async function reactivateAccount(req, res, next) {
                 { $set: { isDeleted: false, accountStatus: 'approved', isActive: true } },
                 { new: true }
             );
+        } else if (role === 'Food Item') {
+            const { restoreFood } = await import('../services/admin.service.js');
+            updatedDoc = await restoreFood(id);
         } else {
             return res.status(400).json({ success: false, message: 'Invalid role specified' });
         }

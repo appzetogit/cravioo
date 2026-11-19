@@ -319,7 +319,9 @@ export default function RestaurantNavbar({
     return () => clearInterval(interval)
   }, [outletTimings])
 
-  const displayStatus = (status === "Online" && isWithinTimings !== false) ? "Online" : "Offline"
+  const displayStatus = restaurantData?.adminForcedOffline
+    ? "Offline"
+    : ((status === "Online" && isWithinTimings !== false) ? "Online" : "Offline")
 
   const searchValue = externalSearchValue !== undefined ? externalSearchValue : internalSearchValue;
 
