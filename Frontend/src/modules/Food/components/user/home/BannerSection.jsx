@@ -92,7 +92,7 @@ const BannerSection = memo(({
                     loop
                     muted
                     playsInline
-                    className="h-full w-full object-cover"
+                    className="h-full w-full object-contain"
                     style={{ filter: "brightness(0.95)" }}
                   />
                 ) : (
@@ -100,7 +100,7 @@ const BannerSection = memo(({
                     <OptimizedImage
                       src={image}
                       alt={`Hero Banner ${index + 1}`}
-                      className="absolute inset-0 h-full w-full object-cover"
+                      className="absolute inset-0 h-full w-full object-contain"
                       priority={index === currentBannerIndex}
                       backendOrigin={backendOrigin}
                       draggable={false}
