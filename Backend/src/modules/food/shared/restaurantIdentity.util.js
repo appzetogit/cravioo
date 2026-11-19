@@ -73,6 +73,8 @@ const IDENTITY_SELECT = [
   'quickDeliveryEnabled',
   'scheduleOrderEnabled',
   'isAcceptingOrders',
+  'adminForcedOffline',
+  'gstApplicable',
   'kitchenPrepMinutes',
   'profileImage',
 ].join(' ');
@@ -131,6 +133,8 @@ export function toNormalizedFoodRestaurantSource(restaurant) {
     quickDeliveryEnabled: restaurant.quickDeliveryEnabled === true,
     scheduleOrderEnabled: restaurant.scheduleOrderEnabled !== false,
     isAcceptingOrders: restaurant.isAcceptingOrders !== false,
+    adminForcedOffline: restaurant.adminForcedOffline === true,
+    gstApplicable: restaurant.gstApplicable !== false,
     /** Quick ETA kitchen prep only — never listing estimatedDeliveryTime*. */
     kitchenPrepMinutes:
       restaurant.kitchenPrepMinutes == null || restaurant.kitchenPrepMinutes === ''
