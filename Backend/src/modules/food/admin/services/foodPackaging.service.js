@@ -26,7 +26,7 @@ export async function listFoodsForPackaging(query = {}) {
     const limit = Math.min(Math.max(parseInt(query.limit, 10) || 20, 1), MAX_LIST_LIMIT);
     const skip = (page - 1) * limit;
 
-    const filter = {};
+    const filter = { isDeleted: { $ne: true } };
     if (query.restaurantId && mongoose.Types.ObjectId.isValid(String(query.restaurantId))) {
         filter.restaurantId = new mongoose.Types.ObjectId(String(query.restaurantId));
     }

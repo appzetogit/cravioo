@@ -98,9 +98,10 @@ export const searchUnified = async (query = {}, options = {}) => {
 
     // 2. Handle Category Filtering (Restaurants don't have categoryId, FoodItems do)
     if (categoryId && mongoose.Types.ObjectId.isValid(categoryId)) {
-        const catFoodItems = await FoodItem.find({ 
+        const catFoodItems = await FoodItem.find({
             categoryId: new mongoose.Types.ObjectId(categoryId),
-            approvalStatus: 'approved' 
+            approvalStatus: 'approved',
+            isDeleted: { $ne: true }
         }).select('restaurantId').lean();
         
         const catRestaurantIds = [...new Set(catFoodItems.map(f => f.restaurantId.toString()))];
@@ -132,7 +133,7 @@ export const searchUnified = async (query = {}, options = {}) => {
         });
 
         // B. Search by Food Item Name
-        const foodFilters = { approvalStatus: 'approved' };
+        const foodFilters = { approvalStatus: 'approved', isDeleted: { $ne: true } };
         if (isVeg === 'true') foodFilters.foodType = 'Veg';
         
         const matchedFoods = await FoodItem.find({

@@ -140,7 +140,8 @@ export async function deleteRestaurantItemSlotTiming(restaurantId, slotId) {
 
     const linkedItems = await FoodItem.find({
         restaurantId: context.restaurantId,
-        itemSlotTimingId: existing._id
+        itemSlotTimingId: existing._id,
+        isDeleted: { $ne: true }
     })
         .select('_id')
         .lean();

@@ -16,7 +16,7 @@ export async function listPendingFoodApprovals(query = {}) {
     const page = Math.max(parseInt(query.page, 10) || 1, 1);
     const skip = (page - 1) * limit;
 
-    const filter = { approvalStatus: 'pending' };
+    const filter = { approvalStatus: 'pending', isDeleted: { $ne: true } };
     if (query.restaurantId && mongoose.Types.ObjectId.isValid(String(query.restaurantId))) {
         filter.restaurantId = query.restaurantId;
     }

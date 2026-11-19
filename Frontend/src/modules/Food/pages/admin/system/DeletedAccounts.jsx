@@ -69,6 +69,8 @@ export default function DeletedAccounts() {
         return "bg-emerald-50 text-emerald-700 border-emerald-100"
       case "Delivery Boy":
         return "bg-purple-50 text-purple-700 border-purple-100"
+      case "Food Item":
+        return "bg-orange-50 text-orange-700 border-orange-100"
       default:
         return "bg-slate-50 text-slate-700 border-slate-100"
     }
@@ -122,7 +124,7 @@ export default function DeletedAccounts() {
 
           {/* Role Filter */}
           <div className="flex gap-2">
-            {["all", "User", "Seller", "Restaurant", "Delivery Boy"].map((roleOption) => (
+            {["all", "User", "Seller", "Restaurant", "Delivery Boy", "Food Item"].map((roleOption) => (
               <button
                 key={roleOption}
                 onClick={() => setRoleFilter(roleOption)}
@@ -167,6 +169,7 @@ export default function DeletedAccounts() {
                     <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Contact details</th>
                     <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Details / Metadata</th>
                     <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Deletion Date</th>
+                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Bin Expires In</th>
                     <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Actions</th>
                   </tr>
                 </thead>
@@ -219,6 +222,25 @@ export default function DeletedAccounts() {
                             minute: "2-digit",
                           })}
                         </span>
+                      </td>
+
+                      {/* Bin countdown (restaurants/food items are auto-purged 15 days after deletion) */}
+                      <td className="px-6 py-4">
+                        {(account.role === "Restaurant" || account.role === "Food Item") ? (
+                          (() => {
+                            const daysLeft = Math.ceil(
+                              (new Date(account.deletedAt).getTime() + 15 * 24 * 60 * 60 * 1000 - Date.now()) /
+                                (24 * 60 * 60 * 1000)
+                            )
+                            return (
+                              <span className={`text-xs font-bold ${daysLeft <= 3 ? "text-red-600" : "text-slate-500"}`}>
+                                {daysLeft > 0 ? `${daysLeft} day${daysLeft === 1 ? "" : "s"}` : "Purging soon"}
+                              </span>
+                            )
+                          })()
+                        ) : (
+                          <span className="text-xs text-slate-300">—</span>
+                        )}
                       </td>
 
                       {/* Actions */}

@@ -445,7 +445,7 @@ export async function updateRestaurantCategory(restaurantId, id, body = {}) {
             ? null
             : (nextFoodTypeScope === 'Veg' ? 'Non-Veg' : 'Veg');
         const incompatibleFoods = incompatibleFoodType
-            ? await FoodItem.countDocuments({ categoryId: doc._id, foodType: incompatibleFoodType })
+            ? await FoodItem.countDocuments({ categoryId: doc._id, foodType: incompatibleFoodType, isDeleted: { $ne: true } })
             : 0;
         if (incompatibleFoods > 0) {
             throw new ValidationError(`This category already has ${incompatibleFoods} food item(s) outside the selected diet type`);
@@ -483,7 +483,8 @@ export async function deleteRestaurantCategory(restaurantId, id) {
 
     const linkedItems = await FoodItem.find({
         categoryId: id,
-        restaurantId: context.restaurantId
+        restaurantId: context.restaurantId,
+        isDeleted: { $ne: true }
     })
         .select('_id name categoryName')
         .lean();

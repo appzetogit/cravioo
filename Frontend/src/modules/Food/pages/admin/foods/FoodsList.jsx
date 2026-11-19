@@ -496,7 +496,7 @@ export default function FoodsList() {
     const food = foods.find(f => f.id === id)
     if (!food) return
 
-    if (!window.confirm(`Are you sure you want to delete "${food.name}"? This action cannot be undone.`)) {
+    if (!window.confirm(`Are you sure you want to delete "${food.name}"? It will be moved to the recycle bin and can be restored within 15 days.`)) {
       return
     }
 
@@ -504,7 +504,7 @@ export default function FoodsList() {
       setDeleting(true)
       await adminAPI.deleteFood(food?._id || food?.id)
       setFoods((prev) => prev.filter((f) => String(f.id) !== String(id)))
-      toast.success("Food item deleted successfully")
+      toast.success("Food item moved to recycle bin")
     } catch (error) {
       debugError("Error deleting food:", error)
       toast.error(error?.response?.data?.message || "Failed to delete food item")

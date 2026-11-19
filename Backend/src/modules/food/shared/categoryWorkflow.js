@@ -115,7 +115,7 @@ const buildCategoryStatsMap = async (categoryIds = []) => {
     if (!validIds.length) return new Map();
 
     const stats = await FoodItem.aggregate([
-        { $match: { categoryId: { $in: validIds } } },
+        { $match: { categoryId: { $in: validIds }, isDeleted: { $ne: true } } },
         {
             $group: {
                 _id: '$categoryId',
@@ -165,7 +165,8 @@ export const buildLiveCategoryItemStats = async (categoryIds = []) => {
             $match: {
                 categoryId: { $in: validIds },
                 approvalStatus: 'approved',
-                isAvailable: { $ne: false }
+                isAvailable: { $ne: false },
+                isDeleted: { $ne: true }
             }
         },
         {
