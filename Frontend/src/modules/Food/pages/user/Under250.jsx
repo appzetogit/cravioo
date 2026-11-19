@@ -1033,8 +1033,16 @@ export default function Under250() {
             const restaurantSlug = restaurant.slug || restaurant.name.toLowerCase().replace(/\s+/g, "-")
             return (
               <section key={restaurant.id} className="border-b border-gray-100 pt-4 sm:pt-6 md:pt-8 lg:pt-10 dark:border-gray-800 last:border-b-0">
-                {/* Restaurant Header */}
-                <div className="mb-3 flex items-start justify-between md:mb-4 lg:mb-6">
+                {/* Restaurant Header — whole row is a clickable store link */}
+                <Link to={`/user/restaurants/${restaurantSlug}?under250=true`} className="mb-3 flex items-start justify-between gap-3 md:mb-4 lg:mb-6">
+                  <div className="h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-gray-100 dark:bg-gray-800 sm:h-16 sm:w-16 md:h-20 md:w-20">
+                    <img
+                      src={restaurant.profileImage?.url || restaurant.profileImage || restaurant.coverImages?.[0]?.url || restaurant.coverImages?.[0] || restaurant.image}
+                      alt={restaurant.name}
+                      className="h-full w-full object-cover"
+                      onError={(e) => { e.target.style.visibility = "hidden" }}
+                    />
+                  </div>
                   <div className="flex-1">
                     <h3 className="mb-1 text-lg font-bold text-gray-900 dark:text-white sm:text-xl md:text-2xl lg:text-3xl">
                       {restaurant.name}
@@ -1062,7 +1070,7 @@ export default function Under250() {
                       {restaurant.totalRatings > 0 ? `By ${restaurant.totalRatings >= 1000 ? `${(restaurant.totalRatings / 1000).toFixed(1)}K+` : `${restaurant.totalRatings}+`}` : ''}
                     </span>
                   </div>
-                </div>
+                </Link>
 
                 {/* Menu Items Horizontal Scroll */}
                 {restaurant.menuItems && restaurant.menuItems.length > 0 && (
