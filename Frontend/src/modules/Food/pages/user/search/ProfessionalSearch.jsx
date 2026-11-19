@@ -278,11 +278,13 @@ export default function ProfessionalSearch() {
                   {results.dishes.map((r) => (
                     <Link to={`/food/user/restaurants/${r.slug || r._id}${r.matchedDishId ? `?dish=${r.matchedDishId}` : ''}`} key={r._id} className="flex gap-4 p-3 bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-slate-100 dark:border-zinc-800 hover:shadow-md transition-shadow group">
                        <div className="w-24 h-24 rounded-xl overflow-hidden bg-slate-100 flex-shrink-0 relative">
-                           <img 
-                            src={getMediaUrl(r.matchedDishImage || r.profileImage || (Array.isArray(r.coverImages) && r.coverImages[0]) || r.image || (Array.isArray(r.images) && r.images[0]))} 
-                            className="w-full h-full object-cover group-hover:scale-110 transition-transform"
-                            onError={(e) => (e.target.src = "/placeholder-dish.jpg")}
-                          />
+                           {(r.matchedDishImage || r.profileImage || (Array.isArray(r.coverImages) && r.coverImages[0]) || r.image || (Array.isArray(r.images) && r.images[0])) && (
+                             <img
+                              src={getMediaUrl(r.matchedDishImage || r.profileImage || (Array.isArray(r.coverImages) && r.coverImages[0]) || r.image || (Array.isArray(r.images) && r.images[0]))}
+                              className="w-full h-full object-cover group-hover:scale-110 transition-transform"
+                              onError={(e) => { e.currentTarget.style.display = "none"; }}
+                            />
+                           )}
                           {r.pureVegRestaurant && (
                             <div className="absolute top-1 left-1 w-4 h-4 border border-green-600 p-[1px] bg-white rounded-sm">
                                <div className="w-full h-full bg-green-600 rounded-full" />
@@ -322,11 +324,13 @@ export default function ProfessionalSearch() {
                   {results.restaurants.map((r) => (
                     <Link to={`/food/user/restaurants/${r.restaurantId || r._id}`} key={r._id} className="block group">
                       <div className="relative rounded-3xl overflow-hidden aspect-[16/9] mb-3 bg-slate-200">
-                         <img 
-                          src={getMediaUrl((Array.isArray(r.coverImages) && r.coverImages[0]) || r.profileImage || r.image || (Array.isArray(r.images) && r.images[0]))} 
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                          onError={(e) => (e.target.src = "/placeholder-restaurant.jpg")}
-                        />
+                         {((Array.isArray(r.coverImages) && r.coverImages[0]) || r.profileImage || r.image || (Array.isArray(r.images) && r.images[0])) && (
+                           <img
+                            src={getMediaUrl((Array.isArray(r.coverImages) && r.coverImages[0]) || r.profileImage || r.image || (Array.isArray(r.images) && r.images[0]))}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                            onError={(e) => { e.currentTarget.style.display = "none"; }}
+                          />
+                         )}
                         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
                         <div className="absolute bottom-4 left-4 right-4 flex justify-between items-end">
                            <div>

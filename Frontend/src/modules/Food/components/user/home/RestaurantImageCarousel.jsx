@@ -51,7 +51,7 @@ const RestaurantImageCarousel = React.memo(
         sourceImages = restaurant.images;
       } else {
         const singleImg = restaurant?.image || restaurant?.imageUrl || restaurant?.coverImage;
-        sourceImages = [singleImg || "https://placehold.co/400x300/png?text=No+Image"];
+        sourceImages = singleImg ? [singleImg] : [];
       }
 
       const validImages = sourceImages

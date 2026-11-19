@@ -1,4 +1,6 @@
-export const FOOD_IMAGE_FALLBACK = "https://picsum.photos/seed/food-fallback/800/600";
+// No fallback image — an item/restaurant with no uploaded photo shows an empty
+// section instead of a placeholder from a third-party random-image service.
+export const FOOD_IMAGE_FALLBACK = "";
 export const RUPEE_SYMBOL = "\u20B9";
 
 const toImageUrl = (value) => {

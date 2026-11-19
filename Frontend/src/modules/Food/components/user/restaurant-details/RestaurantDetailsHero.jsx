@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Search, MoreVertical, X, ChevronLeft, ChevronRight, Bookmark } from "lucide-react";
 import { Button } from "@food/components/ui/button";
-import { FOOD_IMAGE_FALLBACK } from "./restaurantDetailsUtils";
 
 export default function RestaurantDetailsHero({
   images = [],
@@ -17,7 +16,7 @@ export default function RestaurantDetailsHero({
   onOpenMenu,
   onToggleFavorite,
 }) {
-  const gallery = images.length > 0 ? images : [FOOD_IMAGE_FALLBACK];
+  const gallery = images.filter(Boolean);
   const [index, setIndex] = useState(0);
 
   useEffect(() => {
@@ -33,23 +32,23 @@ export default function RestaurantDetailsHero({
 
   return (
     <div className="relative w-full h-[220px] sm:h-[280px] md:h-[320px] overflow-hidden bg-gray-900">
-      <AnimatePresence mode="wait">
-        <motion.img
-          key={gallery[index]}
-          src={gallery[index]}
-          alt={restaurantName || "Restaurant"}
-          className="absolute inset-0 h-full w-full object-cover"
-          initial={{ opacity: 0, scale: 1.04 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.45 }}
-          onError={(e) => {
-            if (e.currentTarget.src !== FOOD_IMAGE_FALLBACK) {
-              e.currentTarget.src = FOOD_IMAGE_FALLBACK;
-            }
-          }}
-        />
-      </AnimatePresence>
+      {gallery.length > 0 && (
+        <AnimatePresence mode="wait">
+          <motion.img
+            key={gallery[index]}
+            src={gallery[index]}
+            alt={restaurantName || "Restaurant"}
+            className="absolute inset-0 h-full w-full object-cover"
+            initial={{ opacity: 0, scale: 1.04 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.45 }}
+            onError={(e) => {
+              e.currentTarget.style.display = "none";
+            }}
+          />
+        </AnimatePresence>
+      )}
 
       <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/25 to-black/35" />
 

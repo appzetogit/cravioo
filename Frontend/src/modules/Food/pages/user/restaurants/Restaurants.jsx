@@ -215,12 +215,15 @@ export default function Restaurants() {
                           </div>
                         </CardContent>
 
-                        <div className="w-36 sm:w-44 md:w-56 lg:w-64 xl:w-72 flex-shrink-0 relative overflow-hidden group/image">
-                          <img
-                            src={restaurant.image || "https://via.placeholder.com/400x300?text=Restaurant"}
-                            alt={restaurant.name}
-                            className="w-full h-full object-cover"
-                          />
+                        <div className="w-36 sm:w-44 md:w-56 lg:w-64 xl:w-72 flex-shrink-0 relative overflow-hidden group/image bg-gray-100 dark:bg-gray-800">
+                          {restaurant.image && (
+                            <img
+                              src={restaurant.image}
+                              alt={restaurant.name}
+                              className="w-full h-full object-cover"
+                              onError={(e) => { e.currentTarget.style.display = "none"; }}
+                            />
+                          )}
                           <div className="absolute inset-0 bg-gradient-to-l from-black/20 dark:from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                         </div>
                       </div>

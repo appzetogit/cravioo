@@ -277,12 +277,15 @@ const RecommendedSection = memo(({ recommendedForYouRestaurants, isFavorite, onF
               data-purpose="product-card"
             >
               <div className="relative h-20 sm:h-24 bg-gray-100 shrink-0">
-                <img
-                  src={product.image || product.imageUrl || "https://placehold.co/150x150/png?text=No+Image"}
-                  alt={product.name}
-                  className="w-full h-full object-cover"
-                  loading="lazy"
-                />
+                {(product.image || product.imageUrl) && (
+                  <img
+                    src={product.image || product.imageUrl}
+                    alt={product.name}
+                    className="w-full h-full object-cover"
+                    loading="lazy"
+                    onError={(e) => { e.currentTarget.style.display = "none"; }}
+                  />
+                )}
                 {product.foodType === "Veg" || product.isVeg ? (
                   <div className="absolute top-2 left-2 bg-green-600 px-1.5 py-0.5 rounded flex items-center shadow-sm">
                     <span className="text-[7.5px] font-bold text-white uppercase tracking-wider">VEG</span>

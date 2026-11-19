@@ -139,18 +139,6 @@ const getStoredDeliveryAddressMode = () => {
   return window.localStorage.getItem("deliveryAddressMode") || "saved";
 };
 
-const defaultBannersImages = [
-  "/banner.png",
-  "/banner.png",
-  "/banner.png"
-];
-
-const defaultBannersData = [
-  { isFallback: true, title: "Order food & groceries.\nDiscover best restaurants.\nCravioo it! ⚡", subtitle: "", action: "" },
-  { isFallback: true, title: "Order food & groceries.\nDiscover best restaurants.\nCravioo it! ⚡", subtitle: "", action: "" },
-  { isFallback: true, title: "Order food & groceries.\nDiscover best restaurants.\nCravioo it! ⚡", subtitle: "", action: "" }
-];
-
 export default function Home() {
   const HERO_BANNER_AUTO_SLIDE_MS = 3500;
   const BACKEND_ORIGIN = API_BASE_URL.replace(/\/api\/?$/, "");
@@ -236,23 +224,6 @@ export default function Home() {
     }, 2000);
     return () => clearInterval(interval);
   }, []);
-
-  const activeBannerImages = useMemo(() => {
-    // Override API images with the custom transparent PNGs requested by the user
-    if (banners?.data?.length > 0) {
-      return banners.data.map((_, i) => defaultBannersImages[i % defaultBannersImages.length]);
-    }
-    return defaultBannersImages;
-  }, [banners?.data]);
-
-  const activeBannerData = defaultBannersData;
-
-  const desktopBannerImages = useMemo(() => [
-    "/desktop-banner.png",
-    "/scooter-banner.png",
-    "/banner.png",
-    "/offer-banner.png"
-  ], []);
 
   // Auto-slide banners
   useEffect(() => {
@@ -340,13 +311,13 @@ export default function Home() {
           >
             <Suspense fallback={<HeroBannerSkeleton className="h-[130px] w-full" />}>
               <div className="h-[130px] sm:h-36 md:h-[450px] lg:h-[500px] mt-0 relative z-10 w-full px-0">
-                {/* Mobile Slider */}
+                {/* Mobile Slider — real admin-managed banners (/admin/food/hero-banner-management) */}
                 <div className="block md:hidden h-full w-full">
                   <BannerSection
                     showBannerSkeleton={banners.loading}
-                    heroBannerImages={activeBannerImages}
-                    heroBannersData={activeBannerData}
-                    currentBannerIndex={activeBannerImages.length ? currentBannerIndex % activeBannerImages.length : 0}
+                    heroBannerImages={banners.images}
+                    heroBannersData={banners.data}
+                    currentBannerIndex={banners.images?.length ? currentBannerIndex % banners.images.length : 0}
                     setCurrentBannerIndex={setCurrentBannerIndex}
                     heroShellRef={heroShellRef}
                     navigate={navigate}
@@ -356,20 +327,13 @@ export default function Home() {
                 <div className="hidden md:block absolute inset-0 z-0">
                   <BannerSection
                     showBannerSkeleton={banners.loading}
-                    heroBannerImages={desktopBannerImages}
-                    heroBannersData={activeBannerData}
-                    currentBannerIndex={desktopBannerImages.length ? currentBannerIndex % desktopBannerImages.length : 0}
+                    heroBannerImages={banners.images}
+                    heroBannersData={banners.data}
+                    currentBannerIndex={banners.images?.length ? currentBannerIndex % banners.images.length : 0}
                     setCurrentBannerIndex={setCurrentBannerIndex}
                     heroShellRef={heroShellRef}
                     navigate={navigate}
-                    hideOverlay={true}
                   />
-                </div>
-                <div className="hidden md:flex absolute inset-0 flex-col items-center justify-center text-white text-center z-10 px-4 mt-[-60px] pointer-events-none">
-                  <h1 className="text-3xl lg:text-4xl font-bold mb-3 drop-shadow-md">
-                    Order food & groceries <br /> from your favourite restaurants.
-                  </h1>
-                  <p className="text-xl lg:text-2xl font-bold drop-shadow-md">Cravioo It! 🔥</p>
                 </div>
               </div>
             </Suspense>
@@ -438,41 +402,6 @@ export default function Home() {
 
             <Suspense fallback={null}>
               <MutualSection />
-            </Suspense>
-
-            <Suspense fallback={<HeroBannerSkeleton className="h-full w-full px-4 mt-3" />}>
-              {(banners.loading || (banners.images && banners.images.length > 0)) && (
-                <section className="content-auto px-4 py-2 sm:py-3 lg:py-6 max-w-7xl mx-auto">
-                  {/* Mobile Slider */}
-                  <div className="block md:hidden overflow-hidden rounded-[20px] h-48 sm:h-64 shadow-lg border border-gray-100">
-                    <BannerSection
-                      showBannerSkeleton={banners.loading}
-                      heroBannerImages={banners.images}
-                      heroBannersData={banners.data}
-                      currentBannerIndex={banners.images?.length ? currentBannerIndex % banners.images.length : 0}
-                      setCurrentBannerIndex={setCurrentBannerIndex}
-                      heroShellRef={heroShellRef}
-                      navigate={navigate}
-                      backendOrigin={BACKEND_ORIGIN}
-                      hideOverlay={true}
-                    />
-                  </div>
-                  {/* Desktop Banners (Side-by-side Row) */}
-                  <div className="hidden md:flex w-full overflow-x-auto snap-x gap-4 px-2 pb-4 items-center scrollbar-hide" style={{ scrollBehavior: 'smooth' }}>
-                    {(banners.images || []).map((img, i) => (
-                      <div key={i} className="min-w-[calc(33.333%-10.66px)] snap-start rounded-[20px] overflow-hidden relative shadow-sm aspect-[21/9] group hover:shadow-md transition-shadow cursor-pointer">
-                         <OptimizedImage
-                            src={img}
-                            alt={`Promo Banner ${i+1}`}
-                            className="w-full h-full group-hover:scale-105 transition-transform duration-500"
-                            objectFit="cover"
-                            backendOrigin={BACKEND_ORIGIN}
-                         />
-                      </div>
-                    ))}
-                  </div>
-                </section>
-              )}
             </Suspense>
 
             <Suspense fallback={null}>

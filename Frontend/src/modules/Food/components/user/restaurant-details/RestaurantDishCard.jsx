@@ -46,17 +46,17 @@ export default function RestaurantDishCard({
       data-purpose="product-card"
     >
       <div className="relative h-24 sm:h-28 bg-gray-100 dark:bg-gray-800 shrink-0">
-        <img
-          src={item.image || item.imageUrl || FOOD_IMAGE_FALLBACK}
-          alt={item.name}
-          className="w-full h-full object-cover"
-          loading="lazy"
-          onError={(e) => {
-            if (e.currentTarget.src !== FOOD_IMAGE_FALLBACK) {
-              e.currentTarget.src = FOOD_IMAGE_FALLBACK;
-            }
-          }}
-        />
+        {(item.image || item.imageUrl) && (
+          <img
+            src={item.image || item.imageUrl}
+            alt={item.name}
+            className="w-full h-full object-cover"
+            loading="lazy"
+            onError={(e) => {
+              e.currentTarget.style.display = "none";
+            }}
+          />
+        )}
         {isVeg ? (
           <div className="absolute top-2 left-2 bg-green-600 px-1.5 py-0.5 rounded flex items-center shadow-sm">
             <span className="text-[7.5px] font-bold text-white uppercase tracking-wider">VEG</span>
