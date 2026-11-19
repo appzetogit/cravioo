@@ -2442,7 +2442,13 @@ if (maxTimeString && maxUpperBound > 0) {
 }
 
 return (
-  <div className="relative min-h-screen overflow-x-hidden bg-slate-50 dark:bg-[#0a0a0a]">
+  <div className={`relative min-h-screen overflow-x-hidden bg-slate-50 dark:bg-[#0a0a0a] ${restaurantUnavailableMessage ? "grayscale opacity-70 pointer-events-none select-none" : ""}`}>
+    {restaurantUnavailableMessage && (
+      <div className="fixed top-0 left-0 right-0 z-[100] grayscale-0 opacity-100 pointer-events-auto bg-red-600 text-white text-center text-sm font-semibold py-2.5 px-4 shadow-lg" style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}>
+        {restaurantUnavailableMessage}
+      </div>
+    )}
+    {restaurantUnavailableMessage && <div className="h-10" />}
     {/* Header - Sticky at top */}
     <div className="bg-white dark:bg-[#1a1a1a] border-b dark:border-gray-800 sticky top-0 z-20 flex-shrink-0">
       <div className="max-w-7xl mx-auto">
@@ -3451,11 +3457,6 @@ return (
     >
       <div className="max-w-7xl mx-auto px-4 md:px-6 py-3 md:py-4">
         <div className="w-full max-w-3xl mx-auto space-y-3">
-          {restaurantUnavailableMessage && (
-            <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-sm text-red-700 dark:text-red-400 font-medium">
-              {restaurantUnavailableMessage}
-            </div>
-          )}
           {/* Pay Using - Slim Pro UI */}
           <div
             className="flex items-center justify-between p-2 bg-gray-50 dark:bg-[#222222] rounded-xl border border-gray-100 dark:border-gray-800 cursor-pointer hover:bg-gray-100 dark:hover:bg-[#282828] active:scale-[0.98] transition-all duration-200 shadow-sm"
