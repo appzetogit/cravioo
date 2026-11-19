@@ -63,27 +63,25 @@ const sendSmsViaIndiaHub = async (phone, otp) => {
         const branding = await getGlobalBranding();
         const message = `Welcome to the ${branding.companyName} powered by Appzeto.Your OTP for registration is ${otp}.BGADEC`;
 
-        // SMS India Hub HTTP GET API — query param names are case-sensitive per SOP
-        const url = new URL('http://cloud.smsindiahub.in/vendorsms/pushsms.aspx');
+        // Newer SMS India Hub API (api/mt/SendSMS) — the older pushsms.aspx endpoint
+        // either rejected the request ("senderid not valid") or ignored msg's filled
+        // text and sent the raw "##var##" template instead, depending on whether
+        // DLT_TE_ID was included. SMS India Hub support provided this endpoint/param
+        // set directly as the correct one for this account.
+        const url = new URL('https://cloud.smsindiahub.in/api/mt/SendSMS');
         url.searchParams.append('APIKey', config.smsApiKey);
-        url.searchParams.append('sid', config.smsSenderId);
-        url.searchParams.append('msisdn', msisdn);
-        url.searchParams.append('msg', message);
-        url.searchParams.append('gwid', '2');
-        url.searchParams.append('fl', '0');
-        if (config.smsIndiaHubUsername) {
-            url.searchParams.append('uname', config.smsIndiaHubUsername);
-        }
-        // DLT_TE_ID is required here — removing it causes an immediate
-        // "Failed#senderid not valid" (confirmed by testing both ways). With it
-        // present, a real delivered SMS showed literal "##var##" placeholders instead
-        // of the actual OTP — a separate, still-unresolved issue on SMS India Hub's
-        // side (their own developer docs for this exact endpoint say to fill the
-        // template's dynamic fields directly into msg, which is what we do; no
-        // separate variable-value parameter is documented for pushsms.aspx). Needs
-        // their support to confirm why msg's filled text isn't used for dispatch.
+        url.searchParams.append('senderid', config.smsSenderId);
+        url.searchParams.append('channel', 'Trans');
+        url.searchParams.append('DCS', '0');
+        url.searchParams.append('flashsms', '0');
+        url.searchParams.append('number', msisdn);
+        url.searchParams.append('text', message);
         if (config.smsDltTemplateId) {
-            url.searchParams.append('DLT_TE_ID', config.smsDltTemplateId);
+            url.searchParams.append('DLTTemplateId', config.smsDltTemplateId);
+        }
+        url.searchParams.append('route', '0');
+        if (config.smsPrincipalEntityId) {
+            url.searchParams.append('PEId', config.smsPrincipalEntityId);
         }
 
         logger.info(`[SMS] Sending OTP to ${msisdn} via SMS India Hub...`);

@@ -37,6 +37,8 @@ export const config = {
     smsSenderId: process.env.SMS_INDIA_HUB_SENDER_ID,
     smsDltTemplateId: process.env.SMS_INDIA_HUB_DLT_TEMPLATE_ID,
     smsTransactionalDltTemplateId: process.env.SMS_INDIA_HUB_TXN_DLT_TEMPLATE_ID,
+    /** DLT Principal Entity ID — required by the newer api/mt/SendSMS endpoint. */
+    smsPrincipalEntityId: process.env.SMS_INDIA_HUB_PE_ID,
 
     // Rate limiting — window is minutes-based via RATE_LIMIT_WINDOW only. (A
     // RATE_LIMIT_WINDOW_MS variable previously also existed in .env, but this
