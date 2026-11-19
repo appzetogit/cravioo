@@ -74,13 +74,17 @@ const sendSmsViaIndiaHub = async (phone, otp) => {
         if (config.smsIndiaHubUsername) {
             url.searchParams.append('uname', config.smsIndiaHubUsername);
         }
-        // DLT_TE_ID intentionally omitted: when sent alongside an already-filled msg,
-        // SMS India Hub's gateway appears to deliver its own stored raw template
-        // (literal "##var##" placeholders) instead of our text — confirmed via a real
-        // delivered SMS showing "...is ##var##.BGADEC" instead of the actual OTP. The
-        // Sender ID (sid=BGADEC) + exact-matching message text alone satisfies DLT
-        // compliance for this route; add DLT_TE_ID back only if SMS India Hub support
-        // confirms a different param (e.g. VAR1/VAR2) is meant to carry the values.
+        // DLT_TE_ID is required here — removing it causes an immediate
+        // "Failed#senderid not valid" (confirmed by testing both ways). With it
+        // present, a real delivered SMS showed literal "##var##" placeholders instead
+        // of the actual OTP — a separate, still-unresolved issue on SMS India Hub's
+        // side (their own developer docs for this exact endpoint say to fill the
+        // template's dynamic fields directly into msg, which is what we do; no
+        // separate variable-value parameter is documented for pushsms.aspx). Needs
+        // their support to confirm why msg's filled text isn't used for dispatch.
+        if (config.smsDltTemplateId) {
+            url.searchParams.append('DLT_TE_ID', config.smsDltTemplateId);
+        }
 
         logger.info(`[SMS] Sending OTP to ${msisdn} via SMS India Hub...`);
         const response = await fetch(url.toString(), { signal: controller.signal });
