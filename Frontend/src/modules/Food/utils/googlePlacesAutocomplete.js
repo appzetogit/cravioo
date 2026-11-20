@@ -54,6 +54,9 @@ export const fetchPlacePredictions = (autocompleteService, sessionToken, input) 
           status !== window.google.maps.places.PlacesServiceStatus.OK ||
           !results?.length
         ) {
+          if (status !== window.google.maps.places.PlacesServiceStatus.ZERO_RESULTS) {
+            console.error("Google Places autocomplete failed:", status)
+          }
           resolve([])
           return
         }

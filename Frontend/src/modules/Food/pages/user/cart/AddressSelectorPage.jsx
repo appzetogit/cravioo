@@ -289,7 +289,8 @@ export default function AddressSelectorPage() {
         )
         setPlacePredictions(results)
         setShowPlacePredictions(results.length > 0)
-      } catch {
+      } catch (err) {
+        console.error("Address autocomplete failed:", err)
         setPlacePredictions([])
         setShowPlacePredictions(false)
       } finally {
