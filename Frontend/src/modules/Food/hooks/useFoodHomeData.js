@@ -308,6 +308,7 @@ export const useFoodHomeData = ({
             openDays: restaurant.openDays,
             isActive: restaurant.isActive,
             isAcceptingOrders: restaurant.isAcceptingOrders,
+            adminForcedOffline: restaurant.adminForcedOffline,
           };
         });
 

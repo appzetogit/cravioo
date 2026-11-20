@@ -571,6 +571,7 @@ function RestaurantDetailsContent() {
             // Availability fields for grayscale styling
             isActive: actualRestaurant?.isActive !== false, // Default to true if not specified
             isAcceptingOrders: actualRestaurant?.isAcceptingOrders !== false, // Default to true if not specified
+            adminForcedOffline: actualRestaurant?.adminForcedOffline === true || apiRestaurant?.adminForcedOffline === true,
           }
 
           debugLog('? Transformed restaurant:', transformedRestaurant)
