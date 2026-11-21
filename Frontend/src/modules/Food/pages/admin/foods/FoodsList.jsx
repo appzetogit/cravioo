@@ -692,10 +692,14 @@ export default function FoodsList() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div
-                        className={`relative w-10 h-10 rounded-full overflow-hidden bg-slate-100 flex items-center justify-center transition-all ${
+                        className={`relative w-10 h-10 rounded-full overflow-hidden bg-slate-100 flex items-center justify-center transition-all group ${
                           dragOverFoodId === food.id ? "ring-2 ring-blue-500 ring-offset-1" : ""
                         } ${canEdit ? "cursor-pointer" : ""}`}
-                        title={canEdit ? "Drag and drop an image to update" : undefined}
+                        title={canEdit ? "Click or drag and drop an image to update" : undefined}
+                        onClick={() => {
+                          if (!canEdit || uploadingFoodId === food.id) return
+                          document.getElementById(`food-image-input-${food.id}`)?.click()
+                        }}
                         onDragOver={(e) => {
                           if (!canEdit) return
                           e.preventDefault()
@@ -710,6 +714,19 @@ export default function FoodsList() {
                           if (file) handleDropImage(food, file)
                         }}
                       >
+                        {canEdit && (
+                          <input
+                            id={`food-image-input-${food.id}`}
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0]
+                              if (file) handleDropImage(food, file)
+                              e.target.value = ""
+                            }}
+                          />
+                        )}
                         {uploadingFoodId === food.id ? (
                           <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
                         ) : (
@@ -724,8 +741,10 @@ export default function FoodsList() {
                             }}
                           />
                         )}
-                        {canEdit && dragOverFoodId === food.id && uploadingFoodId !== food.id && (
-                          <div className="absolute inset-0 bg-blue-600/70 flex items-center justify-center">
+                        {canEdit && uploadingFoodId !== food.id && (
+                          <div className={`absolute inset-0 bg-blue-600/70 flex items-center justify-center transition-opacity ${
+                            dragOverFoodId === food.id ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                          }`}>
                             <ImagePlus className="w-4 h-4 text-white" />
                           </div>
                         )}
