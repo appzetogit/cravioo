@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useCallback } from "react"
 import { useSearchParams, useNavigate } from "react-router-dom"
-import { Search, Trash2, Loader2, Eye, Pencil, Plus, Save, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react"
+import { Search, Trash2, Loader2, Eye, Pencil, Plus, Save, ChevronDown, ChevronLeft, ChevronRight, ImagePlus } from "lucide-react"
 import { adminAPI, uploadAPI } from "@food/api"
 import { toast } from "sonner"
 import { useAuth } from "@core/context/AuthContext"
@@ -112,6 +112,8 @@ export default function FoodsList() {
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(PAGINATION_CONFIG.defaultPageSize)
   const [imageVersion, setImageVersion] = useState(() => Date.now())
+  const [dragOverFoodId, setDragOverFoodId] = useState(null)
+  const [uploadingFoodId, setUploadingFoodId] = useState(null)
 
   const getItemCreatedMs = (item = {}) => {
     const direct = [item.createdAt, item.addedAt, item.requestedAt, item.updatedAt]
@@ -525,6 +527,43 @@ export default function FoodsList() {
     setShowDetailModal(true)
   }
 
+  const handleDropImage = async (food, file) => {
+    if (!canEdit) {
+      toast.error("Permission denied")
+      return
+    }
+    if (!file || !file.type?.startsWith("image/")) {
+      toast.error("Please drop an image file")
+      return
+    }
+
+    const foodId = food?._id || food?.id
+    try {
+      setUploadingFoodId(foodId)
+      const uploadResponse = await uploadAPI.uploadMedia(file, { folder: "foods" })
+      const imageUrl =
+        uploadResponse?.data?.data?.url ||
+        uploadResponse?.data?.url ||
+        ""
+      if (!imageUrl) {
+        throw new Error("Upload did not return an image URL")
+      }
+
+      await adminAPI.updateFood(foodId, { image: imageUrl, images: [imageUrl] })
+
+      setFoods((prev) =>
+        prev.map((f) => (String(f.id) === String(foodId) ? { ...f, image: imageUrl } : f))
+      )
+      setImageVersion(Date.now())
+      toast.success(`Image updated for "${food.name}"`)
+    } catch (error) {
+      debugError("Error uploading dropped image:", error)
+      toast.error(error?.response?.data?.message || "Failed to upload image")
+    } finally {
+      setUploadingFoodId(null)
+    }
+  }
+
   return (
     <div className="p-4 lg:p-6 bg-slate-50 min-h-screen">
       {/* Header Section */}
@@ -652,17 +691,44 @@ export default function FoodsList() {
                       <span className="text-sm font-medium text-slate-700">{(currentPage - 1) * pageSize + index + 1}</span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="w-10 h-10 rounded-full overflow-hidden bg-slate-100 flex items-center justify-center">
-                        <img
-                          src={withImageVersion(food.image)}
-                          alt={food.name}
-                          className="w-full h-full object-cover"
-                          key={`${food.id}-${imageVersion}`}
-                          loading="lazy"
-                          onError={(e) => {
-                            e.target.src = "https://via.placeholder.com/40"
-                          }}
-                        />
+                      <div
+                        className={`relative w-10 h-10 rounded-full overflow-hidden bg-slate-100 flex items-center justify-center transition-all ${
+                          dragOverFoodId === food.id ? "ring-2 ring-blue-500 ring-offset-1" : ""
+                        } ${canEdit ? "cursor-pointer" : ""}`}
+                        title={canEdit ? "Drag and drop an image to update" : undefined}
+                        onDragOver={(e) => {
+                          if (!canEdit) return
+                          e.preventDefault()
+                          setDragOverFoodId(food.id)
+                        }}
+                        onDragLeave={() => setDragOverFoodId((prev) => (prev === food.id ? null : prev))}
+                        onDrop={(e) => {
+                          if (!canEdit) return
+                          e.preventDefault()
+                          setDragOverFoodId(null)
+                          const file = e.dataTransfer?.files?.[0]
+                          if (file) handleDropImage(food, file)
+                        }}
+                      >
+                        {uploadingFoodId === food.id ? (
+                          <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+                        ) : (
+                          <img
+                            src={withImageVersion(food.image)}
+                            alt={food.name}
+                            className="w-full h-full object-cover"
+                            key={`${food.id}-${imageVersion}`}
+                            loading="lazy"
+                            onError={(e) => {
+                              e.target.src = "https://via.placeholder.com/40"
+                            }}
+                          />
+                        )}
+                        {canEdit && dragOverFoodId === food.id && uploadingFoodId !== food.id && (
+                          <div className="absolute inset-0 bg-blue-600/70 flex items-center justify-center">
+                            <ImagePlus className="w-4 h-4 text-white" />
+                          </div>
+                        )}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">

@@ -5588,6 +5588,15 @@ export async function updateFood(id, body) {
     if (pricingUpdate.price !== undefined) doc.price = pricingUpdate.price;
     if (pricingUpdate.variants !== undefined) doc.variants = pricingUpdate.variants;
     if (body.image !== undefined) doc.image = String(body.image || '').trim();
+    if (body.images !== undefined) {
+        doc.images = Array.isArray(body.images)
+            ? body.images.map((img) => (typeof img === 'string' ? img.trim() : img?.url)).filter(Boolean)
+            : [];
+    } else if (body.image !== undefined) {
+        // Single-image update (e.g. drag-and-drop) with no explicit images array —
+        // keep the gallery in sync so the new photo is actually what displays.
+        doc.images = doc.image ? [doc.image] : [];
+    }
     if (body.foodType !== undefined) doc.foodType = targetFoodType;
     if (body.isAvailable !== undefined) doc.isAvailable = body.isAvailable !== false;
     if (body.preparationTime !== undefined) doc.preparationTime = String(body.preparationTime || '').trim();

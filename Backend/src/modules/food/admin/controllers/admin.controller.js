@@ -795,6 +795,13 @@ export async function updateFood(req, res, next) {
         if (!updated) {
             return res.status(404).json({ success: false, message: 'Food not found' });
         }
+        await Promise.all([
+            invalidateCache('restaurants*'),
+            invalidateCache('food_search*'),
+            invalidateCache('restaurant_detail*'),
+            invalidateCache('restaurant_menu:*'),
+            invalidateCache('restaurant_menus_batch:*'),
+        ]).catch(console.error);
         res.status(200).json({ success: true, message: 'Food updated successfully', data: { food: updated } });
     } catch (error) {
         next(error);
