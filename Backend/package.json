@@ -12,7 +12,6 @@
     "worker:order": "node src/queues/workers/order.worker.js",
     "worker:tracking": "node src/queues/workers/tracking.worker.js",
     "worker:payment": "node src/queues/workers/payment.worker.js",
-    "worker:subscription": "node src/queues/workers/subscription.worker.js",
     "migrate:fcm-tokens": "node scripts/migrate-fcm-tokens-to-profile-models.js",
     "migrate:order-payments": "node scripts/migrate-orders-to-transactions.js",
     "migrate:global-auth": "node scripts/migrate-global-auth-collections.js",

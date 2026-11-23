@@ -168,17 +168,6 @@ export const updateRestaurantAcceptingOrdersController = async (req, res, next) 
     }
 };
 
-export const checkSubscriptionEligibilityController = async (req, res, next) => {
-    try {
-        const restaurantId = req.user?.userId;
-        const { ensureDailyPassEligibility } = await import('../../subscriptions/services/wallet.service.js');
-        const eligibility = await ensureDailyPassEligibility(restaurantId, 'RESTAURANT');
-        return sendResponse(res, 200, 'Eligibility checked', eligibility);
-    } catch (error) {
-        next(error);
-    }
-};
-
 export const uploadRestaurantProfileImageController = async (req, res, next) => {
     try {
         const restaurantId = req.user?.userId;

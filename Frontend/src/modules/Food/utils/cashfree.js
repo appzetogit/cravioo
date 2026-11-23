@@ -100,36 +100,6 @@ export const initCashfreePayment = async (options) => {
 };
 
 /**
- * Open the Cashfree hosted checkout to authorize a recurring subscription mandate.
- * @param {Object} options
- * @param {String} options.subscriptionSessionId - from the backend's create-subscription response
- */
-export const initCashfreeSubscription = async (options) => {
-  try {
-    await loadCashfreeScript();
-    if (!window.Cashfree) {
-      throw new Error('Cashfree SDK not available');
-    }
-
-    const cashfree = window.Cashfree({ mode: CASHFREE_MODE });
-    const result = await cashfree.checkout({
-      paymentSessionId: options.subscriptionSessionId,
-      redirectTarget: options.redirectTarget || '_modal',
-    });
-
-    if (result?.error) {
-      if (options.onError) options.onError(result.error);
-      return result;
-    }
-    if (options.onSuccess) options.onSuccess({ subscriptionId: options.subscriptionId });
-    return result;
-  } catch (error) {
-    if (options.onError) options.onError(error);
-    throw error;
-  }
-};
-
-/**
  * Format amount for display (Cashfree amounts are already in rupees, not paise).
  * @param {Number} amount
  * @returns {String}

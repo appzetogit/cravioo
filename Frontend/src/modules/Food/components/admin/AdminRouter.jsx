@@ -67,7 +67,6 @@ const Customers = lazy(() => import("@food/pages/admin/Customers"));
 const UserActivity = lazy(() => import("@food/pages/admin/UserActivity"));
 const CustomerRoleRequests = lazy(() => import("@food/pages/admin/CustomerRoleRequests"));
 const SupportTickets = lazy(() => import("@food/pages/admin/SupportTickets"));
-const SubscriptionManagement = lazy(() => import("@food/pages/admin/SubscriptionManagement"));
 const AddFund = lazy(() => import("@food/pages/admin/wallet/AddFund"));
 const Bonus = lazy(() => import("@food/pages/admin/wallet/Bonus"));
 const LoyaltyPointReport = lazy(() => import("@food/pages/admin/loyalty-point/Report"));
@@ -275,7 +274,6 @@ export default function AdminRouter() {
             <Route path="dining/banners" element={<DiningBanners />} />
             <Route path="dining/requests" element={<DiningRequests />} />
             <Route path="dining/bookings" element={<DiningBookings />} />
-            {/* <Route path="subscriptions" element={<SubscriptionManagement />} /> */}
             <Route path="fee-settings" element={<FeeSettings />} />
             <Route path="packaging-fee" element={<PackagingFee />} />
             <Route path="referral-settings" element={<ReferralSettings />} />

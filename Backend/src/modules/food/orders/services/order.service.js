@@ -80,7 +80,6 @@ import {
   SCHEDULE_FALLBACK_GRACE_MS,
 } from '../utils/scheduleConstants.js';
 import * as foodTransactionService from './foodTransaction.service.js';
-import { ensureDailyPassEligibility } from "../../subscriptions/services/wallet.service.js";
 import {
   getGlobalPaymentSettings,
   assertPaymentMethodAllowed,
@@ -2957,23 +2956,6 @@ export async function createOrder(userId, dto) {
       }
     }
 
-    // PHASE 3D: SUBSCRIPTION GUARD (READ-ONLY VALIDATION) (Bypassed)
-    /* Comment out the related restriction/check logic in the codebase instead of removing it completely.
-    // CRITICAL: Use primaryRestaurant.sourceId (MongoDB _id) instead of primaryRestaurantId (which could be custom ID)
-    console.log("[TRACE] calling eligibility", { sourceId: primaryRestaurant.sourceId });
-    const eligibility = await ensureDailyPassEligibility(primaryRestaurant.sourceId, 'RESTAURANT');
-    console.log("[TRACE] eligibility received in createOrder:", eligibility);
-    console.log("[TRACE] condition check:", {
-        eligible: eligibility.eligible,
-        shouldDeduct: eligibility.shouldDeduct,
-        willThrow: !eligibility.eligible || eligibility.shouldDeduct
-    });
-    if (!eligibility.eligible || eligibility.shouldDeduct) {
-      throw new ValidationError(eligibility.reason === 'LOW_BALANCE' || eligibility.reason === 'REQUIRES_DAY_DEDUCTION'
-        ? "Restaurant is not accepting new orders due to insufficient subscription balance." 
-        : "Restaurant is not accepting new orders at this time.");
-    }
-    */
   }
   await applyServerItemPricing(items, sourceMap);
 

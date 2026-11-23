@@ -20,7 +20,6 @@ import { getPublicEnvController } from '../modules/food/landing/controllers/publ
 import webhookRoutes from '../core/payments/routes/webhook.routes.js';
 import searchRoutes from '../modules/food/search/routes/search.routes.js';
 import diningPublicRoutes from '../modules/food/dining/routes/publicDining.routes.js';
-import subscriptionRoutes from '../modules/food/subscriptions/routes/subscription.routes.js';
 import chatRoutes from '../modules/food/chat/routes/chat.routes.js';
 import { requireEnabledModule } from '../middleware/moduleAccess.js';
 
@@ -46,7 +45,6 @@ router.use('/v1/auth', authRoutes);
 router.use('/v1/food/delivery', requireEnabledModule('food'), deliveryRoutes);
 router.use('/v1/food/restaurant', requireEnabledModule('food'), restaurantRoutes);
 router.use('/v1/media', mediaRoutes);
-router.use('/v1/food/subscriptions', requireEnabledModule('food'), subscriptionRoutes);
 // Public dining discovery (mounted before the catch-all /v1/food landing router)
 router.use('/v1/food/dining', requireEnabledModule('food'), diningPublicRoutes);
 

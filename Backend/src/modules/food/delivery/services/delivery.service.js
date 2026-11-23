@@ -10,7 +10,6 @@ import { Transaction } from '../../../../core/payments/models/transaction.model.
 import { uploadImageBuffer } from '../../../../services/storage.service.js';
 import { ValidationError } from '../../../../core/auth/errors.js';
 import { getDeliveryCashLimitSettings } from '../../admin/services/admin.service.js';
-import { ensureDailyPassEligibility, activateDailyPass } from '../../subscriptions/services/wallet.service.js';
 import { verifyAndConsumeOnboardingPayment } from '../../../common/services/onboardingFee.service.js';
 import { OnboardingPaymentLog } from '../../../common/models/onboardingPaymentLog.model.js';
 import {
@@ -716,27 +715,6 @@ export const updateDeliveryAvailability = async (userId, payload) => {
         else validStatus = 'offline';
     }
 
-    // PHASE 3C-1: SUBSCRIPTION TRIGGER (OFFLINE -> ONLINE ONLY) (Bypassed)
-    /* Comment out the related restriction/check logic in the codebase instead of removing it completely.
-    if (partner.availabilityStatus === 'offline' && validStatus === 'online') {
-        const eligibility = await ensureDailyPassEligibility(userId, 'DELIVERY_PARTNER');
-        
-        if (!eligibility.eligible) {
-            throw new ValidationError(eligibility.reason === 'LOW_BALANCE' 
-                ? 'Insufficient subscription balance. Minimum ₹1000 required to go online.' 
-                : 'Subscription access blocked.');
-        }
-
-        if (eligibility.shouldDeduct) {
-            const result = await activateDailyPass(userId, 'DELIVERY_PARTNER');
-            if (!result.success) {
-                throw new ValidationError(result.reason === 'LOW_BALANCE' 
-                    ? 'Insufficient subscription balance for daily pass.' 
-                    : 'Failed to activate daily pass.');
-            }
-        }
-    }
-    */
     // CASH LIMIT ENFORCEMENT — only when deliberately going online (not GPS pings)
     if (hasExplicitStatus && !hasLocation && partner.availabilityStatus === 'offline' && validStatus === 'online') {
         await reconcilePartnerVehiclesWithCatalog(partner);

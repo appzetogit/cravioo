@@ -17,18 +17,9 @@ import { FoodTransaction } from '../../orders/models/foodTransaction.model.js';
 import { FoodRestaurant } from '../models/restaurant.model.js';
 import { FoodRestaurantWallet, ensureRestaurantWallet } from '../models/restaurantWallet.model.js';
 import { FoodRestaurantWithdrawal } from '../models/foodRestaurantWithdrawal.model.js';
-import { FoodDailyPass } from '../../subscriptions/models/foodDailyPass.model.js';
-import { FoodWalletLedger } from '../../subscriptions/models/foodWalletLedger.model.js';
 import { getRestaurantWithdrawalLimitSettings, getRestaurantWithdrawalDayStatus } from '../../admin/services/admin.service.js';
 import { realizeFoodQuickRestaurantShare } from '../../orders/services/foodTransaction.service.js';
 import { logger } from '../../../../utils/logger.js';
-import dayjs from 'dayjs';
-import timezone from 'dayjs/plugin/timezone.js';
-import utc from 'dayjs/plugin/utc.js';
-
-dayjs.extend(utc);
-dayjs.extend(timezone);
-const IST_TIMEZONE = 'Asia/Kolkata';
 
 function toTwoDigitYearString(dateObj) {
     const y = String(dateObj.getFullYear());
@@ -540,58 +531,4 @@ export async function getRestaurantFinance(restaurantId, query = {}) {
         pastCycles: pastCyclesResult
     };
 }
-
-export async function getRestaurantSubscriptionWallet(restaurantId) {
-    if (!restaurantId || !mongoose.Types.ObjectId.isValid(restaurantId)) return null;
-    const rid = new mongoose.Types.ObjectId(restaurantId);
-
-    await ensureRestaurantWallet(rid);
-
-    const todayIST = dayjs().tz(IST_TIMEZONE).format('YYYY-MM-DD');
-    const [wallet, activePass, recentLedger] = await Promise.all([
-        FoodRestaurantWallet.findOne({ restaurantId: rid })
-            .select('subscriptionBalance')
-            .lean(),
-        FoodDailyPass.findOne({ 
-            userId: rid, 
-            userType: 'RESTAURANT', 
-            date: todayIST,
-            expiresAt: { $gt: new Date() }
-        }).lean(),
-        FoodWalletLedger.find({ 
-            ownerId: String(rid), 
-            ownerType: 'RESTAURANT' 
-        })
-            .sort({ createdAt: -1 })
-            .limit(20)
-            .lean()
-    ]);
-
-    const subscriptionBalance = Number(wallet?.subscriptionBalance || 0);
-    const minBalance = 1000;
-    const requiredTopup = Math.max(0, minBalance - subscriptionBalance);
-
-    return {
-        subscriptionBalance,
-        minBalance,
-        requiredTopup,
-        topupRequired: requiredTopup > 0,
-        activePass: activePass ? {
-            id: activePass._id,
-            date: activePass.date,
-            expiresAt: activePass.expiresAt,
-            amountDeducted: activePass.amountDeducted
-        } : null,
-        ledger: recentLedger.map(l => ({
-            id: l._id,
-            type: l.type,
-            amount: l.amount,
-            beforeBalance: l.beforeBalance,
-            afterBalance: l.afterBalance,
-            createdAt: l.createdAt,
-            referenceId: l.referenceId
-        }))
-    };
-}
-
 

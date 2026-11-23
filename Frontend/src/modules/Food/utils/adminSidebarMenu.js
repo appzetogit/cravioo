@@ -223,16 +223,6 @@ export const adminSidebarMenu = [
       },
     ],
   },
-  /* Comment out the related restriction/check logic in the codebase instead of removing it completely.
-  {
-    type: "section",
-    label: "SUBSCRIPTION MANAGEMENT",
-    permissionKey: "subscription_management",
-    items: [
-      { type: "link", label: "Subscription Plans", permissionKey: "plans", path: "/admin/food/subscriptions", icon: "CreditCard" },
-    ],
-  },
-  */
   {
     type: "section",
     label: "DELIVERYMAN MANAGEMENT",

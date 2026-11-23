@@ -3,14 +3,6 @@ import { FoodOrder, FoodSettings } from "../models/order.model.js";
 import { FoodRestaurant } from "../../restaurant/models/restaurant.model.js";
 import { FoodDeliveryPartner } from "../../delivery/models/deliveryPartner.model.js";
 import { getDeliveryPartnerWalletEnhanced } from "../../delivery/services/deliveryFinance.service.js";
-import { FoodDailyPass } from "../../subscriptions/models/foodDailyPass.model.js";
-import { UserSubscription } from "../../user/models/userSubscription.model.js";
-import dayjs from "dayjs";
-import timezone from "dayjs/plugin/timezone.js";
-import utc from "dayjs/plugin/utc.js";
-
-dayjs.extend(utc);
-dayjs.extend(timezone);
 import {
   ValidationError,
   NotFoundError,
@@ -35,25 +27,6 @@ const FORWARD_ORDER_DOCUMENT_TYPE = "forward_order";
 export async function filterEligiblePartners(partners) {
   if (!partners.length) return [];
   const partnerIds = partners.map(p => p.partnerId);
-  const today = dayjs().tz("Asia/Kolkata").format("YYYY-MM-DD");
-  
-  const [activePasses, activeSubs] = await Promise.all([
-    FoodDailyPass.find({
-      userId: { $in: partnerIds },
-      userType: "DELIVERY_PARTNER",
-      date: today,
-      expiresAt: { $gt: new Date() }
-    }).select("userId").lean(),
-    UserSubscription.find({
-      deliveryBoyId: { $in: partnerIds },
-      status: { $in: ["active", "grace"] }
-    }).select("deliveryBoyId").lean()
-  ]);
-
-  const subEligibleIds = new Set([
-    ...activePasses.map(p => p.userId.toString()),
-    ...activeSubs.map(s => s.deliveryBoyId.toString())
-  ]);
 
   // Concurrency limits (admin-set, default 1) — skip partners already at their limit
   // so the auto-dispatch hunt never offers a brand-new order to someone who can't
@@ -69,8 +42,6 @@ export async function filterEligiblePartners(partners) {
   const fullyEligiblePartners = [];
 
   for (const p of partners) {
-    const isSubEligible = subEligibleIds.has(p.partnerId.toString());
-
     const limit = limitById.get(String(p.partnerId)) || 1;
     const activeCount = await countActiveOrdersForPartner(p.partnerId);
     if (activeCount >= limit) continue; // Already at their concurrent-order limit.
@@ -97,13 +68,7 @@ export async function filterEligiblePartners(partners) {
         continue; // Skip this partner
       }
       
-      // If cash limit is fine, check subscription (or if bypassed, always push)
-      if (isSubEligible) {
-        fullyEligiblePartners.push(p);
-      } else {
-        // Optionally bypass sub check if that was the intent elsewhere: fullyEligiblePartners.push(p);
-        fullyEligiblePartners.push(p); // Bypassing subscription here as well since it was bypassed in accept.
-      }
+      fullyEligiblePartners.push(p);
     } catch (err) {
       logger.error(`Failed to check wallet for partner ${p.partnerId}: ${err.message}`);
     }

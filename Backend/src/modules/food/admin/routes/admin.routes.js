@@ -11,7 +11,6 @@ import { getCustomerContactsAdminController } from '../../user/controllers/userC
 import * as foodApprovalController from '../controllers/foodApproval.controller.js';
 import * as foodPackagingController from '../controllers/foodPackaging.controller.js';
 import * as addonsApprovalController from '../controllers/addonsApproval.controller.js';
-import * as subscriptionPlanController from '../controllers/subscriptionPlan.controller.js';
 
 import * as feedbackExperienceController from '../controllers/feedbackExperience.controller.js';
 import * as notificationBroadcastController from '../controllers/notificationBroadcast.controller.js';
@@ -236,17 +235,6 @@ router.put('/fee-settings', checkPermission('food::deliveryman_management::fee_s
 // ----- Referral Settings -----
 router.get('/referral-settings', checkPermission('food::referral_rewards::referral_settings', 'view'), adminController.getReferralSettings);
 router.put('/referral-settings', checkPermission('food::referral_rewards::referral_settings', 'edit'), adminController.createOrUpdateReferralSettings);
-
-// ----- Subscription Plans -----
-router.get('/subscription-plans', checkPermission('food::subscription_management::plans', 'view'), subscriptionPlanController.listPlansController);
-router.post('/subscription-plans', checkPermission('food::subscription_management::plans', 'create'), subscriptionPlanController.createPlanController);
-router.patch('/subscription-plans/:id', checkPermission('food::subscription_management::plans', 'edit'), subscriptionPlanController.updatePlanController);
-router.delete('/subscription-plans/:id', checkPermission('food::subscription_management::plans', 'delete'), subscriptionPlanController.deletePlanController);
-
-// ----- Subscription Business Analytics & History -----
-router.get('/subscription/overview', checkPermission('food::subscription_management::plans', 'view'), subscriptionPlanController.getSubscriptionOverviewController);
-router.get('/subscription/history', checkPermission('food::subscription_management::plans', 'view'), subscriptionPlanController.getSubscriptionHistoryController);
-router.get('/subscription/analytics', checkPermission('food::subscription_management::plans', 'view'), subscriptionPlanController.getSubscriptionAnalyticsController);
 
 
 // ----- Delivery Cash Limit -----

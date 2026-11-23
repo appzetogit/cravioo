@@ -13,7 +13,6 @@ import {
     notifyOwnerSafely
 } from '../../../../core/notifications/firebase.service.js';
 import { isPointInPolygon } from '../../../../utils/geo.js';
-import { ensureDailyPassEligibility, activateDailyPass, checkRestaurantEligibilityReadOnly } from '../../subscriptions/services/wallet.service.js';
 import { logger } from '../../../../utils/logger.js';
 import { getRoadDistancesToDestination } from '../../../../services/roadDistance.service.js';
 import { parseGeoPoint } from '../../shared/geo.utils.js';
@@ -1722,24 +1721,7 @@ export const getCurrentRestaurantProfile = async (restaurantId) => {
         doc.wasEverApproved = true;
     }
 
-    // Determine derived acceptsOrders status using the pure read-only check
-    let isAcceptingOrders = doc.isAcceptingOrders !== false;
-    try {
-        const eligibility = await checkRestaurantEligibilityReadOnly(restaurantId, 'RESTAURANT');
-        if (isAcceptingOrders !== eligibility.shouldAppearOnline) {
-            isAcceptingOrders = eligibility.shouldAppearOnline;
-
-            // Self-heal the database state asynchronously (non-blocking)
-            FoodRestaurant.updateOne(
-                { _id: restaurantId },
-                { $set: { isAcceptingOrders } }
-            ).catch(err => {
-                logger.error(`[SELF-HEAL] Failed to update isAcceptingOrders to ${isAcceptingOrders} for restaurant ${restaurantId}: ${err.message}`);
-            });
-        }
-    } catch (err) {
-        logger.error(`[PROFILE-HYDRATION] Error validating accepts orders status: ${err.message}`);
-    }
+    const isAcceptingOrders = doc.isAcceptingOrders !== false;
 
     return toRestaurantProfile({
         ...doc,
@@ -1758,28 +1740,6 @@ export const updateRestaurantAcceptingOrders = async (restaurantId, isAcceptingO
     }
 
     const value = Boolean(isAcceptingOrders);
-
-    // PHASE 3C-2: SUBSCRIPTION TRIGGER (CLOSED -> OPEN ONLY) (Bypassed)
-    /* Comment out the related restriction/check logic in the codebase instead of removing it completely.
-    if (currentRestaurant.isAcceptingOrders === false && value === true) {
-        const eligibility = await ensureDailyPassEligibility(restaurantId, 'RESTAURANT');
-        
-        if (!eligibility.eligible) {
-            throw new ValidationError(eligibility.reason === 'LOW_BALANCE' 
-                ? 'Insufficient subscription balance. Minimum ₹1000 required to open.' 
-                : 'Subscription access blocked.');
-        }
-
-        if (eligibility.shouldDeduct) {
-            const result = await activateDailyPass(restaurantId, 'RESTAURANT');
-            if (!result.success) {
-                throw new ValidationError(result.reason === 'LOW_BALANCE' 
-                    ? 'Insufficient subscription balance for daily pass.' 
-                    : 'Failed to activate daily pass.');
-            }
-        }
-    }
-    */
 
     const doc = await FoodRestaurant.findByIdAndUpdate(
         restaurantId,

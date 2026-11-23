@@ -20,7 +20,6 @@ import {
     deleteRestaurantAccountController,
     getRestaurantReferralStatsController,
     getRestaurantReferralDetailsController,
-    checkSubscriptionEligibilityController,
     listOwnerOutletsController,
     switchOutletController,
     addOutletController,
@@ -70,9 +69,8 @@ import {
 import * as orderController from '../../orders/controllers/order.controller.js';
 import { authMiddleware, optionalAuthMiddleware, requireRestaurantRegistrationToken } from '../../../../core/auth/auth.middleware.js';
 import { sendError } from '../../../../utils/response.js';
-import { getRestaurantFinanceController, getRestaurantSubscriptionWalletController } from '../controllers/restaurantFinance.controller.js';
+import { getRestaurantFinanceController } from '../controllers/restaurantFinance.controller.js';
 import { getMyTaxesReportController, getMySharedTaxesReportsController } from '../controllers/taxesReport.controller.js';
-import { createTopupOrderController, verifyTopupController } from '../../subscriptions/controllers/subscription.controller.js';
 import { FoodRestaurant } from '../models/restaurant.model.js';
 
 import {
@@ -234,10 +232,6 @@ router.get('/finance', authMiddleware, requireRestaurant, requireApprovedRestaur
 router.get('/orders/tax-report', authMiddleware, requireRestaurant, requireApprovedRestaurant, getMyTaxesReportController);
 router.get('/orders/tax-report/shared', authMiddleware, requireRestaurant, requireApprovedRestaurant, getMySharedTaxesReportsController);
 
-router.get('/subscription-eligibility', authMiddleware, requireRestaurant, requireApprovedRestaurant, checkSubscriptionEligibilityController);
-router.get('/subscription-wallet', authMiddleware, requireRestaurant, requireApprovedRestaurant, getRestaurantSubscriptionWalletController);
-router.post('/subscription-topup', authMiddleware, requireRestaurant, requireApprovedRestaurant, createTopupOrderController);
-router.post('/verify-topup', authMiddleware, requireRestaurant, requireApprovedRestaurant, verifyTopupController);
 router.post('/withdraw', authMiddleware, requireRestaurant, requireApprovedRestaurant, createWithdrawalRequestController);
 router.get('/withdrawals', authMiddleware, requireRestaurant, requireApprovedRestaurant, listMyWithdrawalsController);
 router.post('/withdrawals/:id/cancel', authMiddleware, requireRestaurant, requireApprovedRestaurant, cancelMyWithdrawalController);

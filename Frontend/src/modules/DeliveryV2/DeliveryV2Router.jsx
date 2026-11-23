@@ -39,7 +39,6 @@ import TermsAndConditionsV2 from './pages/TermsAndConditionsV2';
 import PrivacyPolicyV2 from './pages/PrivacyPolicyV2';
 import SupportInfoV2 from './pages/SupportInfoV2';
 import NotificationsV2 from './pages/NotificationsV2';
-import SubscriptionV2 from './pages/SubscriptionV2';
 import DeliveryShell from './components/DeliveryShell';
 
 const DeliveryV2Router = () => {

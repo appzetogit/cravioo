@@ -8,7 +8,6 @@ import {
     ORDER_QUEUE,
     PAYMENT_QUEUE,
     TRACKING_QUEUE,
-    SUBSCRIPTION_QUEUE,
     QUEUE_NAMES
 } from './queue.constants.js';
 
@@ -102,7 +101,6 @@ export const initializeQueues = () => {
         logger.info(`BullMQ initialized with ${initialized.length} queues: ${initialized.join(', ')}`);
         
         // Initialize recurring schedules
-        initSubscriptionSchedules();
         initOrderSchedules();
     }
     return { initialized: initialized.length === QUEUE_NAMES.length, queues: initialized };
@@ -116,33 +114,6 @@ export const getNotificationQueue = () => getQueue(NOTIFICATION_QUEUE);
 export const getOrderQueue = () => getQueue(ORDER_QUEUE);
 export const getPaymentQueue = () => getQueue(PAYMENT_QUEUE);
 export const getTrackingQueue = () => getQueue(TRACKING_QUEUE);
-export const getSubscriptionQueue = () => getQueue(SUBSCRIPTION_QUEUE);
-
-/**
- * ✅ NEW: Schedules the hourly subscription expiry check.
- */
-export const initSubscriptionSchedules = async () => {
-    if (!config.bullmqEnabled) return;
-    const queue = getSubscriptionQueue();
-    if (!queue) return;
-
-    try {
-        // Schedule hourly check
-        await queue.add(
-            'check_subscription_expiry',
-            { action: 'CHECK_EXPIRY' },
-            {
-                repeat: { pattern: '0 * * * *' }, // Every hour at minute 0
-                jobId: 'hourly_subscription_check', // Unique ID to prevent duplicates
-                removeOnComplete: true,
-                removeOnFail: true
-            }
-        );
-        logger.info('Subscription Schedule: Hourly expiry check initialized');
-    } catch (err) {
-        logger.error(`Subscription Schedule Failed: ${err.message}`);
-    }
-};
 
 /**
  * Schedules the periodic watchdog for stuck orders.
@@ -191,5 +162,5 @@ export const getQueueStats = async () => {
     return stats;
 };
 
-export { OTP_QUEUE, NOTIFICATION_QUEUE, ORDER_QUEUE, PAYMENT_QUEUE, TRACKING_QUEUE, SUBSCRIPTION_QUEUE, QUEUE_NAMES } from './queue.constants.js';
+export { OTP_QUEUE, NOTIFICATION_QUEUE, ORDER_QUEUE, PAYMENT_QUEUE, TRACKING_QUEUE, QUEUE_NAMES } from './queue.constants.js';
 export { getBullMQConnection, closeBullMQConnection } from './connection.js';
