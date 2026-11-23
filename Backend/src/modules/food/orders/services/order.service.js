@@ -3083,7 +3083,6 @@ export async function createOrder(userId, dto) {
 
   let resolvedDeliveryFee = Math.max(0, Number(serverPricing.deliveryFee || 0));
   let resolvedTotal = Math.max(0, Number(serverPricing.total || 0));
-  logger.info(`[DEBUG-DSU] serverPricing.total=${serverPricing.total} serverPricing.dsuTransferCharge=${serverPricing.dsuTransferCharge} resolvedTotal=${resolvedTotal} orderType=${orderType}`);
   if (
     orderType === "mixed" &&
     requestedDeliveryFleet === "express" &&
@@ -3235,7 +3234,8 @@ export async function createOrder(userId, dto) {
       normalizedPricing.packagingFee +
       normalizedPricing.deliveryFee +
       normalizedPricing.platformFee +
-      normalizedPricing.quickDeliveryFee -
+      normalizedPricing.quickDeliveryFee +
+      normalizedPricing.dsuTransferCharge -
       normalizedPricing.discount,
   ));
   normalizedPricing.total = recomputedTotal;
