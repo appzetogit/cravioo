@@ -103,6 +103,7 @@ export const initializeQueues = () => {
         
         // Initialize recurring schedules
         initSubscriptionSchedules();
+        initOrderSchedules();
     }
     return { initialized: initialized.length === QUEUE_NAMES.length, queues: initialized };
 };

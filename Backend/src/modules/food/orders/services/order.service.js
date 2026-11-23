@@ -7184,6 +7184,11 @@ export async function recoverStuckOrders() {
   try {
     const STUCK_THRESHOLD_HOURS = 2; // Orders older than this in a transient state are considered stuck
     const thresholdDate = new Date(Date.now() - STUCK_THRESHOLD_HOURS * 60 * 60 * 1000);
+    // Orders where the online-payment session never completed (e.g. gateway checkout
+    // failed to open) shouldn't sit visible to the customer for 2 hours — a much shorter
+    // window is enough since no payment was ever actually attempted.
+    const PAYMENT_NEVER_STARTED_THRESHOLD_MINUTES = 15;
+    const paymentNeverStartedThresholdDate = new Date(Date.now() - PAYMENT_NEVER_STARTED_THRESHOLD_MINUTES * 60 * 1000);
 
     const transientStates = [
       'placed',
@@ -7197,7 +7202,10 @@ export async function recoverStuckOrders() {
     // Find orders that haven't been updated recently and are in a transient state
     const stuckOrders = await FoodOrder.find({
       orderStatus: { $in: transientStates },
-      updatedAt: { $lt: thresholdDate }
+      $or: [
+        { updatedAt: { $lt: thresholdDate } },
+        { orderStatus: 'created', 'payment.status': 'created', updatedAt: { $lt: paymentNeverStartedThresholdDate } },
+      ],
     });
 
     if (stuckOrders.length === 0) {
