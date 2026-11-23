@@ -29,6 +29,7 @@ export default function LocationPrompt() {
   const routerLocation = useRouterLocation()
   const [showPrompt, setShowPrompt] = useState(false)
   const [permissionBlocked, setPermissionBlocked] = useState(false)
+  const [requestError, setRequestError] = useState("")
   const cardRef = useRef(null)
   const requestLocationRef = useRef(requestLocation)
 
@@ -53,12 +54,14 @@ export default function LocationPrompt() {
   const closePrompt = useCallback(() => {
     setShowPrompt(false)
     setPermissionBlocked(false)
+    setRequestError("")
     document.body.style.overflow = ""
   }, [])
 
   const openPrompt = useCallback(
     (blocked = false) => {
       setPermissionBlocked(blocked)
+      setRequestError("")
       setShowPrompt(true)
       document.body.style.overflow = "hidden"
       animateIn()
@@ -126,14 +129,22 @@ export default function LocationPrompt() {
       return
     }
 
+    setRequestError("")
     try {
       const loc = await requestLocation()
       if (hasValidCoordinates(loc)) {
         closePrompt()
         dismissLocationPromptPermanently()
+      } else {
+        setRequestError("Couldn't get your location. Please try again or pick an address manually.")
       }
-    } catch {
-      // Keep modal open so the user can retry or dismiss.
+    } catch (err) {
+      // code 1 = PERMISSION_DENIED (browser/OS-level block, not just our own modal)
+      if (err?.code === 1) {
+        setPermissionBlocked(true)
+      } else {
+        setRequestError(err?.message || "Couldn't get your location. Please try again or pick an address manually.")
+      }
     }
   }
 
@@ -188,6 +199,9 @@ export default function LocationPrompt() {
               ? "Location is blocked for this site. Click the lock icon in your browser address bar, set Location to Allow, then reload this page. You can also pick a delivery address manually from the header."
               : "We use your location to show nearby restaurants and provide accurate delivery times. Your location data is stored locally and never shared."}
           </p>
+          {requestError && (
+            <p className="text-sm text-red-600">{requestError}</p>
+          )}
           <div className="flex gap-2">
             <Button
               onClick={handleDismiss}
