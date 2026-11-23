@@ -6,6 +6,25 @@
 
 let cashfreeScriptLoaded = false;
 const CASHFREE_MODE = import.meta.env?.VITE_CASHFREE_ENV === 'production' ? 'production' : 'sandbox';
+// Safety net: if Cashfree's modal hits an error state whose own close button doesn't
+// work (e.g. domain-not-whitelisted "Broken Link!" screen), checkout() never resolves
+// and the user is stuck forever. Force it to settle after this long.
+const CHECKOUT_TIMEOUT_MS = 45000;
+
+/** Best-effort removal of Cashfree's injected modal/iframe so the user isn't visually stuck. */
+const forceCloseCashfreeModal = () => {
+  try {
+    document
+      .querySelectorAll('iframe[src*="cashfree"], [id*="cashfree"], [class*="cashfree"]')
+      .forEach((el) => {
+        // Only remove overlay/modal containers, not the SDK's own <script> tag.
+        if (el.tagName !== 'SCRIPT') el.remove();
+      });
+    document.body.style.overflow = '';
+  } catch {
+    // best-effort only
+  }
+};
 
 /**
  * Load the Cashfree checkout script.
@@ -48,12 +67,23 @@ export const initCashfreePayment = async (options) => {
     }
 
     const cashfree = window.Cashfree({ mode: CASHFREE_MODE });
-    const result = await cashfree.checkout({
+    const checkoutPromise = cashfree.checkout({
       paymentSessionId: options.paymentSessionId,
       redirectTarget: options.redirectTarget || '_modal',
     });
+    const timeoutPromise = new Promise((resolve) => {
+      setTimeout(() => resolve({ error: { message: 'Payment window timed out — please try again.', timedOut: true } }), CHECKOUT_TIMEOUT_MS);
+    });
 
-    // checkout() resolves once the modal closes (success, failure, or user dismiss).
+    // checkout() normally resolves once the modal closes (success, failure, or user
+    // dismiss) - but if Cashfree's own error screen has a broken close button (e.g.
+    // domain not whitelisted), it never resolves at all, so race it against a timeout.
+    const result = await Promise.race([checkoutPromise, timeoutPromise]);
+
+    if (result?.error?.timedOut) {
+      forceCloseCashfreeModal();
+    }
+
     // Cashfree never hands back a signature - the caller must re-verify order status
     // with the backend (which re-checks with Cashfree's server) before trusting payment.
     if (result?.error) {
