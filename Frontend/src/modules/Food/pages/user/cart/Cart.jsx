@@ -2283,6 +2283,7 @@ const handlePlaceOrder = async () => {
         }
         alert(errorMessage)
       } finally {
+        setRestaurantUnavailableMessage("")
         setIsPlacingOrder(false)
       }
     }
@@ -2311,6 +2312,7 @@ const handlePlaceOrder = async () => {
         if (!/cancel/i.test(msg)) {
           alert(msg)
         }
+        setRestaurantUnavailableMessage("")
         setIsPlacingOrder(false)
       }
     } else {
@@ -2332,6 +2334,10 @@ const handlePlaceOrder = async () => {
           } catch (cancelErr) {
             debugError("? Failed to auto-cancel order after payment error:", cancelErr)
           }
+          // Don't leave the page locked (grayscale/non-interactive) from a stale
+          // "restaurant unavailable" state picked up mid-payment — the cart is back
+          // to a normal browsable state once the payment attempt is over.
+          setRestaurantUnavailableMessage("")
           setIsPlacingOrder(false)
         },
       })
