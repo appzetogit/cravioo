@@ -63,7 +63,7 @@ export default function SeoHead() {
             }
         }
         if (linkFavicon) {
-            linkFavicon.href = faviconUrl || '/vite.svg';
+            linkFavicon.href = faviconUrl || '/favicon-32x32.png';
         }
     }, [settings]);
 
