@@ -2214,40 +2214,65 @@ const handlePlaceOrder = async () => {
 
     const verifyOrderId = order?._id || order?.id || order?.orderMongoId
 
+    // UPI/QR payments: Cashfree's checkout() modal can resolve well before the customer
+    // actually scans and pays (the 5-minute window is server-side, not tied to our modal
+    // staying open) — a single immediate verify-payment call will correctly report "not
+    // captured yet" even though the customer is still mid-payment. Poll instead of
+    // failing instantly; the webhook will also independently confirm payment the moment
+    // Cashfree reports success, whichever lands first.
+    const VERIFY_POLL_INTERVAL_MS = 4000
+    const VERIFY_POLL_MAX_ATTEMPTS = 30 // ~2 minutes of polling before giving up
+
     const verifyAndFinish = async () => {
+      let lastErrorMessage = "Payment verification failed. Please contact support."
       try {
         if (!verifyOrderId) {
           throw new Error("Unable to verify payment: missing order id from create-order response")
         }
-        const verifyResponse = await orderAPI.verifyPayment({
-          orderId: verifyOrderId,
-          cashfreeOrderId: cashfree.orderId,
-        })
 
-        debugLog("? Payment verification response:", verifyResponse.data)
+        for (let attempt = 1; attempt <= VERIFY_POLL_MAX_ATTEMPTS; attempt += 1) {
+          try {
+            const verifyResponse = await orderAPI.verifyPayment({
+              orderId: verifyOrderId,
+              cashfreeOrderId: cashfree.orderId,
+            })
 
-        if (verifyResponse.data.success) {
-          debugLog("?? Order placed successfully:", {
-            orderId: order._id || order.orderId,
-            paymentId: verifyResponse.data.data?.payment?.paymentId
-          })
-          setPlacedOrderId(order._id || order.orderId)
-          setPlacedOrderData(order || null)
-          setShowOrderSuccess(true)
-          window.dispatchEvent(new CustomEvent('order-placed', { detail: { order } }))
-          clearCart()
-        } else {
-          throw new Error(verifyResponse.data.message || "Payment verification failed")
+            debugLog("? Payment verification response:", verifyResponse.data)
+
+            if (verifyResponse.data.success) {
+              debugLog("?? Order placed successfully:", {
+                orderId: order._id || order.orderId,
+                paymentId: verifyResponse.data.data?.payment?.paymentId
+              })
+              setPlacedOrderId(order._id || order.orderId)
+              setPlacedOrderData(order || null)
+              setShowOrderSuccess(true)
+              window.dispatchEvent(new CustomEvent('order-placed', { detail: { order } }))
+              clearCart()
+              setIsPlacingOrder(false)
+              return
+            }
+            lastErrorMessage = verifyResponse.data.message || lastErrorMessage
+          } catch (attemptError) {
+            lastErrorMessage =
+              attemptError?.response?.data?.message ||
+              attemptError?.response?.data?.error?.message ||
+              attemptError?.response?.data?.errors?.[0]?.message ||
+              attemptError?.message ||
+              lastErrorMessage
+          }
+
+          if (attempt < VERIFY_POLL_MAX_ATTEMPTS) {
+            await new Promise((resolve) => setTimeout(resolve, VERIFY_POLL_INTERVAL_MS))
+          }
         }
+
+        throw new Error(lastErrorMessage)
       } catch (error) {
         debugError("? Payment verification error:", error)
-        const errorMessage =
-          error?.response?.data?.message ||
-          error?.response?.data?.error?.message ||
-          error?.response?.data?.errors?.[0]?.message ||
-          error?.message ||
-          "Payment verification failed. Please contact support."
-        // Clean up the pending order in backend since it never got paid.
+        const errorMessage = error?.message || lastErrorMessage
+        // Only cancel after the full polling window — give the customer the entire
+        // Cashfree payment-session validity to actually complete the UPI/QR payment.
         try {
           const cancelId = order?._id || order?.id || order?.orderMongoId
           if (cancelId) {
