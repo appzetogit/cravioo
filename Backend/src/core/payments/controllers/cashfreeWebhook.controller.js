@@ -197,22 +197,38 @@ export const handleCashfreeWebhook = async (req, res) => {
             }
 
             // 📂 CASE C: Onboarding Payment
-            const onboardingLog = await OnboardingPaymentLog.findOneAndUpdate(
-                {
-                    cashfreeOrderId: cfOrderId,
-                    status: { $ne: 'success' }
-                },
-                {
-                    $set: {
-                        status: 'success',
-                        cashfreePaymentId: cfPaymentId,
-                    }
-                },
-                { new: true }
-            );
+            const pendingOnboardingLog = await OnboardingPaymentLog.findOne({
+                cashfreeOrderId: cfOrderId,
+                status: { $ne: 'success' }
+            }).lean();
 
-            if (onboardingLog) {
-                logger.info(`Webhook [PAYMENT_SUCCESS_WEBHOOK]: Synced Onboarding Payment Log for Order ${cfOrderId} (Status=success)`);
+            if (pendingOnboardingLog) {
+                const paidAmount = Number(paymentObj.payment_amount);
+                const expectedAmount = Number(pendingOnboardingLog.amount);
+                const amountOk = Number.isFinite(paidAmount) && Number.isFinite(expectedAmount) &&
+                    Math.round(paidAmount * 100) === Math.round(expectedAmount * 100);
+
+                if (!amountOk) {
+                    logger.error(`Webhook [PAYMENT_SUCCESS_WEBHOOK]: Onboarding payment amount mismatch for CF-Order ${cfOrderId} — expected ${expectedAmount}, got ${paidAmount}`);
+                } else {
+                    const onboardingLog = await OnboardingPaymentLog.findOneAndUpdate(
+                        {
+                            cashfreeOrderId: cfOrderId,
+                            status: { $ne: 'success' }
+                        },
+                        {
+                            $set: {
+                                status: 'success',
+                                cashfreePaymentId: cfPaymentId,
+                            }
+                        },
+                        { new: true }
+                    );
+
+                    if (onboardingLog) {
+                        logger.info(`Webhook [PAYMENT_SUCCESS_WEBHOOK]: Synced Onboarding Payment Log for Order ${cfOrderId} (Status=success)`);
+                    }
+                }
             }
         }
 
