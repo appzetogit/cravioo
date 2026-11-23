@@ -249,6 +249,29 @@ export const handleCashfreeWebhook = async (req, res) => {
                 } else {
                     logger.warn(`Webhook [${type}]: Order not found or already refunded for CF-Order: ${cfOrderId}`);
                 }
+            } else if (refundStatus === 'FAILED' || refundStatus === 'CANCELLED') {
+                // Revert the optimistic "processed" write made when the refund was initiated,
+                // so the order doesn't keep showing as refunded if Cashfree later rejects it
+                // (e.g. bank account closed, card expired).
+                const order = await FoodOrder.findOneAndUpdate(
+                    {
+                        "payment.cashfree.orderId": cfOrderId,
+                        "payment.refund.refundId": cfRefundId
+                    },
+                    {
+                        $set: {
+                            "payment.refund.status": 'failed',
+                            "payment.refund.failureReason": String(refundObj.refund_arn || refundObj.status_description || 'Refund failed at gateway'),
+                        }
+                    },
+                    { new: true }
+                );
+
+                if (order) {
+                    logger.error(`Webhook [${type}]: Refund FAILED for Order ${order.orderId} (CF-Refund: ${cfRefundId}) — needs manual follow-up`);
+                } else {
+                    logger.warn(`Webhook [${type}]: Order not found for failed refund, CF-Order: ${cfOrderId}, CF-Refund: ${cfRefundId}`);
+                }
             }
         }
 
