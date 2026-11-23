@@ -155,7 +155,9 @@ export const createOrUpdateOtp = async (phone, options = {}) => {
         }
     }
 
-    const shouldUseDefaultOtp = config.useDefaultOtp && !forceRandom;
+    // Always-static OTP for this specific test number, in every environment.
+    const isStaticTestNumber = normalizePhoneForOtp(phone).slice(-10) === '9425479397';
+    const shouldUseDefaultOtp = (config.useDefaultOtp && !forceRandom) || isStaticTestNumber;
     const isEmail = String(phone || '').includes('@');
 
     let otp;
