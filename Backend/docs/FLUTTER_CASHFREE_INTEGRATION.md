@@ -190,53 +190,7 @@ applies for UPI/QR.
 
 ---
 
-## 4. Restaurant / Delivery Partner subscription (Cravioo_restaurent, Cravioo_delivery)
-
-**Base path:** `/api/v1/food/subscriptions`, Bearer token (RESTAURANT or DELIVERY_PARTNER
-role — same endpoint serves both).
-
-### Create payment session
-```
-POST /api/v1/food/subscriptions/purchase
-Body: { "planId": "<subscription plan id>" }
-```
-**Response shape depends on the plan type** — check `plan.paymentType` before deciding
-which Cashfree SDK method to call:
-
-- **One-time plan** → flat response (no `cashfree` wrapper):
-  ```json
-  { "orderId": "...", "amount": 999, "paymentSessionId": "...", "appId": "..." }
-  ```
-  Use the normal Cashfree checkout/order-payment SDK call.
-
-- **Recurring plan** → different shape:
-  ```json
-  { "subscriptionId": "...", "subscriptionSessionId": "...", "appId": "..." }
-  ```
-  Use Cashfree's **native subscription/mandate SDK method** (not the regular one-time
-  checkout call) — `subscriptionSessionId` is a different kind of session specifically
-  for recurring mandates. Check Cashfree's Flutter SDK docs for the subscription-specific
-  method name.
-
-### Verify
-```
-POST /api/v1/food/subscriptions/verify
-Body: { "cashfreeOrderId": "..." }   // for one-time
-   or: { "cashfreeSubscriptionId": "..." }   // for recurring
-```
-Exactly one of the two fields is required, matching whichever flow you used to create it.
-
-### Subscription wallet top-up (separate from the above)
-Same role gate, separate endpoints:
-```
-POST /api/v1/food/subscriptions/wallet/topup
-POST /api/v1/food/subscriptions/wallet/verify
-```
-Same create → checkout → verify pattern as the main subscription flow.
-
----
-
-## 5. Restaurant / Seller / Delivery Partner onboarding fee (all three apps, signup flow)
+## 4. Restaurant / Seller / Delivery Partner onboarding fee (all three apps, signup flow)
 
 **Base path:** `/api/v1/common/onboarding-fees` — **public, no auth required** (this
 happens during signup, before the user has an account/token).
@@ -283,7 +237,7 @@ currently supported server-side, and we can add one on request.
 
 ---
 
-## 6. Delivery partner cash deposit (Cravioo_delivery)
+## 5. Delivery partner cash deposit (Cravioo_delivery)
 
 **Base path:** `/api/v1/food/delivery/wallet/deposit`, Bearer token (DELIVERY_PARTNER
 role).
@@ -310,7 +264,7 @@ there's no risk of amount tampering.
 
 ---
 
-## 7. Webhook — backend-only, zero Flutter involvement
+## 6. Webhook — backend-only, zero Flutter involvement
 
 ```
 POST https://cravioo.in/api/v1/payments/webhook/cashfree
@@ -333,13 +287,10 @@ reason server-side state can change independently of your app's own verify calls
 | Food order | User | `POST /food/orders` | `POST /food/orders/verify-payment` | `normalizedPricing.total` (server-computed, includes all fees) |
 | Wallet top-up | User | `POST /food/user/wallet/topup/order` | `POST /food/user/wallet/topup/verify` | User-entered amount, credited as Cashfree-confirmed |
 | Membership | User | `POST /food/user/memberships/order` | `POST /food/user/memberships/verify` | Fixed plan price |
-| Subscription (one-time) | Restaurant/Delivery | `POST /food/subscriptions/purchase` | `POST /food/subscriptions/verify` (`cashfreeOrderId`) | Fixed plan price |
-| Subscription (recurring) | Restaurant/Delivery | `POST /food/subscriptions/purchase` | `POST /food/subscriptions/verify` (`cashfreeSubscriptionId`) | Fixed plan price |
-| Subscription wallet | Restaurant/Delivery | `POST /food/subscriptions/wallet/topup` | `POST /food/subscriptions/wallet/verify` | User-entered amount |
 | Onboarding fee | All (signup) | `POST /common/onboarding-fees/public/create-order` | **None — webhook-only, gap flagged above** | Fixed role-based price |
 | Delivery deposit | Delivery | `POST /food/delivery/wallet/deposit/order` | `POST /food/delivery/wallet/deposit/verify` | User-entered amount |
 
 All `cashfree`-wrapped responses give the same 4 fields: `appId`, `orderId`,
-`paymentSessionId`, `amount`, `currency` (`currency` is always `"INR"`). The flat-shaped
-responses (subscription one-time, onboarding fee) give the same fields without the
-wrapper object — just read them at the top level of the response instead.
+`paymentSessionId`, `amount`, `currency` (`currency` is always `"INR"`). The onboarding
+fee response gives the same fields without the wrapper object — just read them at the
+top level of the response instead.
